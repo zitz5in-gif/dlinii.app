@@ -1,0 +1,4 @@
+/ Merge this dependency into android/app/build.gradle(.kts) dependencies.
+dependencies {
+    implementation "androidx.car.app:app:1.4.0"
+}

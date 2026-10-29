@@ -4,186 +4,48 @@
   <base href="/">
   <meta charset="UTF-8">
   <meta content="IE=Edge" http-equiv="X-UA-Compatible">
+  <meta name="description" content="دلّيني — الملاحة وتنبيهات الطرق في العراق">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-  <meta name="description" content="دلّيني | Dlinii - رفيقك الذكي للطرق والملاحة في العراق">
-  <meta name="theme-color" content="#0b1918">
-
-  <!-- إعدادات iOS و iPhone PWA -->
+  <meta name="theme-color" content="#142e2d">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="دلّيني">
   <link rel="apple-touch-icon" href="icons/Icon-192.png">
-  <link rel="icon" type="image/png" href="favicon.png"/>
-  <title>دلّيني | Dlinii</title>
+  <link rel="icon" type="image/png" href="favicon.png">
   <link rel="manifest" href="manifest.json">
-
-  <!-- خط عربي واضح متوافق مع iOS -->
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@500;700;800;900&display=swap" rel="stylesheet">
-
+  <title>دلّيني</title>
   <style>
-    * {
-      box-sizing: border-box;
-      -webkit-tap-highlight-color: transparent;
-      -webkit-touch-callout: none;
-      user-select: none;
-    }
-
     html, body {
-      margin: 0;
-      padding: 0;
       width: 100%;
       height: 100%;
-      background-color: #0b1918;
-      font-family: 'Tajawal', -apple-system, BlinkMacSystemFont, 'SF Pro Display', sans-serif;
+      margin: 0;
+      padding: 0;
       overflow: hidden;
       overscroll-behavior: none;
+      background: #142e2d;
+      -webkit-text-size-adjust: 100%;
     }
-
-    /* شاشة التمهيد الزجاجية بطابع iOS وهوية دلّيني */
-    #dlinii-ios-loader {
-      position: fixed;
-      inset: 0;
-      z-index: 99999;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      background: radial-gradient(circle at 50% 25%, #143532 0%, #0b1918 68%, #071110 100%);
-      transition: opacity 0.55s cubic-bezier(0.22, 1, 0.36, 1), transform 0.55s cubic-bezier(0.22, 1, 0.36, 1);
-      padding: env(safe-area-inset-top) 24px env(safe-area-inset-bottom);
-    }
-
-    #dlinii-ios-loader.hide-loader {
-      opacity: 0;
-      transform: scale(1.04);
-      pointer-events: none;
-    }
-
-    .ios-island-badge {
-      position: absolute;
-      top: max(18px, env(safe-area-inset-top));
-      padding: 6px 18px;
-      border-radius: 999px;
-      background: rgba(20, 46, 45, 0.78);
-      border: 1px solid rgba(124, 224, 190, 0.25);
-      backdrop-filter: blur(16px);
-      -webkit-backdrop-filter: blur(16px);
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      color: #7ce0be;
-      font-size: 12px;
-      font-weight: 800;
-      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
-    }
-
-    .ios-island-dot {
-      width: 8px;
-      height: 8px;
-      border-radius: 50%;
-      background: #10b981;
-      box-shadow: 0 0 10px #10b981;
-      animation: pulseDot 1.4s infinite ease-in-out;
-    }
-
-    .logo-glass-card {
-      width: 112px;
-      height: 112px;
-      border-radius: 32px;
-      background: linear-gradient(145deg, rgba(8, 126, 118, 0.92), rgba(20, 46, 45, 0.95));
-      border: 1.5px solid rgba(124, 224, 190, 0.45);
-      box-shadow: 0 20px 50px rgba(8, 126, 118, 0.45), inset 0 1px 1px rgba(255, 255, 255, 0.25);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      margin-bottom: 24px;
-      animation: floatCard 2.8s infinite ease-in-out;
-    }
-
-    .app-title {
-      color: #ffffff;
-      font-size: 30px;
-      font-weight: 900;
-      letter-spacing: 0.5px;
-      margin: 0 0 8px 0;
-      text-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
-    }
-
-    .app-subtitle {
-      color: #94a3b8;
-      font-size: 14px;
-      font-weight: 700;
-      margin: 0 0 32px 0;
-      text-align: center;
-    }
-
-    .ios-progress-track {
-      width: 200px;
-      height: 5px;
-      background: rgba(255, 255, 255, 0.08);
-      border-radius: 999px;
-      overflow: hidden;
-      position: relative;
-    }
-
-    .ios-progress-bar {
-      width: 45%;
-      height: 100%;
-      border-radius: 999px;
-      background: linear-gradient(90deg, #087e76, #7ce0be, #efbb52);
-      animation: slideBar 1.35s infinite ease-in-out;
-    }
-
-    @keyframes pulseDot {
-      0%, 100% { transform: scale(1); opacity: 1; }
-      50% { transform: scale(1.35); opacity: 0.55; }
-    }
-
-    @keyframes floatCard {
-      0%, 100% { transform: translateY(0px); }
-      50% { transform: translateY(-7px); }
-    }
-
-    @keyframes slideBar {
-      0% { transform: translateX(120%); }
-      100% { transform: translateX(-220%); }
-    }
+    body { position: fixed; inset: 0; }
+    flt-glass-pane { touch-action: none; }
   </style>
+  <script>
+    // Keep Dlinii's own Arabic web/app chooser; never show Chrome's native install prompt.
+    window.addEventListener('beforeinstallprompt', function (event) {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+    }, true);
+
+    // Prevent Safari page gestures/pull-to-refresh without blocking Flutter map pointers.
+    document.addEventListener('gesturestart', function (event) {
+      event.preventDefault();
+    }, { passive: false });
+    document.addEventListener('gesturechange', function (event) {
+      event.preventDefault();
+    }, { passive: false });
+  </script>
 </head>
 <body>
-  <div id="dlinii-ios-loader">
-    <div class="ios-island-badge">
-      <span class="ios-island-dot"></span>
-      <span>نظام الملاحة الذكي • العراق</span>
-    </div>
-
-    <div class="logo-glass-card">
-      <svg width="62" height="62" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
-        <circle cx="32" cy="32" r="26" fill="#087e76" fill-opacity="0.25"/>
-        <path d="M32 8L50 52L32 42L14 52L32 8Z" fill="#7ce0be" stroke="#ffffff" stroke-width="3.2" stroke-linejoin="round"/>
-      </svg>
-    </div>
-
-    <h1 class="app-title">دلّيني | Dlinii</h1>
-    <p class="app-subtitle">رفيقك الذكي للطرق والرحلات في العراق</p>
-
-    <div class="ios-progress-track">
-      <div class="ios-progress-bar"></div>
-    </div>
-  </div>
-
-  <script>
-    window.addEventListener('flutter-first-frame', function () {
-      var loader = document.getElementById('dlinii-ios-loader');
-      if (loader) {
-        loader.classList.add('hide-loader');
-        setTimeout(function () { loader.remove(); }, 600);
-      }
-    });
-  </script>
   <script src="flutter_bootstrap.js" async></script>
 </body>
 </html>

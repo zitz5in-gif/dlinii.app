@@ -68,6 +68,18 @@
                 <data android:scheme="https" android:host="goo.gl" android:pathPrefix="/maps" />
             </intent-filter>
         </activity>
+        <!-- Android Auto driving HUD -->
+        <service
+            android:name=".DliniiCarService"
+            android:exported="true"
+            android:permission="androidx.car.app.CarAppService.BIND">
+            <intent-filter>
+                <action android:name="androidx.car.app.CarAppService" />
+            </intent-filter>
+        </service>
+        <meta-data
+            android:name="androidx.car.app.minCarApiLevel"
+            android:value="1" />
         <meta-data
             android:name="flutterEmbedding"
             android:value="2" />
