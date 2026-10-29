@@ -2,7 +2,8 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:math' as math;
 import 'dart:ui' as ui;
-import 'offline_tile_platform.dart';
+import 'dart:io' show Directory, File;
+import 'package:path_provider/path_provider.dart';
 import 'package:speech_to_text/speech_to_text.dart' as stt;
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
@@ -386,43 +387,6 @@ const List<IraqProvince> kIraqProvinces = [
       sizeMb: '32 MB'),
 ];
 
-class _ArabicMapLabel {
-  final String name;
-  final LatLng point;
-  final double minZoom;
-  const _ArabicMapLabel(this.name, this.point, [this.minZoom = 5.0]);
-}
-
-// أسماء عربية صافية ترسم بخط Flutter وليست بخطوط SDF التي تسبب □□□.
-const List<_ArabicMapLabel> kArabicMapLabels = [
-  _ArabicMapLabel('الرمادي', LatLng(33.4258, 43.2995), 4.0),
-  _ArabicMapLabel('بغداد', LatLng(33.3152, 44.3661)),
-  _ArabicMapLabel('البصرة', LatLng(30.5081, 47.7835)),
-  _ArabicMapLabel('الموصل', LatLng(36.3489, 43.1577)),
-  _ArabicMapLabel('أربيل', LatLng(36.1901, 44.0091)),
-  _ArabicMapLabel('النجف', LatLng(32.0000, 44.3333)),
-  _ArabicMapLabel('كربلاء', LatLng(32.6160, 44.0249)),
-  _ArabicMapLabel('السليمانية', LatLng(35.5558, 45.4351)),
-  _ArabicMapLabel('دهوك', LatLng(36.8669, 42.9503)),
-  _ArabicMapLabel('كركوك', LatLng(35.4681, 44.3922)),
-  _ArabicMapLabel('تكريت', LatLng(34.6110, 43.6782)),
-  _ArabicMapLabel('بعقوبة', LatLng(33.7485, 44.6436)),
-  _ArabicMapLabel('الحلة', LatLng(32.4637, 44.4196)),
-  _ArabicMapLabel('الكوت', LatLng(32.5126, 45.8182)),
-  _ArabicMapLabel('الناصرية', LatLng(31.0439, 46.2573)),
-  _ArabicMapLabel('العمارة', LatLng(31.8359, 47.1448)),
-  _ArabicMapLabel('الديوانية', LatLng(31.9929, 44.9255)),
-  _ArabicMapLabel('السماوة', LatLng(31.3320, 45.2940)),
-  _ArabicMapLabel('الفلوجة', LatLng(33.3538, 43.7850), 8.0),
-  _ArabicMapLabel('حديثة', LatLng(34.1366, 42.3772), 8.0),
-  _ArabicMapLabel('هيت', LatLng(33.6366, 42.8277), 8.5),
-  _ArabicMapLabel('القائم', LatLng(34.3883, 41.0708), 8.0),
-  _ArabicMapLabel('عنة', LatLng(34.3686, 41.9819), 9.0),
-  _ArabicMapLabel('راوة', LatLng(34.4828, 41.9169), 9.0),
-  _ArabicMapLabel('الرطبة', LatLng(33.0371, 40.2858), 8.0),
-  _ArabicMapLabel('سامراء', LatLng(34.1959, 43.8857), 8.5),
-];
-
 class VoiceProfile {
   final String id;
   final String nameAr;
@@ -466,7 +430,7 @@ const List<VoiceProfile> kVoiceProfiles = [
 
 // ==================== إعدادات وأدوات الميزات الجديدة ====================
 
-const String kShareHost = 'dlinii.vercel.app';
+const String kShareHost = 'dlinii.app';
 
 const ColorFilter kInstantDarkFilter = ColorFilter.matrix(<double>[
   -0.1176,
@@ -499,17 +463,20 @@ class _TileRange {
 
 /// تخزين بلاطات الخرائط محلياً على الجهاز (للعمل بدون إنترنت)
 class _OfflineTiles {
-  static String? dir;
+  static Directory? dir;
   static const List<int> zooms = [10, 11, 12, 13, 14];
 
   static Future<void> init() async {
     if (kIsWeb) return;
     try {
-      dir = await OfflineTilePlatform.createDirectory();
+      final base = await getApplicationDocumentsDirectory();
+      final d = Directory('${base.path}/offline_tiles');
+      if (!d.existsSync()) d.createSync(recursive: true);
+      dir = d;
     } catch (_) {}
   }
 
-  static String file(int z, int x, int y) => '${dir!}/$z/$x/$y.png';
+  static File file(int z, int x, int y) => File('${dir!.path}/$z/$x/$y.png');
 
   static int _tx(double lon, int z) => ((lon + 180) / 360 * (1 << z)).floor();
   static int _ty(double lat, int z) {
@@ -548,7 +515,8 @@ class _OfflineTiles {
         }).timeout(const Duration(seconds: 15));
         if (r.statusCode == 200 && r.bodyBytes.isNotEmpty) {
           final f = file(z, x, y);
-          await OfflineTilePlatform.writeBytes(f, r.bodyBytes);
+          await f.parent.create(recursive: true);
+          await f.writeAsBytes(r.bodyBytes);
           return true;
         }
       } catch (_) {}
@@ -566,9 +534,7 @@ class _OfflineTiles {
       final r = _range(p, z);
       for (int x = r.x0; x <= r.x1; x++) {
         for (int y = r.y0; y <= r.y1; y++) {
-          if (!OfflineTilePlatform.existsSync(file(z, x, y))) {
-            jobs.add([z, x, y]);
-          }
+          if (!file(z, x, y).existsSync()) jobs.add([z, x, y]);
         }
       }
     }
@@ -612,9 +578,11 @@ class _OfflineTiles {
         for (int y = r.y0; y <= r.y1; y++) {
           if (otherRanges.any((o) => o.covers(x, y))) continue;
           final f = file(z, x, y);
-          try {
-            OfflineTilePlatform.deleteSync(f);
-          } catch (_) {}
+          if (f.existsSync()) {
+            try {
+              f.deleteSync();
+            } catch (_) {}
+          }
         }
       }
     }
@@ -628,10 +596,7 @@ class _OfflineTileProvider extends TileProvider {
   ImageProvider getImage(TileCoordinates coordinates, TileLayer options) {
     if (_OfflineTiles.dir != null) {
       final f = _OfflineTiles.file(coordinates.z, coordinates.x, coordinates.y);
-      if (OfflineTilePlatform.existsSync(f)) {
-        final provider = OfflineTilePlatform.imageProvider(f);
-        if (provider != null) return provider;
-      }
+      if (f.existsSync()) return FileImage(f);
     }
     return NetworkImage(getTileUrl(coordinates, options), headers: headers);
   }
@@ -655,33 +620,10 @@ class _Snap {
   const _Snap(this.point, this.bearing);
 }
 
-class _RouteProjection {
-  final LatLng point;
-  final double distance;
-  final double along;
-  final double bearing;
-  final int segmentIndex;
-  const _RouteProjection(
-      this.point, this.distance, this.along, this.bearing, this.segmentIndex);
-}
-
-class _HomeScreenState extends State<HomeScreen>
-    with TickerProviderStateMixin, WidgetsBindingObserver {
+class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
 
   bool _hasAskedPermission = false;
-  bool _showWebAppChoice = kIsWeb;
-  bool _webAppLaunchInProgress = false;
-  bool _webLaunchFallbackCancelled = false;
-  bool _isRerouting = false;
-  int _lastRerouteMs = 0;
-  int _routeRequestId = 0;
-  int _lastCarHudPushMs = 0;
-  StreamSubscription<Uri>? _appLinksSub;
-  final Map<String, List<List<LatLng>>> _offlineProvinceBoundaries = {};
-
-  static const MethodChannel _carHudChannel =
-      MethodChannel('com.dlinii.app/car_hud');
 
   static const int endVotesThreshold = 3;
   static const String playStoreUrl =
@@ -696,6 +638,8 @@ class _HomeScreenState extends State<HomeScreen>
   bool showNotifPermissionModal = false;
   bool showModalBox = false, showRateModal = false, showVoiceModal = false;
   bool showPlanSheet = false, showNavSheet = false, showRepSheet = false;
+
+  // حالة "اكتشف ما حولك"
   bool showExploreModal = false;
   String selectedCategoryId = 'restaurants';
   bool isLoadingCategory = false;
@@ -817,162 +761,6 @@ class _HomeScreenState extends State<HomeScreen>
     }
     if (bp == null || best > 35 * 35) return null;
     return _Snap(bp, bb);
-  }
-
-  _RouteProjection? _projectToPolyline(LatLng p, List<LatLng> points) {
-    if (points.length < 2) return null;
-    final double cosLat = math.cos(p.latitude * math.pi / 180);
-    double best = double.infinity;
-    double bestAlong = 0;
-    double travelled = 0;
-    double bestBearing = 0;
-    int bestSegment = 0;
-    LatLng? bestPoint;
-    for (int i = 0; i < points.length - 1; i++) {
-      final a = points[i], b = points[i + 1];
-      final segmentLength = _distanceMeters(a, b);
-      final ax = (a.longitude - p.longitude) * cosLat * 111320.0;
-      final ay = (a.latitude - p.latitude) * 111320.0;
-      final bx = (b.longitude - p.longitude) * cosLat * 111320.0;
-      final by = (b.latitude - p.latitude) * 111320.0;
-      final dx = bx - ax, dy = by - ay;
-      final len2 = dx * dx + dy * dy;
-      final double t = len2 == 0
-          ? 0.0
-          : ((-ax * dx - ay * dy) / len2).clamp(0.0, 1.0).toDouble();
-      final px = ax + dx * t, py = ay + dy * t;
-      final d2 = px * px + py * py;
-      if (d2 < best) {
-        best = d2;
-        bestPoint = LatLng(a.latitude + (b.latitude - a.latitude) * t,
-            a.longitude + (b.longitude - a.longitude) * t);
-        bestAlong = travelled + segmentLength * t;
-        bestBearing = _getBearing(a, b);
-        bestSegment = i;
-      }
-      travelled += segmentLength;
-    }
-    if (bestPoint == null) return null;
-    return _RouteProjection(
-        bestPoint, math.sqrt(best), bestAlong, bestBearing, bestSegment);
-  }
-
-  LatLng _pointAlongPolyline(List<LatLng> points, double target) {
-    if (points.isEmpty) return me ?? kDefaultCenter;
-    double travelled = 0;
-    for (int i = 0; i < points.length - 1; i++) {
-      final length = _distanceMeters(points[i], points[i + 1]);
-      if (travelled + length >= target && length > 0) {
-        final t = ((target - travelled) / length).clamp(0.0, 1.0).toDouble();
-        return LatLng(
-            points[i].latitude +
-                (points[i + 1].latitude - points[i].latitude) * t,
-            points[i].longitude +
-                (points[i + 1].longitude - points[i].longitude) * t);
-      }
-      travelled += length;
-    }
-    return points.last;
-  }
-
-  List<LatLng> _slicePolylineAround(
-      List<LatLng> points, LatLng report, double beforeAfterMeters) {
-    final projection = _projectToPolyline(report, points);
-    if (projection == null) return const [];
-    final startDistance = math.max(0.0, projection.along - beforeAfterMeters);
-    final endDistance = projection.along + beforeAfterMeters;
-    final result = <LatLng>[_pointAlongPolyline(points, startDistance)];
-    double travelled = 0;
-    for (int i = 1; i < points.length - 1; i++) {
-      travelled += _distanceMeters(points[i - 1], points[i]);
-      if (travelled > startDistance && travelled < endDistance) {
-        result.add(points[i]);
-      }
-    }
-    result.add(_pointAlongPolyline(points, endDistance));
-    return result;
-  }
-
-  List<LatLng> _selectedRoutePoints() {
-    if (isNavigating && navCoords.length >= 2) return navCoords;
-    if (routes.isEmpty) return const [];
-    try {
-      final coords =
-          routes[selectedRouteIndex]['geometry']['coordinates'] as List;
-      return coords
-          .map(
-              (c) => LatLng((c[1] as num).toDouble(), (c[0] as num).toDouble()))
-          .toList();
-    } catch (_) {
-      return const [];
-    }
-  }
-
-  LatLng? _reportPoint(Map<String, dynamic> data) {
-    final lat = data['lat'], lng = data['lng'];
-    if (lat is! num || lng is! num) return null;
-    final point = LatLng(lat.toDouble(), lng.toDouble());
-    if (point.latitude.abs() > 90 || point.longitude.abs() > 180) return null;
-    return point;
-  }
-
-  bool _isReportRelevant(Map<String, dynamic> data) {
-    final point = _reportPoint(data);
-    if (point == null) return false;
-    if (_hasRealFix && me != null && _distanceMeters(me!, point) <= 3000) {
-      return true;
-    }
-    final route = _selectedRoutePoints();
-    final projection = _projectToPolyline(point, route);
-    return projection != null && projection.distance <= 600;
-  }
-
-  List<QueryDocumentSnapshot> get _visibleCloudReports =>
-      cloudReports.where((doc) {
-        try {
-          return _isReportRelevant(doc.data() as Map<String, dynamic>);
-        } catch (_) {
-          return false;
-        }
-      }).toList();
-
-  List<Marker> _buildArabicLabelMarkers() {
-    return kArabicMapLabels
-        .where((label) => currentZoom >= label.minZoom)
-        .map((label) => Marker(
-              point: label.point,
-              width: math.max(86.0, label.name.length * 13.0 + 28.0),
-              height: 32,
-              child: IgnorePointer(
-                child: Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
-                  decoration: BoxDecoration(
-                    color: isDark
-                        ? const Color(0xFF0D1014).withOpacity(0.74)
-                        : Colors.white.withOpacity(0.78),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Text(
-                    label.name,
-                    textDirection: TextDirection.rtl,
-                    textAlign: TextAlign.center,
-                    maxLines: 1,
-                    softWrap: false,
-                    overflow: TextOverflow.visible,
-                    style: TextStyle(
-                      color: isDark
-                          ? const Color(0xFFF1F5F9)
-                          : const Color(0xFF142e2d),
-                      fontSize: currentZoom >= 10 ? 14 : 12.5,
-                      fontWeight: FontWeight.w800,
-                      height: 1.2,
-                    ),
-                  ),
-                ),
-              ),
-            ))
-        .toList();
   }
 
   Future<void> _loadMapStyles() async {
@@ -1149,7 +937,7 @@ class _HomeScreenState extends State<HomeScreen>
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addObserver(this);
+    _loadMapStyles();
     splashCarController = AnimationController(
         vsync: this, duration: const Duration(milliseconds: 1400))
       ..repeat(reverse: true);
@@ -1166,7 +954,6 @@ class _HomeScreenState extends State<HomeScreen>
     _checkClipboardForSharedLocation();
     _initOfflineTiles();
     _startConnectivityProbe();
-    _initLocationTracking();
 
     Future.delayed(const Duration(milliseconds: 2700), () async {
       if (!mounted) return;
@@ -1191,8 +978,6 @@ class _HomeScreenState extends State<HomeScreen>
 
   @override
   void dispose() {
-    WidgetsBinding.instance.removeObserver(this);
-    _appLinksSub?.cancel();
     splashCarController.dispose();
     splashRoadController.dispose();
     splashPulseController.dispose();
@@ -1216,41 +1001,18 @@ class _HomeScreenState extends State<HomeScreen>
     super.dispose();
   }
 
-  @override
-  void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (kIsWeb &&
-        _webAppLaunchInProgress &&
-        (state == AppLifecycleState.hidden ||
-            state == AppLifecycleState.paused)) {
-      _webLaunchFallbackCancelled = true;
-    }
-  }
-
   void _initDeepLinksListener() {
-    if (kIsWeb) {
-      final uri = Uri.base;
-      if (uri.queryParameters.containsKey('lat') &&
-          uri.queryParameters.containsKey('lng')) {
-        Future.delayed(const Duration(milliseconds: 700), () {
-          if (mounted) _handleIncomingUri(uri);
-        });
-      }
-      return;
-    }
     try {
       final appLinks = AppLinks();
-      _appLinksSub = appLinks.uriLinkStream.listen((uri) {
+      appLinks.uriLinkStream.listen((uri) {
         _handleIncomingUri(uri);
       }, onError: (_) {});
-      appLinks.getInitialLink().then((uri) {
-        if (uri != null && mounted) _handleIncomingUri(uri);
-      }).catchError((_) {});
     } catch (_) {}
   }
 
   bool _parseAndOpenSharedText(String text, {bool clearClipboard = false}) {
     if (text.trim().isEmpty) return false;
-    bool isMyLocOnly =
+    final bool isMyLocOnly =
         text.contains('DLINII_MYLOC:') || text.contains('mode=myloc');
     double? lat, lng;
     String? sharedName;
@@ -1287,9 +1049,6 @@ class _HomeScreenState extends State<HomeScreen>
       if (clearClipboard) {
         Clipboard.setData(const ClipboardData(text: ''));
       }
-      isMyLocOnly = isMyLocOnly ||
-          sharedName == 'موقعي الحالي' ||
-          sharedName == 'My current location';
       final pt = LatLng(lat, lng);
       setState(() {
         showSplash = false;
@@ -1339,11 +1098,8 @@ class _HomeScreenState extends State<HomeScreen>
         uri.queryParameters['lat'] ?? uri.queryParameters['mlat'] ?? '');
     double? lng = double.tryParse(
         uri.queryParameters['lng'] ?? uri.queryParameters['mlon'] ?? '');
+    final String mode = uri.queryParameters['mode'] ?? 'guide';
     final nameStr = uri.queryParameters['name'];
-    final String mode =
-        (nameStr == 'موقعي الحالي' || nameStr == 'My current location')
-            ? 'myloc'
-            : (uri.queryParameters['mode'] ?? 'guide');
 
     if (lat != null && lng != null) {
       Future.delayed(const Duration(milliseconds: 700), () {
@@ -1397,6 +1153,7 @@ class _HomeScreenState extends State<HomeScreen>
           (target.latitude - startCenter.latitude) * easePos;
       final lng = startCenter.longitude +
           (target.longitude - startCenter.longitude) * easePos;
+
       double z;
       if (t < 0.42) {
         final p1 = Curves.easeOutQuad.transform(t / 0.42);
@@ -1433,147 +1190,51 @@ class _HomeScreenState extends State<HomeScreen>
         }
       } catch (_) {}
     }
-    final link = _buildShareLink(pt,
-        myLoc: true, name: tr('موقعي الحالي', 'My current location'));
-    Share.share(tr('📍 موقعي الحالي عبر دلّيني:\n$link',
-        '📍 My current location via Dlinii:\n$link'));
+
+    final lat = pt.latitude.toStringAsFixed(6);
+    final lng = pt.longitude.toStringAsFixed(6);
+    final ofmLink = _buildShareLink(pt, myLoc: true);
+
+    final msg = tr(
+      '📍 موقعي الحالي المباشر عبر تطبيق دلّيني:\n\n'
+          '🔗 اضغط لفتح موقعي في تطبيق «دلّيني» (أو انسخ الرسالة وافتح دلّيني):\n'
+          '$ofmLink\n\n'
+          '🧭 كود الفتح المباشر داخل دلّيني:\n'
+          'DLINII_MYLOC:$lat,$lng\n\n'
+          '📲 تحميل تطبيق دلّيني:\n$playStoreUrl',
+      '📍 My live location via Dlinii App:\n\n'
+          '🔗 Tap link to open in "Dlinii" (or copy message & open Dlinii):\n'
+          '$ofmLink\n\n'
+          '🧭 Direct Dlinii Code:\n'
+          'DLINII_MYLOC:$lat,$lng\n\n'
+          '📲 Download Dlinii:\n$playStoreUrl',
+    );
+    Share.share(msg);
   }
 
   void _shareCustomSpot(LatLng pt, String spotTitle) {
+    final lat = pt.latitude.toStringAsFixed(6);
+    final lng = pt.longitude.toStringAsFixed(6);
     final cleanName = spotTitle.isNotEmpty
         ? spotTitle
         : tr('موقع محدد على الخريطة', 'Pinned Location');
-    final link = _buildShareLink(pt, myLoc: false, name: cleanName);
-    Share.share(tr('🧭 دلّيتك على مكان «$cleanName»:\n$link',
-        '🧭 Guided spot "$cleanName":\n$link'));
-  }
+    final ofmLink = _buildShareLink(pt, myLoc: false, name: cleanName);
 
-  List<LatLng> _boundaryRing(dynamic raw) {
-    if (raw is! List || raw.length < 4) return const [];
-    final all = <LatLng>[];
-    for (final c in raw) {
-      if (c is List && c.length >= 2 && c[0] is num && c[1] is num) {
-        all.add(LatLng((c[1] as num).toDouble(), (c[0] as num).toDouble()));
-      }
-    }
-    if (all.length < 4) return const [];
-    final step = math.max(1, (all.length / 700).ceil());
-    final simplified = <LatLng>[];
-    for (int i = 0; i < all.length; i += step) {
-      simplified.add(all[i]);
-    }
-    if (simplified.last.latitude != all.last.latitude ||
-        simplified.last.longitude != all.last.longitude) {
-      simplified.add(all.last);
-    }
-    return simplified;
-  }
-
-  List<List<LatLng>> _parseProvinceBoundary(dynamic geometry) {
-    if (geometry is! Map) return const [];
-    final coordinates = geometry['coordinates'];
-    final rings = <List<LatLng>>[];
-    if (geometry['type'] == 'Polygon' && coordinates is List) {
-      if (coordinates.isNotEmpty) {
-        final ring = _boundaryRing(coordinates.first);
-        if (ring.isNotEmpty) rings.add(ring);
-      }
-    } else if (geometry['type'] == 'MultiPolygon' && coordinates is List) {
-      for (final polygon in coordinates) {
-        if (polygon is List && polygon.isNotEmpty) {
-          final ring = _boundaryRing(polygon.first);
-          if (ring.isNotEmpty) rings.add(ring);
-        }
-      }
-    }
-    return rings;
-  }
-
-  List<List<LatLng>> _fallbackProvinceBoundary(IraqProvince prov) {
-    final ring = <LatLng>[];
-    for (int i = 0; i <= 48; i++) {
-      final angle = (i % 48) * 2 * math.pi / 48;
-      ring.add(LatLng(prov.center.latitude + prov.radiusDeg * math.sin(angle),
-          prov.center.longitude + prov.radiusDeg * math.cos(angle)));
-    }
-    return [ring];
-  }
-
-  Future<void> _cacheProvinceBoundary(IraqProvince prov) async {
-    if (_offlineProvinceBoundaries.containsKey(prov.id)) return;
-    List<List<LatLng>> rings = const [];
-    SharedPreferences? prefs;
-    try {
-      prefs = await SharedPreferences.getInstance();
-      final cached = prefs.getString('dlini_boundary_${prov.id}');
-      if (cached != null) {
-        final decoded = json.decode(cached);
-        if (decoded is List) {
-          rings = decoded
-              .map(_boundaryRing)
-              .where((ring) => ring.isNotEmpty)
-              .toList();
-        }
-      }
-    } catch (_) {}
-
-    if (rings.isEmpty) {
-      try {
-        final query = prov.nameEn.replaceAll(RegExp(r'^\d+\.\s*'), '');
-        final uri = Uri.https('nominatim.openstreetmap.org', '/search', {
-          'format': 'jsonv2',
-          'countrycodes': 'iq',
-          'polygon_geojson': '1',
-          'limit': '1',
-          'q': query,
-        });
-        final response = await http.get(uri, headers: {
-          'User-Agent': 'com.dlinii.app'
-        }).timeout(const Duration(seconds: 12));
-        if (response.statusCode == 200) {
-          final results = json.decode(response.body);
-          if (results is List && results.isNotEmpty) {
-            rings = _parseProvinceBoundary(results.first['geojson']);
-            if (rings.isNotEmpty && prefs != null) {
-              final encoded = rings
-                  .map((ring) => ring
-                      .map((point) => [point.longitude, point.latitude])
-                      .toList())
-                  .toList();
-              await prefs.setString(
-                  'dlini_boundary_${prov.id}', json.encode(encoded));
-            }
-          }
-        }
-      } catch (_) {}
-    }
-    if (rings.isEmpty) rings = _fallbackProvinceBoundary(prov);
-    if (!mounted || !downloadedProvinces.contains(prov.id)) return;
-    setState(() => _offlineProvinceBoundaries[prov.id] = rings);
-  }
-
-  Future<void> _restoreOfflineProvinceBoundaries() async {
-    for (final prov in kIraqProvinces) {
-      if (!downloadedProvinces.contains(prov.id)) continue;
-      await _cacheProvinceBoundary(prov);
-    }
-  }
-
-  List<Polygon> _buildOfflineProvincePolygons() {
-    final polygons = <Polygon>[];
-    for (final entry in _offlineProvinceBoundaries.entries) {
-      if (!downloadedProvinces.contains(entry.key)) continue;
-      for (final ring in entry.value) {
-        if (ring.length < 4) continue;
-        polygons.add(Polygon(
-          points: ring,
-          color: const Color(0xFF16a34a).withOpacity(0.025),
-          borderColor: const Color(0xFF16a34a),
-          borderStrokeWidth: 2.6,
-        ));
-      }
-    }
-    return polygons;
+    final msg = tr(
+      '🧭 دلّيتك على مكان «$cleanName» عبر تطبيق دلّيني:\n\n'
+          '🔗 اضغط ليفتح تطبيق «دلّيني» ويرسم لك المسار مباشرة (أو انسخ الرسالة وافتح دلّيني):\n'
+          '$ofmLink\n\n'
+          '🧭 كود رسم المسار التلقائي داخل دلّيني:\n'
+          'DLINII_GUIDE:$lat,$lng\n\n'
+          '📲 تحميل تطبيق دلّيني:\n$playStoreUrl',
+      '🧭 Guided spot "$cleanName" via Dlinii:\n\n'
+          '🔗 Tap link to plot route in "Dlinii" (or copy message & open Dlinii):\n'
+          '$ofmLink\n\n'
+          '🧭 Direct Route Code:\n'
+          'DLINII_GUIDE:$lat,$lng\n\n'
+          '📲 Download Dlinii:\n$playStoreUrl',
+    );
+    Share.share(msg);
   }
 
   Future<void> _downloadProvinceOfflineMap(IraqProvince prov) async {
@@ -1608,7 +1269,6 @@ class _HomeScreenState extends State<HomeScreen>
         downloadingProvinceId = null;
         downloadProgress = 0.0;
       });
-      _cacheProvinceBoundary(prov);
       _flyToMyLocation(prov.center, targetZoom: 13.5);
       _toast(tr('تم تحميل خريطة «${prov.nameAr}» للعمل بدون إنترنت بنجاح ✅',
           '${prov.nameEn} offline map downloaded ✅'));
@@ -1626,11 +1286,9 @@ class _HomeScreenState extends State<HomeScreen>
     final prefs = await SharedPreferences.getInstance();
     setState(() {
       downloadedProvinces.remove(prov.id);
-      _offlineProvinceBoundaries.remove(prov.id);
     });
     await prefs.setStringList(
         'dlini_offline_provinces', downloadedProvinces.toList());
-    await prefs.remove('dlini_boundary_${prov.id}');
     try {
       await _OfflineTiles.deleteProvince(prov, downloadedProvinces);
     } catch (_) {}
@@ -1670,7 +1328,6 @@ class _HomeScreenState extends State<HomeScreen>
         });
       }
     } catch (_) {}
-    _restoreOfflineProvinceBoundaries();
     await _loadAvailableVoicesOnce();
     await _applyVoiceProfile();
   }
@@ -1820,17 +1477,9 @@ class _HomeScreenState extends State<HomeScreen>
     final prefs = await SharedPreferences.getInstance();
     await prefs.setInt('dlini_voice_speed_lvl', level);
     await _applyVoiceProfile();
-    _say(isEnglish ? 'Speech speed updated.' : 'تَمَّ ضَبْطُ سُرْعَةِ الصَّوْتِ بِنَجَاحٍ.');
-  }
-
-  bool _isEngineVoiceFemale(Map<String, String> v) {
-    final name = (v['name'] ?? '').toLowerCase();
-    return name.contains('female') || name.contains('zariyah') || name.contains('salma') || name.contains('hoda') || name.contains('aria') || name.contains('jenny') || name.contains('zira');
-  }
-
-  bool _isEngineVoiceMale(Map<String, String> v) {
-    final name = (v['name'] ?? '').toLowerCase();
-    return name.contains('male') || name.contains('shakir') || name.contains('hamed') || name.contains('maged') || name.contains('guy') || name.contains('david') || name.contains('mark');
+    _say(isEnglish
+        ? 'Speech speed updated.'
+        : 'تَمَّ ضَبْطُ سُرْعَةِ الصَّوْتِ بِنَجَاحٍ.');
   }
 
   Future<void> _applyVoiceProfile() async {
@@ -1845,13 +1494,28 @@ class _HomeScreenState extends State<HomeScreen>
 
       await flutterTts.stop();
 
-      final List> langVoices = _availableVoices.where((v) {
-        final loc = (v['locale'] ?? '').toLowerCase();
-        final name = (v['name'] ?? '').toLowerCase();
+      final List<Map<String, String>> langVoices = _availableVoices.where((v) {
+        final loc = _normVoice(v['locale'] ?? '');
+        final name = _normVoice(v['name'] ?? '');
         if (vp.langType == 'ar') {
-          return loc.startsWith('ar') || name.contains('arabic');
+          return loc.startsWith('ar') ||
+              name.contains('arabic') ||
+              name.contains('salma') ||
+              name.contains('shakir') ||
+              name.contains('zariyah') ||
+              name.contains('hamed') ||
+              name.contains('naayf') ||
+              name.contains('hoda') ||
+              name.contains('maged');
         } else {
-          return loc.startsWith('en') || name.contains('english');
+          return loc.startsWith('en') ||
+              name.contains('english') ||
+              name.contains('aria') ||
+              name.contains('jenny') ||
+              name.contains('zira') ||
+              name.contains('guy') ||
+              name.contains('david') ||
+              name.contains('mark');
         }
       }).toList();
 
@@ -1864,15 +1528,28 @@ class _HomeScreenState extends State<HomeScreen>
         }).toList();
 
         if (genderMatches.isNotEmpty) {
-          matchedVoice = genderMatches.first;
+          final naturalMatch = genderMatches.where((v) {
+            final n = _normVoice(v['name'] ?? '');
+            return n.contains('natural') ||
+                n.contains('online') ||
+                n.contains('wavenet');
+          }).toList();
+
+          matchedVoice = naturalMatch.isNotEmpty
+              ? naturalMatch.first
+              : genderMatches.first;
           foundRealGenderVoice = true;
+        } else if (langVoices.length >= 2) {
+          matchedVoice = wantFemale ? langVoices.first : langVoices.last;
         } else {
           matchedVoice = langVoices.first;
         }
       }
 
       if (matchedVoice != null && (matchedVoice['name'] ?? '').isNotEmpty) {
-        final String vLoc = (matchedVoice['locale'] ?? '').isNotEmpty ? matchedVoice['locale']! : vp.locale;
+        final String vLoc = (matchedVoice['locale'] ?? '').isNotEmpty
+            ? matchedVoice['locale']!
+            : vp.locale;
         await flutterTts.setLanguage(vLoc);
         try {
           await flutterTts.setVoice({
@@ -1884,8 +1561,8 @@ class _HomeScreenState extends State<HomeScreen>
         await flutterTts.setLanguage(vp.locale);
       }
 
-      // ضبط نبرة الصوت بدقة: فتاة بنبرة عالية قليلاً، ورجل بنبرة خشنة ومنخفضة
-      final double targetPitch = foundRealGenderVoice ? 1.0 : (wantFemale ? 1.45 : 0.45);
+      final double targetPitch =
+          foundRealGenderVoice ? 1.0 : (wantFemale ? 1.65 : 0.50);
 
       await flutterTts.setVolume(1.0);
       await flutterTts.setPitch(targetPitch);
@@ -1902,13 +1579,15 @@ class _HomeScreenState extends State<HomeScreen>
 
     final vp = currentVoice;
     final int slot = _pinnedSlot[vp.id] ?? (_voiceSlot[vp.id] ?? 0);
-    final String voiceTypeLabel = slot == 0 ? tr('صوت فتاة', 'Female') : tr('صوت رجل', 'Male');
+    final String voiceTypeLabel =
+        slot == 0 ? tr('صوت فتاة', 'Female') : tr('صوت رجل', 'Male');
 
     final String sample = vp.langType == 'en'
         ? 'Hello, welcome to Dlinii navigation system. I am ready to guide you.'
-        : 'مَرْحَبَاً بِكَ فِي تَطْبِيقِ دَلِّينِي، أَنَا مُسَاعِدُكَ الصَّوْتِيُّ لِتَوْجِيهِكَ عَلَى الطَّرِيقِ.';
+        : 'مَرْحَبَاً بِكَ فِي تَطْبِيقِ دَلِّينِي، أَنَا مُسَاعِدُكَ الصَّوْتِيُّ لِتَوْجِيهِكَ عَلَى الطَّرِيقِ بِكُلِّ وُضُوحٍ.';
     _say(sample);
-    _toast(tr('تم اختيار: ${vp.nameAr} ($voiceTypeLabel)', 'Selected: ${vp.nameEn} ($voiceTypeLabel)'));
+    _toast(tr('تم اختيار: ${vp.nameAr} ($voiceTypeLabel)',
+        'Selected: ${vp.nameEn} ($voiceTypeLabel)'));
   }
 
   Future<void> _onTapSwitchVoiceButton() async {
@@ -1930,15 +1609,17 @@ class _HomeScreenState extends State<HomeScreen>
         : tr('الصوت الثاني: رجل واضح ونقي', 'Voice 2: Clear Male');
 
     final String sample = vp.langType == 'en'
-        ? (nextSlot == 0 ? 'Hello, this is the female voice assistant.' : 'Hello, this is the male voice assistant.')
+        ? (nextSlot == 0
+            ? 'Hello, this is the female voice assistant on Dlinii.'
+            : 'Hello, this is the male voice assistant on Dlinii.')
         : (nextSlot == 0
-            ? 'مَرْحَبَاً بِكَ، هَذَا صَوْتُ الْفَتَاةِ الْوَاضِحُ.'
-            : 'مَرْحَبَاً بِكَ، هَذَا صَوْتُ الرَّجُلِ الْخَشِينُ وَالْوَاضِحُ.');
+            ? 'مَرْحَبَاً بِكَ فِي تَطْبِيقِ دَلِّينِي، هَذَا الصَّوْتُ الأَوَّلُ بِصَوْتِ فَتَاةٍ وَاضِحٍ وَنَقِيٍّ.'
+            : 'مَرْحَبَاً بِكَ فِي تَطْبِيقِ دَلِّينِي، هَذَا الصَّوْتُ الثَّانِي بِصَوْتِ رَجُلٍ وَاضِحٍ وَنَقِيٍّ.');
 
     _say(sample);
     _toast(voiceTypeLabel);
   }
-  
+
   Future<void> _togglePinCurrentVoice() async {
     final vp = currentVoice;
     final prefs = await SharedPreferences.getInstance();
@@ -2093,137 +1774,10 @@ class _HomeScreenState extends State<HomeScreen>
     final q = <String, String>{
       'lat': p.latitude.toStringAsFixed(6),
       'lng': p.longitude.toStringAsFixed(6),
-      'name': (name != null && name.trim().isNotEmpty)
-          ? name.trim()
-          : (myLoc ? tr('موقعي الحالي', 'My current location') : 'دلّيني'),
+      'mode': myLoc ? 'myloc' : 'guide',
     };
-    return Uri.https(kShareHost, '/', q).toString();
-  }
-
-  Future<void> _downloadAppFromWeb() async {
-    try {
-      await launchUrl(Uri.parse(playStoreUrl),
-          mode: LaunchMode.externalApplication);
-    } catch (_) {
-      _toast(tr('تعذر فتح متجر Google Play', 'Could not open Google Play'));
-    }
-  }
-
-  Future<void> _openInstalledAppFromWeb() async {
-    if (!kIsWeb || _webAppLaunchInProgress) return;
-    final base = Uri.base;
-    final pt = me ?? mapController.camera.center;
-    final q = <String, String>{
-      'lat': base.queryParameters['lat'] ?? pt.latitude.toStringAsFixed(6),
-      'lng': base.queryParameters['lng'] ?? pt.longitude.toStringAsFixed(6),
-      'name': base.queryParameters['name'] ??
-          tr('موقع مشارك عبر دلّيني', 'Shared Dlinii location'),
-    };
-    final appUri = Uri(scheme: 'dlinii', host: 'guide', queryParameters: q);
-    _webAppLaunchInProgress = true;
-    _webLaunchFallbackCancelled = false;
-    bool launchFailed = false;
-    try {
-      launchFailed = !await launchUrl(appUri);
-    } catch (_) {
-      launchFailed = true;
-    }
-    if (launchFailed) {
-      _webAppLaunchInProgress = false;
-      await _downloadAppFromWeb();
-      return;
-    }
-    Future.delayed(const Duration(milliseconds: 1800), () async {
-      if (!mounted) return;
-      if (!_webLaunchFallbackCancelled && _webAppLaunchInProgress) {
-        await _downloadAppFromWeb();
-      }
-      _webAppLaunchInProgress = false;
-    });
-  }
-
-  Widget _buildWebAppChoice() {
-    return Positioned.fill(
-      child: Material(
-        color: const Color(0xFF071412).withOpacity(0.82),
-        child: SafeArea(
-          child: Center(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(24),
-              child: Container(
-                constraints: const BoxConstraints(maxWidth: 390),
-                padding: const EdgeInsets.all(22),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF142e2d),
-                  borderRadius: BorderRadius.circular(24),
-                  border: Border.all(
-                      color: const Color(0xFF7ce0be).withOpacity(0.35)),
-                ),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    SvgPicture.string(kLogoSvg, width: 62, height: 62),
-                    const SizedBox(height: 14),
-                    const Text('افتح الموقع في دلّيني',
-                        textDirection: TextDirection.rtl,
-                        style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 21,
-                            fontWeight: FontWeight.w900)),
-                    const SizedBox(height: 8),
-                    const Text(
-                        'تكدر تكمل بالويب، أو تفتح التطبيق إذا كان مثبتاً، أو نزّله من Google Play.',
-                        textAlign: TextAlign.center,
-                        textDirection: TextDirection.rtl,
-                        style:
-                            TextStyle(color: Color(0xFFcbd5e1), height: 1.6)),
-                    const SizedBox(height: 20),
-                    SizedBox(
-                      width: double.infinity,
-                      child: GlassTapButton(
-                        onTap: () => setState(() {
-                          _showWebAppChoice = false;
-                          _webLaunchFallbackCancelled = true;
-                        }),
-                        backgroundColor: const Color(0xFF087e76),
-                        borderColor: Colors.transparent,
-                        padding: const EdgeInsets.symmetric(vertical: 13),
-                        child: const Text('الاستمرار مع الويب',
-                            style: TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.w900)),
-                      ),
-                    ),
-                    const SizedBox(height: 10),
-                    SizedBox(
-                      width: double.infinity,
-                      child: GlassTapButton(
-                        onTap: _openInstalledAppFromWeb,
-                        backgroundColor: Colors.white.withOpacity(0.08),
-                        borderColor: const Color(0xFF7ce0be),
-                        padding: const EdgeInsets.symmetric(vertical: 13),
-                        child: const Text('فتح التطبيق إذا كان مثبتاً',
-                            style: TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.w800)),
-                      ),
-                    ),
-                    const SizedBox(height: 10),
-                    TextButton(
-                      onPressed: _downloadAppFromWeb,
-                      child: const Text('تنزيله من متجر Google Play',
-                          style: TextStyle(
-                              color: Color(0xFFefbb52),
-                              fontWeight: FontWeight.w800)),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
+    if (name != null && name.isNotEmpty) q['name'] = name;
+    return Uri.https(kShareHost, '/s', q).toString();
   }
 
   String _fmtSearchDist(dynamic item) {
@@ -2370,51 +1924,71 @@ class _HomeScreenState extends State<HomeScreen>
 
   List<Polyline> _buildRealTrafficAndHazardOverlays(
       Map<String, dynamic> selectedRoute, List<LatLng> routePoints) {
-    final overlays = <Polyline>[];
-    for (final doc in _visibleCloudReports) {
-      try {
-        final data = doc.data() as Map<String, dynamic>;
-        final report = _reportPoint(data);
-        if (report == null) continue;
-        final type = data['type']?.toString() ?? 'hazard';
-        final projection = _projectToPolyline(report, routePoints);
-        if (type == 'traffic') {
-          List<LatLng> segment = const [];
-          if (projection != null && projection.distance <= 35) {
-            segment = _slicePolylineAround(routePoints, report, 50);
-          }
-          if (segment.length < 2) {
-            final rawBearing = data['bearing'] ?? data['heading'];
-            final bearing = rawBearing is num
-                ? rawBearing.toDouble()
-                : (projection?.bearing ?? currentBearing);
-            segment = [
-              _lookAhead(report, bearing + 180, 50),
-              report,
-              _lookAhead(report, bearing, 50),
-            ];
-          }
-          overlays.add(Polyline(
-            points: segment,
-            color: const Color(0xFFE5484D),
-            strokeWidth: 10,
-            borderColor: const Color(0xFF991B1B),
-            borderStrokeWidth: 1.2,
-          ));
-        } else if (projection != null && projection.distance <= 35) {
-          final segment = _slicePolylineAround(routePoints, report, 25);
-          if (segment.length >= 2) {
-            overlays.add(Polyline(
-              points: segment,
-              color: const Color(0xFFefbb52),
-              strokeWidth: 10,
-              borderColor: const Color(0xFFa16207),
-              borderStrokeWidth: 1.0,
-            ));
+    final List<Polyline> overlays = [];
+    if (routePoints.length < 2) return overlays;
+
+    try {
+      final legs = selectedRoute['legs'] as List?;
+      if (legs != null && legs.isNotEmpty) {
+        final steps = legs[0]['steps'] as List?;
+        if (steps != null) {
+          for (final st in steps) {
+            final double dist = ((st['distance'] ?? 0) as num).toDouble();
+            final double dur = ((st['duration'] ?? 0) as num).toDouble();
+            if (dist > 45 && dur > 0) {
+              final double speedKmh = (dist / dur) * 3.6;
+              final geom = st['geometry']?['coordinates'] as List?;
+              if (geom != null && geom.length >= 2) {
+                final stepPts = geom
+                    .map((c) => LatLng(
+                        (c[1] as num).toDouble(), (c[0] as num).toDouble()))
+                    .toList();
+                if (speedKmh < 18.0) {
+                  overlays.add(Polyline(
+                    points: stepPts,
+                    color: const Color(0xFFE5484D),
+                    strokeWidth: 9.2,
+                  ));
+                } else if (speedKmh < 28.0) {
+                  overlays.add(Polyline(
+                    points: stepPts,
+                    color: const Color(0xFFefbb52),
+                    strokeWidth: 9.0,
+                  ));
+                }
+              }
+            }
           }
         }
-      } catch (_) {}
+      }
+    } catch (_) {}
+
+    for (final doc in cloudReports) {
+      final data = doc.data() as Map<String, dynamic>;
+      final repPt = LatLng(((data['lat'] ?? 33.4258) as num).toDouble(),
+          ((data['lng'] ?? 43.2995) as num).toDouble());
+      final String type = data['type']?.toString() ?? 'hazard';
+
+      final List<LatLng> affectedSegment = [];
+      for (final p in routePoints) {
+        if (_distanceMeters(p, repPt) <= 280) {
+          affectedSegment.add(p);
+        }
+      }
+
+      if (affectedSegment.length >= 2) {
+        final bool isSevereRed = type == 'traffic' || type == 'road_closed';
+        overlays.add(
+          Polyline(
+            points: affectedSegment,
+            color:
+                isSevereRed ? const Color(0xFFE5484D) : const Color(0xFFefbb52),
+            strokeWidth: 9.5,
+          ),
+        );
+      }
     }
+
     return overlays;
   }
 
@@ -2590,19 +2164,6 @@ class _HomeScreenState extends State<HomeScreen>
     final bool wasRealFix = _hasRealFix;
     _hasRealFix = true;
 
-    if (isNavigating &&
-        simTimer == null &&
-        navCoords.length >= 2 &&
-        !_isRerouting) {
-      final now = DateTime.now().millisecondsSinceEpoch;
-      final rawProjection = _projectToPolyline(rawMe, navCoords);
-      if (rawProjection != null &&
-          rawProjection.distance > 55 &&
-          now - _lastRerouteMs > 4000) {
-        _rerouteFromCurrentPosition(rawMe);
-      }
-    }
-
     LatLng nextMe = rawMe;
     double? routeBearing;
     if (isNavigating) {
@@ -2734,20 +2295,7 @@ class _HomeScreenState extends State<HomeScreen>
 
   static const String _kRouteCacheKey = 'dlini_route_cache_v1';
 
-  Future<void> _rerouteFromCurrentPosition(LatLng rawPosition) async {
-    if (_isRerouting || dest == null || !isNavigating) return;
-    _isRerouting = true;
-    _lastRerouteMs = DateTime.now().millisecondsSinceEpoch;
-    try {
-      await _planRoute(fromPoint: rawPosition, isReroute: true);
-    } finally {
-      _isRerouting = false;
-    }
-  }
-
-  Future<void> _planRoute({LatLng? fromPoint, bool isReroute = false}) async {
-    final int requestId = ++_routeRequestId;
-    final bool continueNavigation = isNavigating && isReroute;
+  Future<void> _planRoute({LatLng? fromPoint}) async {
     final LatLng o = fromPoint ?? origin ?? me ?? mapController.camera.center;
     if (dest == null) return;
     final LatLng d = dest!;
@@ -2786,7 +2334,7 @@ class _HomeScreenState extends State<HomeScreen>
               'لا يوجد إنترنت: مسار احتياطي تقريبي (المسافة والوقت تقديريان) 🧭',
               'Offline: approximate fallback route (distance & time estimated) 🧭'));
     }
-    if (!mounted || requestId != _routeRequestId) return;
+    if (!mounted) return;
 
     final List<dynamic> finalRoutes = found;
     setState(() {
@@ -2794,21 +2342,9 @@ class _HomeScreenState extends State<HomeScreen>
       selectedRouteIndex = 0;
       showExploreModal = false;
       if (!isNavigating) showPlanSheet = true;
-      if (continueNavigation) {
-        final route = routes[0];
-        final coords = route['geometry']['coordinates'] as List;
-        navCoords = coords
-            .map((c) =>
-                LatLng((c[1] as num).toDouble(), (c[0] as num).toDouble()))
-            .toList();
-        navSteps = route['legs'][0]['steps'] as List<dynamic>;
-        currentStepIndex = 0;
-        lastSpokenStep = -1;
-        warnedReports.clear();
-      }
     });
     final List<dynamic> coordsList = routes[0]['geometry']['coordinates'];
-    if (coordsList.isNotEmpty && !continueNavigation) {
+    if (coordsList.isNotEmpty) {
       final points = coordsList
           .map(
               (c) => LatLng((c[1] as num).toDouble(), (c[0] as num).toDouble()))
@@ -2818,10 +2354,6 @@ class _HomeScreenState extends State<HomeScreen>
           bounds: LatLngBounds.fromPoints(points),
           padding: const EdgeInsets.only(
               top: 80, bottom: 260, left: 40, right: 40)));
-    } else if (continueNavigation) {
-      _toast(tr('خرجت عن المسار، تمت إعادة حسابه فوراً 🧭',
-          'Off route: route recalculated 🧭'));
-      _updateNavigationState();
     }
   }
 
@@ -3099,26 +2631,6 @@ class _HomeScreenState extends State<HomeScreen>
     return ['تَابِعِ السَّيْرَ ${mod[0]}$streetName', mod[1]];
   }
 
-  Future<void> _pushCarHud({bool force = false}) async {
-    if (kIsWeb) return;
-    final now = DateTime.now().millisecondsSinceEpoch;
-    if (!force && now - _lastCarHudPushMs < 750) return;
-    _lastCarHudPushMs = now;
-    try {
-      await _carHudChannel.invokeMethod<void>('updateHud', <String, dynamic>{
-        'navigating': isNavigating,
-        'arrow': hudArrow,
-        'instruction': hudInstruction,
-        'street': hudStreet,
-        'eta': navEta,
-        'remainingKm': navRemKm,
-        'remainingMinutes': navRemMins,
-        'speedKmh': currentSpeedKmh,
-        'destination': destName,
-      });
-    } catch (_) {}
-  }
-
   void _startNav() {
     if (routes.isEmpty) return;
     final r = routes[selectedRouteIndex];
@@ -3152,7 +2664,6 @@ class _HomeScreenState extends State<HomeScreen>
         : 'بَدَأَتِ الرِّحْلَةُ، رَافَقَتْكَ السَّلَامَةُ. ';
     _say('$startPrefix${info[0]}');
     _updateNavigationState();
-    _pushCarHud(force: true);
   }
 
   void _updateNavigationState() {
@@ -3229,8 +2740,6 @@ class _HomeScreenState extends State<HomeScreen>
       });
     }
 
-    _pushCarHud();
-
     if (distToStep < 200 && lastSpokenStep != currentStepIndex) {
       lastSpokenStep = currentStepIndex;
       final roundedM = math.max(10, (distToStep / 50).round() * 50);
@@ -3241,86 +2750,62 @@ class _HomeScreenState extends State<HomeScreen>
   }
 
   void _checkNearbyReports(LatLng currentPos) {
-    if (!isNavigating || navCoords.length < 2) return;
-    const audibleTypes = {
-      'bump',
-      'pothole',
-      'crash',
-      'traffic',
-      'police',
-      'digging',
-      'road_closed',
-      'camera',
-      'hazard',
-    };
-    final currentProjection = _projectToPolyline(currentPos, navCoords);
-    if (currentProjection == null) return;
+    if (!isNavigating) return;
     final bool enMode = isEnglish || currentVoice.langType == 'en';
     for (var doc in cloudReports) {
-      try {
-        final data = doc.data() as Map<String, dynamic>;
-        final type = data['type']?.toString() ?? '';
-        if (!audibleTypes.contains(type)) continue;
-        final repPos = _reportPoint(data);
-        if (repPos == null) continue;
-        final reportProjection = _projectToPolyline(repPos, navCoords);
-        if (reportProjection == null || reportProjection.distance > 85) {
-          continue;
-        }
-        final aheadMeters = reportProjection.along - currentProjection.along;
-        if (aheadMeters < -15) continue;
-        final repId = doc.id;
-        final label = _getReportLabel(type, data['label']?.toString());
-        double alertDist = 150;
-        String msg =
-            enMode ? 'Caution, $label ahead' : 'اِحْذَرْ، أَمَامَكَ $label';
-        if (type == 'bump') {
-          alertDist = 100;
-          msg = enMode
-              ? 'Speed bump 100 meters ahead'
-              : 'اِنْتَبِهْ، أَمَامَكَ مَطَبٌّ بَعْدَ مِائَةِ مِتْرٍ';
-        } else if (type == 'pothole') {
-          alertDist = 150;
-          msg = enMode
-              ? 'Pothole 150 meters ahead'
-              : 'اِنْتَبِهْ، حُفْرَةٌ فِي الطَّرِيقِ بَعْدَ مِائَةٍ وَخَمْسِينَ مِتْرَاً';
-        } else if (type == 'crash') {
-          alertDist = 200;
-          msg = enMode
-              ? 'Warning, accident 200 meters ahead'
-              : 'تَحْذِيرٌ، حَادِثٌ أَمَامَكَ عَلَى بُعْدِ مِائَتَيْ مِتْرٍ';
-        } else if (type == 'police') {
-          alertDist = 250;
-          msg = enMode
-              ? 'Traffic checkpoint 250 meters ahead'
-              : 'اِنْتَبِهْ، نُقْطَةُ مُرُورٍ أَمَامَكَ بَعْدَ مِائَتَيْنِ وَخَمْسِينَ مِتْرَاً';
-        } else if (type == 'digging') {
-          alertDist = 180;
-          msg = enMode
-              ? 'Caution, roadworks and digging ahead'
-              : 'اِنْتَبِهْ، أَمَامَكَ حَفْرِيَّاتٌ وَأَعْمَالُ طُرُقٍ';
-        } else if (type == 'road_closed') {
-          alertDist = 250;
-          msg = enMode
-              ? 'Warning, road closed ahead'
-              : 'تَحْذِيرٌ، الطَّرِيقُ أَمَامَكَ مُغْلَقٌ';
-        } else if (type == 'camera') {
-          alertDist = 300;
-          msg = enMode
-              ? 'Attention, speed camera 300 meters ahead'
-              : 'اِنْتَبِهْ، كَامِيرَا سُرْعَةٍ أَمَامَكَ بَعْدَ ثَلَاثِمِائَةِ مِتْرٍ';
-        } else if (type == 'traffic') {
-          alertDist = 250;
-          msg = enMode
-              ? 'Reported congestion ahead'
-              : 'اِنْتَبِهْ، اِزْدِحَامٌ مُبَلَّغٌ عَنْهُ أَمَامَكَ';
-        }
-        if (aheadMeters <= alertDist && !warnedReports.contains(repId)) {
-          warnedReports.add(repId);
-          _say(msg);
-          _toast(msg);
-        }
-      } catch (_) {}
+      final data = doc.data() as Map<String, dynamic>;
+      final LatLng repPos = LatLng(
+          (data['lat'] as num).toDouble(), (data['lng'] as num).toDouble());
+      final double dist = _distanceMeters(currentPos, repPos);
+      final String repId = doc.id,
+          type = data['type'] ?? '',
+          label = _getReportLabel(type, data['label']?.toString());
+      double alertDist = 150;
+      String msg =
+          enMode ? 'Caution, $label ahead' : 'اِحْذَرْ، أَمَامَكَ $label';
+
+      if (type == 'bump') {
+        alertDist = 100;
+        msg = enMode
+            ? 'Speed bump 100 meters ahead'
+            : 'اِنْتَبِهْ، أَمَامَكَ مَطَبٌّ بَعْدَ مِائَةِ مِتْرٍ';
+      } else if (type == 'pothole') {
+        alertDist = 150;
+        msg = enMode
+            ? 'Pothole 150 meters ahead'
+            : 'اِنْتَبِهْ، حُفْرَةٌ فِي الطَّرِيقِ بَعْدَ مِائَةٍ وَخَمْسِينَ مِتْرَاً';
+      } else if (type == 'crash') {
+        alertDist = 200;
+        msg = enMode
+            ? 'Warning, accident 200 meters ahead'
+            : 'تَحْذِيرٌ، حَادِثٌ أَمَامَكَ عَلَى بُعْدِ مِائَتَيْ مِتْرٍ';
+      } else if (type == 'police') {
+        alertDist = 250;
+        msg = enMode
+            ? 'Traffic checkpoint 250 meters ahead'
+            : 'اِنْتَبِهْ، نُقْطَةُ مُرُورٍ أَمَامَكَ بَعْدَ مِائَتَيْنِ وَخَمْسِينَ مِتْرَاً';
+      } else if (type == 'digging') {
+        alertDist = 180;
+        msg = enMode
+            ? 'Caution, roadworks and digging ahead'
+            : 'اِنْتَبِهْ، أَمَامَكَ حَفْرِيَّاتٌ وَأَعْمَالُ طُرُقٍ';
+      } else if (type == 'road_closed') {
+        alertDist = 250;
+        msg = enMode
+            ? 'Warning, road closed ahead'
+            : 'تَحْذِيرٌ، الطَّرِيقُ أَمَامَكَ مُغْلَقٌ';
+      } else if (type == 'camera') {
+        alertDist = 300;
+        msg = enMode
+            ? 'Attention, speed camera 300 meters ahead'
+            : 'اِنْتَبِهْ، كَامِيرَا سُرْعَةٍ أَمَامَكَ بَعْدَ ثَلَاثِمِائَةِ مِتْرٍ';
+      }
+
+      if (dist <= alertDist && !warnedReports.contains(repId)) {
+        warnedReports.add(repId);
+        _say(msg);
+        _toast(msg);
+      }
     }
   }
 
@@ -3338,7 +2823,6 @@ class _HomeScreenState extends State<HomeScreen>
       routes = [];
       destController.clear();
     });
-    _pushCarHud(force: true);
     mapController.rotate(0);
     if (me != null) mapController.move(me!, 14.5);
     if (arrived) {
@@ -3903,6 +3387,27 @@ class _HomeScreenState extends State<HomeScreen>
   }
 
   Widget _buildMain(BuildContext context) {
+    vt.Style? activeVtStyle = isDark ? _vtDark : _vtLight;
+    bool tempDarkFilter = false;
+    if (isDark && _vtDark == null && _vtLight != null) {
+      activeVtStyle = _vtLight;
+      tempDarkFilter = true;
+    }
+    final Widget? ofmLayerRaw = (activeVtStyle == null || _forceOffline)
+        ? null
+        : vt.VectorTileLayer(
+            key: ValueKey<String>(tempDarkFilter
+                ? 'vt_dark_filtered'
+                : (isDark ? 'vt_dark_pure' : 'vt_light_pure')),
+            theme: activeVtStyle.theme,
+            tileProviders: activeVtStyle.providers,
+            rasterSources: activeVtStyle.rasterSources,
+            sprites: activeVtStyle.sprites,
+          );
+    final Widget? ofmLayer = (ofmLayerRaw != null && tempDarkFilter)
+        ? ColorFiltered(colorFilter: kInstantDarkFilter, child: ofmLayerRaw)
+        : ofmLayerRaw;
+
     final Matrix4 perspectiveMatrix = isFirstPerson3D
         ? (Matrix4.identity()
           ..setEntry(3, 2, 0.00085)
@@ -3932,16 +3437,8 @@ class _HomeScreenState extends State<HomeScreen>
                 interactionOptions:
                     const InteractionOptions(flags: InteractiveFlag.all),
                 onPositionChanged: (pos, hasGesture) {
-                  final oldZoomBand = currentZoom.floor();
-                  final bool stopFollow = hasGesture && follow;
+                  if (hasGesture && follow) setState(() => follow = false);
                   if (pos.zoom != null) currentZoom = pos.zoom!;
-                  final bool labelBandChanged =
-                      pos.zoom != null && pos.zoom!.floor() != oldZoomBand;
-                  if (stopFollow || labelBandChanged) {
-                    setState(() {
-                      if (stopFollow) follow = false;
-                    });
-                  }
                 },
                 onTap: (tapPos, point) {
                   if (selectedReportPopupId != null) {
@@ -3977,97 +3474,92 @@ class _HomeScreenState extends State<HomeScreen>
                 },
               ),
               children: [
-                // Raster + Flutter Arabic labels: ثابت على الويب وسفاري ولا يعيد تحميل الخريطة عند تغيير النمط.
-                ColorFiltered(
-                  colorFilter: isDark
-                      ? kInstantDarkFilter
-                      : const ColorFilter.mode(
-                          Colors.transparent, BlendMode.dst),
-                  child: TileLayer(
-                    urlTemplate: isSatelliteMode
-                        ? 'https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}&hl=ar'
-                        : (isDark
-                            ? 'https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}&hl=ar'
-                            : 'https://mt1.google.com/vt/lyrs=r&x={x}&y={y}&z={z}&hl=ar'),
-                    subdomains: const ['a', 'b', 'c', 'd'],
-                    maxZoom: 18,
-                    maxNativeZoom: 18,
-                    keepBuffer: 1,
-                    panBuffer: 0,
-                    userAgentPackageName: 'com.binkhalid.dlinii',
-                    tileProvider: _offlineTileProvider,
+                // طبقة الخرائط الذكية (تعمل أونلاين وتتحول أوفلاين تلقائياً عند انقطاع الإنترنت أو تحميل المحافظة)
+                if (ofmLayer != null && !_forceOffline)
+                  ofmLayer
+                else
+                  ColorFiltered(
+                    key: ValueKey<String>(
+                        isDark ? 'raster_dark' : 'raster_light'),
+                    colorFilter: isDark
+                        ? kInstantDarkFilter
+                        : const ColorFilter.mode(
+                            Colors.transparent, BlendMode.dst),
+                    child: TileLayer(
+                      urlTemplate:
+                          'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png',
+                      subdomains: const ['a', 'b', 'c', 'd'],
+                      maxZoom: 20,
+                      userAgentPackageName: 'com.dlinii.app',
+                      // هنا السر: استخدام _OfflineTileProvider الذي يفحص الملفات المخزنة محلياً أولاً
+                      tileProvider: _offlineTileProvider,
+                    ),
                   ),
-                ),
-                if (_offlineProvinceBoundaries.isNotEmpty)
-                  PolygonLayer(polygons: _buildOfflineProvincePolygons()),
-                PolylineLayer<Object>(
-                  polylines: [
-                    ...routes.asMap().entries.map((entry) {
-                      final int idx = entry.key;
-                      final List<dynamic> coords =
-                          entry.value['geometry']['coordinates'];
-                      final points = coords
-                          .map((c) => LatLng((c[1] as num).toDouble(),
-                              (c[0] as num).toDouble()))
-                          .toList();
-                      final bool isSelected = idx == selectedRouteIndex;
-                      if (!isSelected) {
-                        return Polyline(
-                          points: points,
-                          color: isDark
-                              ? const Color(0xFF475569).withOpacity(0.55)
-                              : const Color(0xFF94A3B8).withOpacity(0.65),
-                          strokeWidth: 5.5,
-                        );
-                      }
-                      return Polyline(
-                        points: points,
-                        color: isDark
-                            ? const Color(0xFF10b981)
-                            : const Color(0xFF087e76),
-                        strokeWidth: 9.0,
-                        borderColor: isDark
-                            ? const Color(0xFF042f2e)
-                            : const Color(0xFF134e4a),
-                        borderStrokeWidth: 2.0,
-                      );
-                    }),
-                    if (routes.isNotEmpty)
+                if (routes.isNotEmpty)
+                  PolylineLayer<Object>(
+                    polylines: [
                       ...routes.asMap().entries.map((entry) {
                         final int idx = entry.key;
-                        if (idx != selectedRouteIndex) {
-                          return Polyline(
-                              points: const [], color: Colors.transparent);
-                        }
                         final List<dynamic> coords =
                             entry.value['geometry']['coordinates'];
                         final points = coords
                             .map((c) => LatLng((c[1] as num).toDouble(),
                                 (c[0] as num).toDouble()))
                             .toList();
+                        final bool isSelected = idx == selectedRouteIndex;
+                        if (!isSelected) {
+                          return Polyline(
+                            points: points,
+                            color: isDark
+                                ? const Color(0xFF475569).withOpacity(0.55)
+                                : const Color(0xFF94A3B8).withOpacity(0.65),
+                            strokeWidth: 5.5,
+                          );
+                        }
                         return Polyline(
                           points: points,
                           color: isDark
-                              ? const Color(0xFF6ee7b7).withOpacity(0.8)
-                              : const Color(0xFF087e76).withOpacity(0.8),
-                          strokeWidth: 3.8,
+                              ? const Color(0xFF10b981)
+                              : const Color(0xFF087e76),
+                          strokeWidth: 9.0,
+                          borderColor: isDark
+                              ? const Color(0xFF042f2e)
+                              : const Color(0xFF134e4a),
+                          borderStrokeWidth: 2.0,
                         );
                       }),
-                    ..._buildRealTrafficAndHazardOverlays(
-                      routes.isNotEmpty
-                          ? routes[selectedRouteIndex] as Map<String, dynamic>
-                          : <String, dynamic>{},
-                      routes.isNotEmpty
-                          ? (routes[selectedRouteIndex]['geometry']
-                                  ['coordinates'] as List)
+                      if (routes.isNotEmpty)
+                        ...routes.asMap().entries.map((entry) {
+                          final int idx = entry.key;
+                          if (idx != selectedRouteIndex) {
+                            return Polyline(
+                                points: const [], color: Colors.transparent);
+                          }
+                          final List<dynamic> coords =
+                              entry.value['geometry']['coordinates'];
+                          final points = coords
                               .map((c) => LatLng((c[1] as num).toDouble(),
                                   (c[0] as num).toDouble()))
-                              .toList()
-                          : const <LatLng>[],
-                    ),
-                  ],
-                ),
-                MarkerLayer(markers: _buildArabicLabelMarkers()),
+                              .toList();
+                          return Polyline(
+                            points: points,
+                            color: isDark
+                                ? const Color(0xFF6ee7b7).withOpacity(0.8)
+                                : const Color(0xFF087e76).withOpacity(0.8),
+                            strokeWidth: 3.8,
+                          );
+                        }),
+                      if (routes.isNotEmpty)
+                        ..._buildRealTrafficAndHazardOverlays(
+                          routes[selectedRouteIndex] as Map<String, dynamic>,
+                          (routes[selectedRouteIndex]['geometry']['coordinates']
+                                  as List)
+                              .map((c) => LatLng((c[1] as num).toDouble(),
+                                  (c[0] as num).toDouble()))
+                              .toList(),
+                        ),
+                    ],
+                  ),
                 MarkerLayer(
                   markers: [
                     ...categoryMapMarkers,
@@ -4083,7 +3575,7 @@ class _HomeScreenState extends State<HomeScreen>
                           width: 42,
                           height: 48,
                           child: SvgPicture.string(kDestPinSvg)),
-                    ..._visibleCloudReports.map((doc) {
+                    ...cloudReports.map((doc) {
                       final data = doc.data() as Map<String, dynamic>;
                       final LatLng pt = LatLng(
                           ((data['lat'] ?? 33.4258) as num).toDouble(),
@@ -4103,10 +3595,7 @@ class _HomeScreenState extends State<HomeScreen>
                               color: panelColor,
                               shape: BoxShape.circle,
                               border: Border.all(
-                                  color: data['type']?.toString() == 'traffic'
-                                      ? const Color(0xFFE5484D)
-                                      : const Color(0xFFefbb52),
-                                  width: 2.0),
+                                  color: const Color(0xFFefbb52), width: 2.0),
                               boxShadow: [
                                 BoxShadow(
                                     color: Colors.black.withOpacity(0.22),
@@ -6755,7 +6244,6 @@ class _HomeScreenState extends State<HomeScreen>
                 ),
               ),
             ),
-          if (kIsWeb && _showWebAppChoice) _buildWebAppChoice(),
           if (isToastVisible)
             Positioned(
               top: MediaQuery.of(context).size.height * 0.45,
