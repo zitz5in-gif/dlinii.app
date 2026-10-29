@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>دلّيني</title>
+<style>
+  :root{--bg:#edf2ed;--card:#fff;--fg:#142e2d;--sub:#5b6b7b;--teal:#087e76;--soft:#e3f0ec}
+  @media (prefers-color-scheme: dark){:root{--bg:#0d1014;--card:#16201f;--fg:#e8f3f0;--sub:#9db3ae;--soft:#1d3532}}
+  body{font-family:Tahoma,Arial,sans-serif;background:var(--bg);color:var(--fg);margin:0;min-height:100vh;
+       display:flex;align-items:center;justify-content:center;text-align:center}
+  .card{background:var(--card);border-radius:24px;padding:26px 20px;max-width:340px;margin:16px;box-shadow:0 6px 24px rgba(0,0,0,.12)}
+  h1{margin:0 0 6px;color:var(--teal)} p{margin:6px 0 16px;color:var(--sub);line-height:1.6}
+  a.btn,button.btn{display:block;width:100%;box-sizing:border-box;padding:14px;border-radius:14px;border:0;
+       text-decoration:none;font:700 15px Tahoma,Arial,sans-serif;margin:10px 0;cursor:pointer}
+  .main{background:var(--teal);color:#fff} .alt{background:var(--soft);color:var(--teal)}
+</style>
+</head>
+<body>
+<div class="card">
+  <h1>دلّيني</h1>
+  <p id="msg">جاري فتح التطبيق...</p>
+  <a id="open" class="btn main" href="#">افتح في تطبيق دلّيني</a>
+  <button id="copy" class="btn alt" type="button">انسخ الكود وافتح التطبيق يدوياً</button>
+  <a id="play" class="btn alt" href="#">حمّل التطبيق من Google Play</a>
+</div>
+<script>
+  var PKG = 'com.dlinii.app';
+  var PLAY = 'https://play.google.com/store/apps/details?id=' + PKG;
+  var q = new URLSearchParams(location.search);
+  var lat = q.get('lat'), lng = q.get('lng'), mode = q.get('mode') || 'guide', name = q.get('name') || '';
+  document.getElementById('play').href = PLAY;
+  var msg = document.getElementById('msg');
+  if (!lat || !lng) {
+    msg.textContent = 'الرابط غير مكتمل.';
+  } else {
+    var params = 'lat=' + encodeURIComponent(lat) + '&lng=' + encodeURIComponent(lng) +
+                 '&mode=' + encodeURIComponent(mode) + (name ? '&name=' + encodeURIComponent(name) : '');
+    var isAndroid = /android/i.test(navigator.userAgent);
+    var appUrl = isAndroid
+      ? 'intent://s?' + params + '#Intent;scheme=dlinii;package=' + PKG +
+        ';S.browser_fallback_url=' + encodeURIComponent(PLAY) + ';end'
+      : 'dlinii://s?' + params;
+    document.getElementById('open').href = appUrl;
+    var code = (mode === 'myloc' ? 'DLINII_MYLOC:' : 'DLINII_GUIDE:') + lat + ',' + lng;
+    document.getElementById('copy').addEventListener('click', function () {
+      var done = function () { msg.textContent = 'تم نسخ الكود. افتح تطبيق دلّيني وراح يلتقطه تلقائياً.'; };
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(code).then(done, function () { msg.textContent = code; });
+      } else { msg.textContent = code; }
+    });
+    setTimeout(function () { window.location.href = appUrl; }, 400);
+    setTimeout(function () { msg.textContent = 'إذا ما انفتح التطبيق، اضغط الزر الأول.'; }, 2000);
+  }
+</script>
+</body>
+</html>

@@ -1,0 +1,67 @@
+name: dlinii_app
+description: "دليني – رفيقك على طريقك "
+publish_to: 'none'
+
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.5.2
+
+dependencies:
+  flutter:
+    sdk: flutter
+  firebase_core: ^3.6.0
+  cloud_firestore: ^5.4.1
+  geolocator: ^13.0.1
+  flutter_map: ^8.2.0
+  flutter_map_vector_tiles: ^2.10.1
+  latlong2: ^0.9.1
+  url_launcher: ^6.3.1
+  share_plus: ^10.0.2
+  http: ^1.2.2
+  vector_map_tiles: any
+  vector_tile_renderer: any
+  flutter_svg: ^2.0.10+1
+  flutter_tts: ^4.0.2
+  shared_preferences: ^2.3.2
+  app_links: ^7.2.2
+  cupertino_icons: ^1.0.8
+  onesignal_flutter: ^5.7.1
+  firebase_crashlytics: ^4.3.10
+  flutter_localizations:
+    sdk: flutter
+  speech_to_text: ^7.5.0
+  flutter_map_cache: ^1.5.2
+  dio_cache_interceptor: ^3.5.1
+  dio_cache_interceptor_file_store: ^1.2.3
+  path_provider: ^2.1.6
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^4.0.0
+  flutter_launcher_icons: ^0.14.4
+
+flutter:
+  fonts:
+    - family: Tajawal
+      fonts:
+        - asset: assets/fonts/Tajawal-Regular.ttf
+        - asset: assets/fonts/Tajawal-Medium.ttf
+          weight: 500
+        - asset: assets/fonts/Tajawal-Bold.ttf
+          weight: 700
+        - asset: assets/fonts/Tajawal-ExtraBold.ttf
+          weight: 800
+        - asset: assets/fonts/Tajawal-Black.ttf
+          weight: 900
+  assets:
+    - assets/images/
+    - assets/logo.png
+  uses-material-design: true
+
+# إعدادات الأيقونات يجب أن تكون هنا في أقصى اليسار وخارج قسم flutter تماماً
+flutter_launcher_icons:
+  image_path: "assets/logo.png"
+  android: true
+  ios: true 

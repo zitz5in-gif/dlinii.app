@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "343805973795",
+    "project_id": "dlinii",
+    "storage_bucket": "dlinii.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:343805973795:android:11c8d7ac72e86939f1a896",
+        "android_client_info": {
+          "package_name": "com.example.dlinii_app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBHm_Q5NRZO_HnrpsljW_NWB-O-g4eR20k"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
