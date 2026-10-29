@@ -1,48 +1,35 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
   <base href="$FLUTTER_BASE_HREF">
   <meta charset="UTF-8">
   <meta content="IE=Edge" http-equiv="X-UA-Compatible">
-  <meta name="description" content="دلّيني — الملاحة وتنبيهات الطرق في العراق">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-  <meta name="theme-color" content="#142e2d">
-  <meta name="mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="apple-mobile-web-app-title" content="دلّيني">
-  <link rel="apple-touch-icon" href="icons/Icon-192.png">
-  <link rel="icon" type="image/png" href="favicon.png">
-  <link rel="manifest" href="manifest.json">
-  <title>دلّيني</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="description" content="دلّيني - رفيقك الذكي على الطريق">
+  <title>دلّيني | Dlinii</title>
+  <link rel="icon" type="image/png" href="favicon.png"/>
   <style>
     html, body {
-      width: 100%;
-      height: 100%;
       margin: 0;
       padding: 0;
+      width: 100%;
+      height: 100%;
       overflow: hidden;
-      overscroll-behavior: none;
-      background: #142e2d;
-      -webkit-text-size-adjust: 100%;
+      background-color: #0D1014;
+      touch-action: none;
+      -webkit-user-select: none;
     }
-    body { position: fixed; inset: 0; }
-    flt-glass-pane { touch-action: none; }
   </style>
   <script>
-    // Keep Dlinii's own Arabic web/app chooser; never show Chrome's native install prompt.
-    window.addEventListener('beforeinstallprompt', function (event) {
-      event.preventDefault();
-      event.stopImmediatePropagation();
-    }, true);
-
-    // Prevent Safari page gestures/pull-to-refresh without blocking Flutter map pointers.
-    document.addEventListener('gesturestart', function (event) {
-      event.preventDefault();
-    }, { passive: false });
-    document.addEventListener('gesturechange', function (event) {
-      event.preventDefault();
-    }, { passive: false });
+    window.addEventListener('beforeinstallprompt', function(e) {
+      e.preventDefault();
+      return false;
+    });
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.getRegistrations().then(function(registrations) {
+        for (let r of registrations) { r.unregister(); }
+      });
+    }
   </script>
 </head>
 <body>
