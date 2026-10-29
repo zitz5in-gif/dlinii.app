@@ -1,6 +1,7 @@
 // ==================== بداية الجزء 1 من 6 ====================
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 import 'dart:math' as math;
 import 'dart:ui' as ui;
 
@@ -22,30 +23,12 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:vector_map_tiles/vector_map_tiles.dart' as vt;
 import 'package:vector_tile_renderer/vector_tile_renderer.dart' as vtr;
 
-import 'offline_tile_provider.dart';
-
 // ==================== فلاتر الألوان للوضع الليلي ====================
 const ColorFilter kInstantDarkFilter = ColorFilter.matrix(<double>[
-  -0.82,
-  0.0,
-  0.0,
-  0.0,
-  215.0,
-  0.0,
-  -0.80,
-  0.0,
-  0.0,
-  212.0,
-  0.0,
-  0.0,
-  -0.75,
-  0.0,
-  208.0,
-  0.0,
-  0.0,
-  0.0,
-  1.0,
-  0.0,
+  -0.82, 0.0, 0.0, 0.0, 215.0,
+  0.0, -0.80, 0.0, 0.0, 212.0,
+  0.0, 0.0, -0.75, 0.0, 208.0,
+  0.0, 0.0, 0.0, 1.0, 0.0,
 ]);
 
 // ==================== أيقونات SVG المخصصة ====================
@@ -242,114 +225,24 @@ class IraqProvince {
 }
 
 const List<IraqProvince> kIraqProvinces = [
-  IraqProvince(
-      id: 'anbar',
-      nameAr: 'الأنبار (الرمادي والفلوجة وحديثة)',
-      nameEn: 'Al Anbar (Ramadi)',
-      center: LatLng(33.4258, 43.2995),
-      sizeMb: '18 MB'),
-  IraqProvince(
-      id: 'baghdad',
-      nameAr: 'بغداد',
-      nameEn: 'Baghdad',
-      center: LatLng(33.3152, 44.3661),
-      sizeMb: '24 MB'),
-  IraqProvince(
-      id: 'basra',
-      nameAr: 'البصرة',
-      nameEn: 'Basra',
-      center: LatLng(30.5081, 47.7835),
-      sizeMb: '19 MB'),
-  IraqProvince(
-      id: 'nineveh',
-      nameAr: 'نينوى (الموصل)',
-      nameEn: 'Nineveh (Mosul)',
-      center: LatLng(36.3489, 43.1577),
-      sizeMb: '21 MB'),
-  IraqProvince(
-      id: 'erbil',
-      nameAr: 'أربيل',
-      nameEn: 'Erbil',
-      center: LatLng(36.1901, 44.0091),
-      sizeMb: '17 MB'),
-  IraqProvince(
-      id: 'sulaymaniyah',
-      nameAr: 'السليمانية',
-      nameEn: 'Sulaymaniyah',
-      center: LatLng(35.5613, 45.4306),
-      sizeMb: '16 MB'),
-  IraqProvince(
-      id: 'duhok',
-      nameAr: 'دهوك',
-      nameEn: 'Duhok',
-      center: LatLng(36.8679, 42.9503),
-      sizeMb: '14 MB'),
-  IraqProvince(
-      id: 'kirkuk',
-      nameAr: 'كركوك',
-      nameEn: 'Kirkuk',
-      center: LatLng(35.4681, 44.3922),
-      sizeMb: '15 MB'),
-  IraqProvince(
-      id: 'salahaddin',
-      nameAr: 'صلاح الدين (تكريت)',
-      nameEn: 'Saladin (Tikrit)',
-      center: LatLng(34.6158, 43.6782),
-      sizeMb: '16 MB'),
-  IraqProvince(
-      id: 'diyala',
-      nameAr: 'ديالى (بعقوبة)',
-      nameEn: 'Diyala (Baqubah)',
-      center: LatLng(33.7485, 44.6436),
-      sizeMb: '15 MB'),
-  IraqProvince(
-      id: 'babil',
-      nameAr: 'بابل (الحلة)',
-      nameEn: 'Babylon (Hillah)',
-      center: LatLng(32.4722, 44.4217),
-      sizeMb: '15 MB'),
-  IraqProvince(
-      id: 'karbala',
-      nameAr: 'كربلاء',
-      nameEn: 'Karbala',
-      center: LatLng(32.6160, 44.0249),
-      sizeMb: '14 MB'),
-  IraqProvince(
-      id: 'najaf',
-      nameAr: 'النجف',
-      nameEn: 'Najaf',
-      center: LatLng(31.9985, 44.3396),
-      sizeMb: '15 MB'),
-  IraqProvince(
-      id: 'qadisiyyah',
-      nameAr: 'القادسية (الديوانية)',
-      nameEn: 'Al-Qadisiyyah',
-      center: LatLng(31.9879, 44.9247),
-      sizeMb: '13 MB'),
-  IraqProvince(
-      id: 'wasit',
-      nameAr: 'واسط (الكوت)',
-      nameEn: 'Wasit (Kut)',
-      center: LatLng(32.5128, 45.8182),
-      sizeMb: '14 MB'),
-  IraqProvince(
-      id: 'maysan',
-      nameAr: 'ميسان (العمارة)',
-      nameEn: 'Maysan (Amarah)',
-      center: LatLng(31.8359, 47.1448),
-      sizeMb: '14 MB'),
-  IraqProvince(
-      id: 'dhiqar',
-      nameAr: 'ذي قار (الناصرية)',
-      nameEn: 'Dhi Qar (Nasiriyah)',
-      center: LatLng(31.0439, 46.2573),
-      sizeMb: '15 MB'),
-  IraqProvince(
-      id: 'muthanna',
-      nameAr: 'المثنى (السماوة)',
-      nameEn: 'Al Muthanna (Samawah)',
-      center: LatLng(31.3320, 45.2940),
-      sizeMb: '13 MB'),
+  IraqProvince(id: 'anbar', nameAr: 'الأنبار (الرمادي والفلوجة وحديثة)', nameEn: 'Al Anbar (Ramadi)', center: LatLng(33.4258, 43.2995), sizeMb: '18 MB'),
+  IraqProvince(id: 'baghdad', nameAr: 'بغداد', nameEn: 'Baghdad', center: LatLng(33.3152, 44.3661), sizeMb: '24 MB'),
+  IraqProvince(id: 'basra', nameAr: 'البصرة', nameEn: 'Basra', center: LatLng(30.5081, 47.7835), sizeMb: '19 MB'),
+  IraqProvince(id: 'nineveh', nameAr: 'نينوى (الموصل)', nameEn: 'Nineveh (Mosul)', center: LatLng(36.3489, 43.1577), sizeMb: '21 MB'),
+  IraqProvince(id: 'erbil', nameAr: 'أربيل', nameEn: 'Erbil', center: LatLng(36.1901, 44.0091), sizeMb: '17 MB'),
+  IraqProvince(id: 'sulaymaniyah', nameAr: 'السليمانية', nameEn: 'Sulaymaniyah', center: LatLng(35.5613, 45.4306), sizeMb: '16 MB'),
+  IraqProvince(id: 'duhok', nameAr: 'دهوك', nameEn: 'Duhok', center: LatLng(36.8679, 42.9503), sizeMb: '14 MB'),
+  IraqProvince(id: 'kirkuk', nameAr: 'كركوك', nameEn: 'Kirkuk', center: LatLng(35.4681, 44.3922), sizeMb: '15 MB'),
+  IraqProvince(id: 'salahaddin', nameAr: 'صلاح الدين (تكريت)', nameEn: 'Saladin (Tikrit)', center: LatLng(34.6158, 43.6782), sizeMb: '16 MB'),
+  IraqProvince(id: 'diyala', nameAr: 'ديالى (بعقوبة)', nameEn: 'Diyala (Baqubah)', center: LatLng(33.7485, 44.6436), sizeMb: '15 MB'),
+  IraqProvince(id: 'babil', nameAr: 'بابل (الحلة)', nameEn: 'Babylon (Hillah)', center: LatLng(32.4722, 44.4217), sizeMb: '15 MB'),
+  IraqProvince(id: 'karbala', nameAr: 'كربلاء', nameEn: 'Karbala', center: LatLng(32.6160, 44.0249), sizeMb: '14 MB'),
+  IraqProvince(id: 'najaf', nameAr: 'النجف', nameEn: 'Najaf', center: LatLng(31.9985, 44.3396), sizeMb: '15 MB'),
+  IraqProvince(id: 'qadisiyyah', nameAr: 'القادسية (الديوانية)', nameEn: 'Al-Qadisiyyah', center: LatLng(31.9879, 44.9247), sizeMb: '13 MB'),
+  IraqProvince(id: 'wasit', nameAr: 'واسط (الكوت)', nameEn: 'Wasit (Kut)', center: LatLng(32.5128, 45.8182), sizeMb: '14 MB'),
+  IraqProvince(id: 'maysan', nameAr: 'ميسان (العمارة)', nameEn: 'Maysan (Amarah)', center: LatLng(31.8359, 47.1448), sizeMb: '14 MB'),
+  IraqProvince(id: 'dhiqar', nameAr: 'ذي قار (الناصرية)', nameEn: 'Dhi Qar (Nasiriyah)', center: LatLng(31.0439, 46.2573), sizeMb: '15 MB'),
+  IraqProvince(id: 'muthanna', nameAr: 'المثنى (السماوة)', nameEn: 'Al Muthanna (Samawah)', center: LatLng(31.3320, 45.2940), sizeMb: '13 MB'),
 ];
 
 // قائمة التسميات العربية الواضحة لمدن ومناطق العراق لمنع أي نقص في الأسماء على الخريطة
@@ -370,172 +263,48 @@ class IraqiCityLabel {
 }
 
 const List<IraqiCityLabel> kIraqiCityLabels = [
-  IraqiCityLabel(
-      nameAr: 'الرمادي',
-      nameEn: 'Ramadi',
-      point: LatLng(33.4258, 43.2995),
-      minZoom: 7.0,
-      isMajor: true),
-  IraqiCityLabel(
-      nameAr: 'الفلوجة',
-      nameEn: 'Fallujah',
-      point: LatLng(33.3538, 43.7850),
-      minZoom: 8.5,
-      isMajor: true),
-  IraqiCityLabel(
-      nameAr: 'حديثة',
-      nameEn: 'Haditha',
-      point: LatLng(34.1366, 42.3772),
-      minZoom: 8.5,
-      isMajor: true),
-  IraqiCityLabel(
-      nameAr: 'هيت',
-      nameEn: 'Hit',
-      point: LatLng(33.6366, 42.8277),
-      minZoom: 9.0,
-      isMajor: false),
-  IraqiCityLabel(
-      nameAr: 'القائم',
-      nameEn: 'Al Qaim',
-      point: LatLng(34.3883, 41.0708),
-      minZoom: 8.5,
-      isMajor: false),
-  IraqiCityLabel(
-      nameAr: 'عنة',
-      nameEn: 'Anah',
-      point: LatLng(34.3686, 41.9819),
-      minZoom: 9.5,
-      isMajor: false),
-  IraqiCityLabel(
-      nameAr: 'راوة',
-      nameEn: 'Rawa',
-      point: LatLng(34.4828, 41.9169),
-      minZoom: 9.5,
-      isMajor: false),
-  IraqiCityLabel(
-      nameAr: 'الرطبة',
-      nameEn: 'Rutba',
-      point: LatLng(33.0371, 40.2858),
-      minZoom: 8.5,
-      isMajor: false),
-  IraqiCityLabel(
-      nameAr: 'الخالدية',
-      nameEn: 'Khaldiyah',
-      point: LatLng(33.3833, 43.5167),
-      minZoom: 10.0,
-      isMajor: false),
-  IraqiCityLabel(
-      nameAr: 'الحبانية',
-      nameEn: 'Habbaniyah',
-      point: LatLng(33.3806, 43.5889),
-      minZoom: 10.0,
-      isMajor: false),
-  IraqiCityLabel(
-      nameAr: 'بغداد',
-      nameEn: 'Baghdad',
-      point: LatLng(33.3152, 44.3661),
-      minZoom: 6.0,
-      isMajor: true),
-  IraqiCityLabel(
-      nameAr: 'البصرة',
-      nameEn: 'Basra',
-      point: LatLng(30.5081, 47.7835),
-      minZoom: 6.0,
-      isMajor: true),
-  IraqiCityLabel(
-      nameAr: 'الموصل',
-      nameEn: 'Mosul',
-      point: LatLng(36.3489, 43.1577),
-      minZoom: 6.0,
-      isMajor: true),
-  IraqiCityLabel(
-      nameAr: 'أربيل',
-      nameEn: 'Erbil',
-      point: LatLng(36.1901, 44.0091),
-      minZoom: 6.5,
-      isMajor: true),
-  IraqiCityLabel(
-      nameAr: 'كركوك',
-      nameEn: 'Kirkuk',
-      point: LatLng(35.4681, 44.3922),
-      minZoom: 7.0,
-      isMajor: true),
-  IraqiCityLabel(
-      nameAr: 'النجف',
-      nameEn: 'Najaf',
-      point: LatLng(31.9985, 44.3396),
-      minZoom: 7.0,
-      isMajor: true),
-  IraqiCityLabel(
-      nameAr: 'كربلاء',
-      nameEn: 'Karbala',
-      point: LatLng(32.6160, 44.0249),
-      minZoom: 7.0,
-      isMajor: true),
-  IraqiCityLabel(
-      nameAr: 'تكريت',
-      nameEn: 'Tikrit',
-      point: LatLng(34.6158, 43.6782),
-      minZoom: 7.5,
-      isMajor: true),
-  IraqiCityLabel(
-      nameAr: 'الحلة',
-      nameEn: 'Hillah',
-      point: LatLng(32.4722, 44.4217),
-      minZoom: 7.5,
-      isMajor: true),
-  IraqiCityLabel(
-      nameAr: 'بعقوبة',
-      nameEn: 'Baqubah',
-      point: LatLng(33.7485, 44.6436),
-      minZoom: 7.5,
-      isMajor: true),
-  IraqiCityLabel(
-      nameAr: 'السليمانية',
-      nameEn: 'Sulaymaniyah',
-      point: LatLng(35.5613, 45.4306),
-      minZoom: 6.0,
-      isMajor: true),
-  IraqiCityLabel(
-      nameAr: 'دهوك',
-      nameEn: 'Duhok',
-      point: LatLng(36.8679, 42.9503),
-      minZoom: 6.0,
-      isMajor: true),
-  IraqiCityLabel(
-      nameAr: 'الديوانية',
-      nameEn: 'Diwaniyah',
-      point: LatLng(31.9879, 44.9247),
-      minZoom: 6.0,
-      isMajor: true),
-  IraqiCityLabel(
-      nameAr: 'الكوت',
-      nameEn: 'Kut',
-      point: LatLng(32.5128, 45.8182),
-      minZoom: 6.0,
-      isMajor: true),
-  IraqiCityLabel(
-      nameAr: 'العمارة',
-      nameEn: 'Amarah',
-      point: LatLng(31.8359, 47.1448),
-      minZoom: 6.0,
-      isMajor: true),
-  IraqiCityLabel(
-      nameAr: 'الناصرية',
-      nameEn: 'Nasiriyah',
-      point: LatLng(31.0439, 46.2573),
-      minZoom: 6.0,
-      isMajor: true),
-  IraqiCityLabel(
-      nameAr: 'السماوة',
-      nameEn: 'Samawah',
-      point: LatLng(31.3320, 45.2940),
-      minZoom: 6.0,
-      isMajor: true),
+  IraqiCityLabel(nameAr: 'الرمادي', nameEn: 'Ramadi', point: LatLng(33.4258, 43.2995), minZoom: 7.0, isMajor: true),
+  IraqiCityLabel(nameAr: 'الفلوجة', nameEn: 'Fallujah', point: LatLng(33.3538, 43.7850), minZoom: 8.5, isMajor: true),
+  IraqiCityLabel(nameAr: 'حديثة', nameEn: 'Haditha', point: LatLng(34.1366, 42.3772), minZoom: 8.5, isMajor: true),
+  IraqiCityLabel(nameAr: 'هيت', nameEn: 'Hit', point: LatLng(33.6366, 42.8277), minZoom: 9.0, isMajor: false),
+  IraqiCityLabel(nameAr: 'القائم', nameEn: 'Al Qaim', point: LatLng(34.3883, 41.0708), minZoom: 8.5, isMajor: false),
+  IraqiCityLabel(nameAr: 'عنة', nameEn: 'Anah', point: LatLng(34.3686, 41.9819), minZoom: 9.5, isMajor: false),
+  IraqiCityLabel(nameAr: 'راوة', nameEn: 'Rawa', point: LatLng(34.4828, 41.9169), minZoom: 9.5, isMajor: false),
+  IraqiCityLabel(nameAr: 'الرطبة', nameEn: 'Rutba', point: LatLng(33.0371, 40.2858), minZoom: 8.5, isMajor: false),
+  IraqiCityLabel(nameAr: 'الخالدية', nameEn: 'Khaldiyah', point: LatLng(33.3833, 43.5167), minZoom: 10.0, isMajor: false),
+  IraqiCityLabel(nameAr: 'الحبانية', nameEn: 'Habbaniyah', point: LatLng(33.3806, 43.5889), minZoom: 10.0, isMajor: false),
+  IraqiCityLabel(nameAr: 'بغداد', nameEn: 'Baghdad', point: LatLng(33.3152, 44.3661), minZoom: 6.0, isMajor: true),
+  IraqiCityLabel(nameAr: 'البصرة', nameEn: 'Basra', point: LatLng(30.5081, 47.7835), minZoom: 6.0, isMajor: true),
+  IraqiCityLabel(nameAr: 'الموصل', nameEn: 'Mosul', point: LatLng(36.3489, 43.1577), minZoom: 6.0, isMajor: true),
+  IraqiCityLabel(nameAr: 'أربيل', nameEn: 'Erbil', point: LatLng(36.1901, 44.0091), minZoom: 6.5, isMajor: true),
+  IraqiCityLabel(nameAr: 'كركوك', nameEn: 'Kirkuk', point: LatLng(35.4681, 44.3922), minZoom: 7.0, isMajor: true),
+  IraqiCityLabel(nameAr: 'النجف', nameEn: 'Najaf', point: LatLng(31.9985, 44.3396), minZoom: 7.0, isMajor: true),
+  IraqiCityLabel(nameAr: 'كربلاء', nameEn: 'Karbala', point: LatLng(32.6160, 44.0249), minZoom: 7.0, isMajor: true),
+  IraqiCityLabel(nameAr: 'تكريت', nameEn: 'Tikrit', point: LatLng(34.6158, 43.6782), minZoom: 7.5, isMajor: true),
+  IraqiCityLabel(nameAr: 'الحلة', nameEn: 'Hillah', point: LatLng(32.4722, 44.4217), minZoom: 7.5, isMajor: true),
+  IraqiCityLabel(nameAr: 'بعقوبة', nameEn: 'Baqubah', point: LatLng(33.7485, 44.6436), minZoom: 7.5, isMajor: true),
 ];
-
 // ==================== نهاية الجزء 1 من 6 ====================
 // ==================== بداية الجزء 2 من 6 ====================
+// ==================== مزود الخرائط الأوفلاين الذكي ====================
+class _OfflineTileProvider extends TileProvider {
+  String? baseDirPath;
+
+  _OfflineTileProvider({this.baseDirPath});
+
+  @override
+  ImageProvider getImage(TileCoordinates coordinates, TileLayer options) {
+    if (!kIsWeb && baseDirPath != null && baseDirPath!.isNotEmpty) {
+      final file = File(
+          '$baseDirPath/tiles/${coordinates.z}_${coordinates.x}_${coordinates.y}.png');
+      if (file.existsSync() && file.lengthSync() > 100) {
+        return FileImage(file);
+      }
+    }
+    return NetworkImage(getTileUrl(coordinates, options));
+  }
+}
+
 // ==================== زر الزجاج التفاعلي ====================
 class GlassTapButton extends StatefulWidget {
   final Widget child;
@@ -607,8 +376,7 @@ class _Snap {
   const _Snap(this.point, this.bearing);
 }
 
-class _HomeScreenState extends State<HomeScreen>
-    with TickerProviderStateMixin, WidgetsBindingObserver {
+class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
 
   static const int endVotesThreshold = 3;
@@ -639,13 +407,7 @@ class _HomeScreenState extends State<HomeScreen>
       isListeningVoice = false,
       isCalculatingRoute = false,
       _forceOffline = false,
-      _hasAskedPermission = false,
-      showWebAppChoice = kIsWeb,
-      _webAppLaunchInProgress = false,
-      _webLaunchFallbackCancelled = false,
-      _hasIncomingDeepLink = false,
-      _hasCenteredInitialPosition = false,
-      _isMapReady = false;
+      _hasAskedPermission = false;
 
   int selectedVoiceIndex = 0,
       voiceSpeedLevel = 1,
@@ -664,7 +426,6 @@ class _HomeScreenState extends State<HomeScreen>
   Set<String> warnedReports = {};
 
   LatLng? me, origin, dest, pickedPlacePoint;
-  String? _pendingIncomingLink;
   String destTitle = '';
 
   List<dynamic> routes = [];
@@ -698,7 +459,7 @@ class _HomeScreenState extends State<HomeScreen>
   vtr.Theme? vectorThemeLight;
   vt.TileProviders? vectorTileProviders;
 
-  late OfflineTileProvider _offlineTileProvider;
+  late _OfflineTileProvider _offlineTileProvider;
   String? _offlineBaseDir;
 
   StreamSubscription<Position>? positionStream;
@@ -727,12 +488,11 @@ class _HomeScreenState extends State<HomeScreen>
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addObserver(this);
-    _offlineTileProvider = OfflineTileProvider();
+    _offlineTileProvider = _OfflineTileProvider();
     _initGlideController();
     _initOfflineDir();
     _loadSavedPrefs();
-    if (!kIsWeb) _initVectorStyle();
+    _initVectorStyle();
     _listenFirestoreStreams();
     _initDeepLinks();
 
@@ -749,7 +509,6 @@ class _HomeScreenState extends State<HomeScreen>
 
   @override
   void dispose() {
-    WidgetsBinding.instance.removeObserver(this);
     positionStream?.cancel();
     reportsSub?.cancel();
     placesSub?.cancel();
@@ -764,16 +523,6 @@ class _HomeScreenState extends State<HomeScreen>
     super.dispose();
   }
 
-  @override
-  void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (kIsWeb &&
-        _webAppLaunchInProgress &&
-        (state == AppLifecycleState.hidden ||
-            state == AppLifecycleState.paused)) {
-      _webLaunchFallbackCancelled = true;
-    }
-  }
-
   void _initGlideController() {
     _glideCtrl = AnimationController(
       vsync: this,
@@ -784,11 +533,12 @@ class _HomeScreenState extends State<HomeScreen>
             (_glideToPos.latitude - _glideFromPos.latitude) * t;
         final double lng = _glideFromPos.longitude +
             (_glideToPos.longitude - _glideFromPos.longitude) * t;
-        final double b = _lerpAngle(_glideFromBearing, _glideToBearing, t);
+        final double b =
+            _lerpAngle(_glideFromBearing, _glideToBearing, t);
         final pos = LatLng(lat, lng);
         _dispState.value = _DispState(pos, b);
 
-        if (follow && mounted && _isMapReady) {
+        if (follow && mounted) {
           if (isNavigating && isFirstPerson3D) {
             mapController.moveAndRotate(_lookAhead(pos, b, 28), 17.8, -b);
           } else {
@@ -803,7 +553,7 @@ class _HomeScreenState extends State<HomeScreen>
     try {
       final dir = await getApplicationDocumentsDirectory();
       _offlineBaseDir = dir.path;
-      _offlineTileProvider = OfflineTileProvider(baseDirPath: _offlineBaseDir);
+      _offlineTileProvider = _OfflineTileProvider(baseDirPath: _offlineBaseDir);
       if (mounted) setState(() {});
     } catch (_) {}
   }
@@ -840,11 +590,6 @@ class _HomeScreenState extends State<HomeScreen>
   }
 
   void _handleIncomingLink(String rawLink) {
-    if (!_isMapReady) {
-      _pendingIncomingLink = rawLink;
-      _hasIncomingDeepLink = true;
-      return;
-    }
     try {
       double? lat;
       double? lng;
@@ -854,7 +599,7 @@ class _HomeScreenState extends State<HomeScreen>
       if (uri != null) {
         if (uri.queryParameters['name'] != null &&
             uri.queryParameters['name']!.trim().isNotEmpty) {
-          placeLabel = uri.queryParameters['name']!;
+          placeLabel = Uri.decodeComponent(uri.queryParameters['name']!);
         } else if (uri.queryParameters['q'] != null) {
           final qVal = uri.queryParameters['q']!;
           if (qVal.contains('(') && qVal.contains(')')) {
@@ -892,29 +637,33 @@ class _HomeScreenState extends State<HomeScreen>
         setState(() {
           showSplash = false;
           follow = false;
-          _hasIncomingDeepLink = true;
         });
         mapController.move(target, 16.0);
-        _toast(
-            tr('تم فتح الموقع في دلّيني 📍', 'Location opened in Dlinii 📍'));
+        _toast(tr('تم فتح الموقع في دلّيني 📍', 'Location opened in Dlinii 📍'));
         _selectDestination(target, placeLabel);
       }
     } catch (_) {}
   }
 
-  // ==================== منع المربعات في تسميات الخريطة الشعاعية ====================
+  // ==================== إصلاح المربعات الفارغة تحت الأسماء في الخريطة ====================
   Map<String, dynamic> _fixStyleForArabic(Map<String, dynamic> styleJson) {
     final copy = jsonDecode(jsonEncode(styleJson)) as Map<String, dynamic>;
     if (copy['layers'] is List) {
       for (final layer in (copy['layers'] as List)) {
         if (layer is Map && layer['layout'] is Map) {
           final layout = layer['layout'] as Map<String, dynamic>;
-          // محرك SDF لا يضمن وجود الحروف العربية أو تشكيلها الصحيح في كل
-          // مستويات التكبير. نخفي نصوص الطبقة الشعاعية ونرسم بدلاً منها
-          // تسميات عربية حقيقية بواسطة Flutter MarkerLayer بخط Tajawal.
+          // توحيد الخط لمنع ظهور مربعات ▯▯▯▯▯▯▯ تحت Ramadi وغيرها
+          if (layout.containsKey('text-font')) {
+            layout['text-font'] = ['Noto Sans Regular'];
+          }
+          // إجبار الخريطة على إظهار الاسم العربي أولاً ثم الإنجليزي بوضوح
           if (layout.containsKey('text-field')) {
-            layout['text-field'] = '';
-            layout.remove('text-font');
+            layout['text-field'] = [
+              'coalesce',
+              ['get', 'name:ar'],
+              ['get', 'name'],
+              ['get', 'name:en']
+            ];
           }
         }
       }
@@ -932,20 +681,20 @@ class _HomeScreenState extends State<HomeScreen>
           .timeout(const Duration(seconds: 7));
 
       if (resDark.statusCode == 200 && resLight.statusCode == 200) {
-        final darkMap = _fixStyleForArabic(
-            jsonDecode(resDark.body) as Map<String, dynamic>);
-        final lightMap = _fixStyleForArabic(
-            jsonDecode(resLight.body) as Map<String, dynamic>);
+        final darkMap =
+            _fixStyleForArabic(jsonDecode(resDark.body) as Map<String, dynamic>);
+        final lightMap =
+            _fixStyleForArabic(jsonDecode(resLight.body) as Map<String, dynamic>);
 
         final styleDark = await vt.StyleReader(
           uri: 'https://tiles.openfreemap.org/styles/dark',
           logger: const vtr.Logger.noop(),
         ).read();
 
-        vectorThemeDark =
-            vtr.ThemeReader(logger: const vtr.Logger.noop()).read(darkMap);
-        vectorThemeLight =
-            vtr.ThemeReader(logger: const vtr.Logger.noop()).read(lightMap);
+        vectorThemeDark = vtr.ThemeReader(logger: const vtr.Logger.noop())
+            .read(darkMap);
+        vectorThemeLight = vtr.ThemeReader(logger: const vtr.Logger.noop())
+            .read(lightMap);
         vectorTileProviders = styleDark.providers;
         if (mounted) setState(() {});
       }
@@ -996,9 +745,10 @@ class _HomeScreenState extends State<HomeScreen>
         });
       }
 
-      // ابدأ GPS عند كل فتح، واطلب الإذن لأول مرة حتى يظهر موقع المستخدم
-      // مباشرة بدلاً من بقاء الخريطة على الرمادي إلى أن يختار وجهة.
-      _initLocationTracking(userInitiated: false, requestPermission: true);
+      // إذا كان قد سمح سابقاً، نشغل تتبع الموقع تلقائياً بالخلفية بدون إزعاجه بأي نافذة
+      if (alreadyAsked) {
+        _initLocationTracking(userInitiated: false);
+      }
     } catch (_) {}
     await _loadAvailableVoicesOnce();
     await _applyVoiceProfile();
@@ -1015,7 +765,6 @@ class _HomeScreenState extends State<HomeScreen>
           'dlini_offline_provinces', downloadedProvinces.toList());
     } catch (_) {}
   }
-
 // ==================== نهاية الجزء 2 من 6 ====================
 // ==================== بداية الجزء 3 من 6 ====================
   // ==================== إعدادات ونظام التوجيه الصوتي (TTS) ====================
@@ -1054,9 +803,7 @@ class _HomeScreenState extends State<HomeScreen>
         if (matching.isNotEmpty) {
           final slot = (_voiceSlot[vp.id] ?? 0).clamp(0, matching.length - 1);
           final chosen = matching[slot];
-          if (chosen is Map &&
-              chosen['name'] != null &&
-              chosen['locale'] != null) {
+          if (chosen is Map && chosen['name'] != null && chosen['locale'] != null) {
             await flutterTts.setVoice({
               'name': chosen['name'].toString(),
               'locale': chosen['locale'].toString(),
@@ -1194,23 +941,19 @@ class _HomeScreenState extends State<HomeScreen>
   }
 
   // ==================== تتبع الموقع الجغرافي (GPS) ====================
-  Future<void> _initLocationTracking({
-    required bool userInitiated,
-    bool requestPermission = false,
-  }) async {
+  Future<void> _initLocationTracking({required bool userInitiated}) async {
     try {
       bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
       if (!serviceEnabled) {
         if (userInitiated) {
-          _toast(
-              tr('يرجى تشغيل موقع الهاتف (GPS)', 'Please enable device GPS'));
+          _toast(tr('يرجى تشغيل موقع الهاتف (GPS)', 'Please enable device GPS'));
         }
         return;
       }
 
       LocationPermission perm = await Geolocator.checkPermission();
       if (perm == LocationPermission.denied) {
-        if (userInitiated || requestPermission) {
+        if (userInitiated) {
           perm = await Geolocator.requestPermission();
         } else {
           return;
@@ -1220,8 +963,8 @@ class _HomeScreenState extends State<HomeScreen>
       if (perm == LocationPermission.denied ||
           perm == LocationPermission.deniedForever) {
         if (userInitiated) {
-          _toast(tr(
-              'لم يتم منح صلاحية الوصول للموقع', 'Location permission denied'));
+          _toast(tr('لم يتم منح صلاحية الوصول للموقع',
+              'Location permission denied'));
         }
         return;
       }
@@ -1235,17 +978,13 @@ class _HomeScreenState extends State<HomeScreen>
 
       final pos = await Geolocator.getCurrentPosition(
         desiredAccuracy: LocationAccuracy.high,
-        timeLimit: const Duration(seconds: 12),
       );
-      _onPositionUpdate(
-        pos,
-        moveCameraImmediately: userInitiated || !_hasCenteredInitialPosition,
-      );
+      _onPositionUpdate(pos, moveCameraImmediately: userInitiated);
 
       await positionStream?.cancel();
       positionStream = Geolocator.getPositionStream(
         locationSettings: const LocationSettings(
-          accuracy: LocationAccuracy.high,
+          accuracy: LocationAccuracy.bestForNavigation,
           distanceFilter: 2,
         ),
       ).listen((Position p) {
@@ -1301,15 +1040,9 @@ class _HomeScreenState extends State<HomeScreen>
     _glideCtrl?.duration = Duration(milliseconds: dt);
     _glideCtrl?.forward(from: 0.0);
 
-    final bool shouldCenterCamera = moveCameraImmediately &&
-        _isMapReady &&
-        follow &&
-        !_hasIncomingDeepLink &&
-        !_hasCenteredInitialPosition;
-    if (shouldCenterCamera) {
+    if (moveCameraImmediately) {
       mapController.move(finalPos, 15.8);
     }
-    _hasCenteredInitialPosition = true;
 
     if (isNavigating) {
       _updateNavigationState(finalPos, spd, finalBrg);
@@ -1373,8 +1106,7 @@ class _HomeScreenState extends State<HomeScreen>
       final double lenSq = dx * dx + dy * dy;
       double t = 0.0;
       if (lenSq > 1e-12) {
-        t = ((p.longitude - a.longitude) * dx +
-                (p.latitude - a.latitude) * dy) /
+        t = ((p.longitude - a.longitude) * dx + (p.latitude - a.latitude) * dy) /
             lenSq;
         t = t.clamp(0.0, 1.0);
       }
@@ -1387,24 +1119,6 @@ class _HomeScreenState extends State<HomeScreen>
       }
     }
     return _Snap(bestPt, bestBrg);
-  }
-
-  LatLng _destinationPoint(LatLng start, double bearingDeg, double meters) {
-    const double earthRadius = 6371000.0;
-    final double bearing = bearingDeg * math.pi / 180.0;
-    final double lat1 = start.latitude * math.pi / 180.0;
-    final double lng1 = start.longitude * math.pi / 180.0;
-    final double angularDistance = meters / earthRadius;
-    final double lat2 = math.asin(
-      math.sin(lat1) * math.cos(angularDistance) +
-          math.cos(lat1) * math.sin(angularDistance) * math.cos(bearing),
-    );
-    final double lng2 = lng1 +
-        math.atan2(
-          math.sin(bearing) * math.sin(angularDistance) * math.cos(lat1),
-          math.cos(angularDistance) - math.sin(lat1) * math.sin(lat2),
-        );
-    return LatLng(lat2 * 180.0 / math.pi, lng2 * 180.0 / math.pi);
   }
 
   // ==================== البحث الصوتي والنصي واستكشاف الفئات ====================
@@ -1522,210 +1236,27 @@ class _HomeScreenState extends State<HomeScreen>
     final String latStr = pt.latitude.toStringAsFixed(6);
     final String lngStr = pt.longitude.toStringAsFixed(6);
     final String encodedName = Uri.encodeComponent(placeName);
+
+    // الرابط الرسمي لموقعك على Vercel الذي يفتح تطبيق دلّيني مباشرة
     final String dliniiWebUrl =
         '$webAppDomain/?lat=$latStr&lng=$lngStr&name=$encodedName';
 
-    // رابط HTTPS يعمل للجميع ويعرض خيارات الويب والتطبيق والتحميل.
     final String message = isEnglish
-        ? '📍 Open "$placeName" with Dlinii (web or app):\n$dliniiWebUrl'
-        : '📍 افتح الموقع "$placeName" عبر دلّيني (الويب أو التطبيق):\n$dliniiWebUrl';
+        ? '📍 Open "$placeName" directly in Dlinii App:\n$dliniiWebUrl'
+        : '📍 افتح الموقع "$placeName" مباشرة عبر تطبيق دلّيني:\n$dliniiWebUrl';
+
+    await Clipboard.setData(ClipboardData(text: message));
+    _toast(tr('تم نسخ رابط "دلّي صديق" ($webAppDomain) 📋',
+        'Dlinii share link copied 📋'));
 
     final Uri waUrl =
         Uri.parse('https://wa.me/?text=${Uri.encodeComponent(message)}');
-    unawaited(Clipboard.setData(ClipboardData(text: message)));
     try {
-      final opened = await launchUrl(
-        waUrl,
-        mode: LaunchMode.externalApplication,
-      );
-      if (!opened) {
-        _toast(tr('تم نسخ رابط موقع الويب للمشاركة 📋',
-            'Web location link copied 📋'));
+      if (await canLaunchUrl(waUrl)) {
+        await launchUrl(waUrl, mode: LaunchMode.externalApplication);
       }
-    } catch (_) {
-      _toast(tr(
-          'تم نسخ رابط موقع الويب للمشاركة 📋', 'Web location link copied 📋'));
-    }
+    } catch (_) {}
   }
-
-  Uri _nativeAppLinkFromWeb() {
-    final params = Map<String, String>.from(Uri.base.queryParameters);
-    return Uri(
-      scheme: 'dlinii',
-      host: 'open',
-      queryParameters: params.isEmpty ? null : params,
-    );
-  }
-
-  Future<void> _openPlayStore() async {
-    _webAppLaunchInProgress = false;
-    if (mounted) setState(() {});
-    try {
-      await launchUrl(
-        Uri.parse(playStoreUrl),
-        mode: LaunchMode.externalApplication,
-      );
-    } catch (_) {
-      await Clipboard.setData(const ClipboardData(text: playStoreUrl));
-      _toast(tr('تم نسخ رابط تحميل التطبيق', 'App download link copied'));
-    }
-  }
-
-  Future<void> _openNativeAppFromWeb() async {
-    if (!kIsWeb || _webAppLaunchInProgress) return;
-    setState(() {
-      _webAppLaunchInProgress = true;
-      _webLaunchFallbackCancelled = false;
-    });
-
-    try {
-      final opened = await launchUrl(
-        _nativeAppLinkFromWeb(),
-        mode: LaunchMode.externalApplication,
-        webOnlyWindowName: '_self',
-      );
-      if (!opened) throw StateError('App link was not opened');
-
-      Timer(const Duration(milliseconds: 1800), () {
-        if (mounted &&
-            showWebAppChoice &&
-            _webAppLaunchInProgress &&
-            !_webLaunchFallbackCancelled) {
-          _openPlayStore();
-        }
-      });
-    } catch (_) {
-      await _openPlayStore();
-    }
-  }
-
-  void _continueOnWeb() {
-    setState(() {
-      showWebAppChoice = false;
-      _webAppLaunchInProgress = false;
-      _webLaunchFallbackCancelled = true;
-    });
-  }
-
-  Widget _buildWebAppChoice() {
-    return Positioned.fill(
-      child: Container(
-        color: Colors.black.withOpacity(0.72),
-        child: SafeArea(
-          child: Center(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(20),
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 410),
-                child: Container(
-                  padding: const EdgeInsets.all(22),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF142e2d),
-                    borderRadius: BorderRadius.circular(24),
-                    border: Border.all(
-                      color: const Color(0xFF7ce0be),
-                      width: 1.5,
-                    ),
-                  ),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      SvgPicture.string(kGreenNavArrowSvg,
-                          width: 58, height: 58),
-                      const SizedBox(height: 12),
-                      Text(
-                        tr('كيف تريد استخدام دلّيني؟',
-                            'How would you like to use Dlinii?'),
-                        textAlign: TextAlign.center,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 19,
-                          fontWeight: FontWeight.w900,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        tr(
-                          'افتح التطبيق إذا كان منزلاً، أو حمّله من متجر Play، أو تابع باستخدام موقع الويب.',
-                          'Open the installed app, download it from Google Play, or continue on the web.',
-                        ),
-                        textAlign: TextAlign.center,
-                        style: const TextStyle(
-                          color: Color(0xFFb7cbc7),
-                          fontSize: 12.5,
-                          height: 1.6,
-                        ),
-                      ),
-                      const SizedBox(height: 20),
-                      GlassTapButton(
-                        backgroundColor: const Color(0xFF087e76),
-                        borderColor: const Color(0xFF7ce0be),
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                        onTap: _webAppLaunchInProgress
-                            ? null
-                            : _openNativeAppFromWeb,
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            if (_webAppLaunchInProgress)
-                              const SizedBox(
-                                width: 18,
-                                height: 18,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                  color: Colors.white,
-                                ),
-                              )
-                            else
-                              const Icon(Icons.open_in_new_rounded,
-                                  color: Colors.white, size: 19),
-                            const SizedBox(width: 8),
-                            Text(
-                              tr('فتح التطبيق', 'Open the app'),
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.w900,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(height: 10),
-                      GlassTapButton(
-                        backgroundColor: const Color(0xFF203b38),
-                        borderColor: const Color(0xFF426761),
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                        onTap: _continueOnWeb,
-                        child: Text(
-                          tr('الاستمرار مع الويب', 'Continue on the web'),
-                          style: const TextStyle(
-                            color: Color(0xFF7ce0be),
-                            fontWeight: FontWeight.w900,
-                          ),
-                        ),
-                      ),
-                      TextButton(
-                        onPressed: _openPlayStore,
-                        child: Text(
-                          tr('تحميل التطبيق من متجر Play',
-                              'Download from Google Play'),
-                          style: const TextStyle(
-                            color: Color(0xFFefbb52),
-                            fontWeight: FontWeight.w800,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
 // ==================== نهاية الجزء 3 من 6 ====================
 // ==================== بداية الجزء 4 من 6 ====================
   // ==================== استكشاف الخدمات والفئات على الخريطة ====================
@@ -1770,10 +1301,12 @@ class _HomeScreenState extends State<HomeScreen>
           '${center.latitude - d},${center.longitude - d},${center.latitude + d},${center.longitude + d}';
       final String query =
           '[out:json][timeout:8];(node["${cat.osmKey}"="${cat.osmVal}"]($bbox);way["${cat.osmKey}"="${cat.osmVal}"]($bbox););out center 25;';
-      final res = await http.post(
-        Uri.parse('https://overpass-api.de/api/interpreter'),
-        body: {'data': query},
-      ).timeout(const Duration(seconds: 8));
+      final res = await http
+          .post(
+            Uri.parse('https://overpass-api.de/api/interpreter'),
+            body: {'data': query},
+          )
+          .timeout(const Duration(seconds: 8));
 
       if (res.statusCode == 200) {
         final data = jsonDecode(res.body) as Map<String, dynamic>;
@@ -1885,8 +1418,7 @@ class _HomeScreenState extends State<HomeScreen>
     for (int i = 0; i <= segments; i++) {
       final double t = i / segments;
       final double lat = start.latitude + (end.latitude - start.latitude) * t;
-      final double lng =
-          start.longitude + (end.longitude - start.longitude) * t;
+      final double lng = start.longitude + (end.longitude - start.longitude) * t;
       pts.add(LatLng(lat, lng));
     }
 
@@ -1980,9 +1512,8 @@ class _HomeScreenState extends State<HomeScreen>
     } catch (_) {}
   }
 
-  // ==================== تلوين موقع البلاغ فوق المسار الأخضر ====================
-  // الأخضر هو لون المسار دائماً. الأحمر مخصص للازدحام فقط، والأصفر
-  // للحوادث وبقية بلاغات الخطر. لا يتغير أي لون خارج موقع البلاغ.
+  // ==================== تلوين مقاطع البلاغات الفعلية فقط (إصلاح الخط الأصفر) ====================
+  // المسار الأساسي يكون أخضر دائماً، ولا يتلون بالأصفر أو الأحمر إلا في موقع البلاغ الفعلي!
   List<Polyline> _buildRealTrafficAndHazardOverlays(
       Map<String, dynamic> route, List<LatLng> fullPoints) {
     final List<Polyline> overlays = [];
@@ -1994,28 +1525,50 @@ class _HomeScreenState extends State<HomeScreen>
       final double? rLng = (data['lng'] as num?)?.toDouble();
       if (rLat == null || rLng == null) continue;
 
-      final reportPt = LatLng(rLat, rLng);
-      final typeAr = (data['type'] ?? '').toString();
-      final typeEn = (data['typeEn'] ?? '').toString().toLowerCase();
-      final bool isTraffic = typeAr.contains('ازدحام') ||
-          typeAr.contains('زحام') ||
-          typeEn.contains('traffic') ||
-          typeEn.contains('congestion') ||
-          typeEn.contains('jam');
-      final segColor =
-          isTraffic ? const Color(0xFFef4444) : const Color(0xFFf59e0b);
+      final LatLng reportPt = LatLng(rLat, rLng);
+      final String typeAr = (data['type'] ?? '').toString();
+      final String typeEn = (data['typeEn'] ?? '').toString().toLowerCase();
 
-      // الإسقاط على أقرب قطعة يعمل حتى عندما تكون نقاط مسار OSRM
-      // متباعدة، ثم نلون 90 متراً قبل البلاغ وبعده فقط.
-      final snap = _snapToPolyline(reportPt, fullPoints);
-      if (_distMeters(reportPt, snap.point) <= 100.0) {
+      // تحديد اللون حسب نوع البلاغ الحقيقي:
+      // أحمر: للازدحام المروري أو الحوادث أو الطرق المغلقة
+      // أصفر: للمطبات أو الحفريات أو السيطرات أو الرادار أو التنبيهات
+      final bool isRedSeverity = typeAr.contains('ازدحام') ||
+          typeAr.contains('حادث') ||
+          typeAr.contains('مغلق') ||
+          typeEn.contains('traffic') ||
+          typeEn.contains('accident') ||
+          typeEn.contains('closed');
+
+      final Color segColor = isRedSeverity
+          ? const Color(0xFFef4444) // أحمر للازدحام والحوادث
+          : const Color(0xFFf59e0b); // أصفر للبلاغات التحذيرية والمطبات والسيطرات
+
+      // تلوين المقطع القريب من البلاغ فقط (ضمن 130 متر عن خط المسار)
+      final List<LatLng> affectedSegment = [];
+      for (int i = 0; i < fullPoints.length; i++) {
+        if (_distMeters(fullPoints[i], reportPt) <= 130.0) {
+          if (affectedSegment.isEmpty && i > 0) {
+            affectedSegment.add(fullPoints[i - 1]);
+          }
+          affectedSegment.add(fullPoints[i]);
+        } else if (affectedSegment.length >= 2) {
+          overlays.add(
+            Polyline(
+              points: List<LatLng>.from(affectedSegment),
+              color: segColor,
+              strokeWidth: 7.5,
+            ),
+          );
+          affectedSegment.clear();
+        } else {
+          affectedSegment.clear();
+        }
+      }
+
+      if (affectedSegment.length >= 2) {
         overlays.add(
           Polyline(
-            points: [
-              _destinationPoint(snap.point, snap.bearing + 180.0, 90.0),
-              snap.point,
-              _destinationPoint(snap.point, snap.bearing, 90.0),
-            ],
+            points: List<LatLng>.from(affectedSegment),
             color: segColor,
             strokeWidth: 7.5,
           ),
@@ -2043,9 +1596,7 @@ class _HomeScreenState extends State<HomeScreen>
     lastSpokenStep = -1;
     warnedReports.clear();
 
-    final startPos = me ??
-        origin ??
-        (navCoords.isNotEmpty ? navCoords.first : kDefaultCenter);
+    final startPos = me ?? origin ?? (navCoords.isNotEmpty ? navCoords.first : kDefaultCenter);
     final initBrg = navCoords.length >= 2
         ? _bearingBetween(navCoords[0], navCoords[1])
         : currentBearing;
@@ -2060,8 +1611,7 @@ class _HomeScreenState extends State<HomeScreen>
     });
 
     _dispState.value = _DispState(startPos, initBrg);
-    mapController.moveAndRotate(
-        _lookAhead(startPos, initBrg, 28), 17.8, -initBrg);
+    mapController.moveAndRotate(_lookAhead(startPos, initBrg, 28), 17.8, -initBrg);
 
     _updateNavigationState(startPos, currentSpeedKmh, initBrg);
     _speak(tr('بدأت الرحلة عبر تطبيق دلّيني، رافقتك السلامة',
@@ -2078,8 +1628,7 @@ class _HomeScreenState extends State<HomeScreen>
       if (!mounted || !isNavigating || simIdx >= navCoords.length - 1) {
         timer.cancel();
         if (mounted && isNavigating) {
-          _speak(tr('لقد وصلت إلى وجهتك بنجاح',
-              'You have arrived at your destination'));
+          _speak(tr('لقد وصلت إلى وجهتك بنجاح', 'You have arrived at your destination'));
           _stopNav();
         }
         return;
@@ -2132,9 +1681,8 @@ class _HomeScreenState extends State<HomeScreen>
 
     final double remMeters = _distMeters(pos, dest!);
     final double remKm = remMeters / 1000.0;
-    final int remMins = (remMeters / ((spdKmh > 15 ? spdKmh : 40.0) * 16.66))
-        .ceil()
-        .clamp(1, 999);
+    final int remMins =
+        (remMeters / ((spdKmh > 15 ? spdKmh : 40.0) * 16.66)).ceil().clamp(1, 999);
     final DateTime etaTime = DateTime.now().add(Duration(minutes: remMins));
     final String etaStr =
         '${etaTime.hour.toString().padLeft(2, '0')}:${etaTime.minute.toString().padLeft(2, '0')}';
@@ -2159,8 +1707,8 @@ class _HomeScreenState extends State<HomeScreen>
         }
       }
 
-      final curStep = navSteps[currentStepIndex.clamp(0, navSteps.length - 1)]
-          as Map<String, dynamic>;
+      final curStep =
+          navSteps[currentStepIndex.clamp(0, navSteps.length - 1)] as Map<String, dynamic>;
       final formatted = _formatStepInstruction(curStep);
       arrow = formatted['arrow']!;
       instr = formatted['text']!;
@@ -2228,15 +1776,11 @@ class _HomeScreenState extends State<HomeScreen>
       actionEn = 'Enter the roundabout towards';
     } else if (mod.contains('left')) {
       arrow = '⬅️';
-      actionAr = mod.contains('slight')
-          ? 'انحرف قليلاً لليسار نحو'
-          : 'انعطف يساراً نحو';
+      actionAr = mod.contains('slight') ? 'انحرف قليلاً لليسار نحو' : 'انعطف يساراً نحو';
       actionEn = mod.contains('slight') ? 'Keep left onto' : 'Turn left onto';
     } else if (mod.contains('right')) {
       arrow = '➡️';
-      actionAr = mod.contains('slight')
-          ? 'انحرف قليلاً لليمين نحو'
-          : 'انعطف يميناً نحو';
+      actionAr = mod.contains('slight') ? 'انحرف قليلاً لليمين نحو' : 'انعطف يميناً نحو';
       actionEn = mod.contains('slight') ? 'Keep right onto' : 'Turn right onto';
     } else if (mod.contains('uturn')) {
       arrow = '↩️';
@@ -2267,31 +1811,31 @@ class _HomeScreenState extends State<HomeScreen>
         final int radius = z == 11 ? 2 : (z == 12 ? 3 : 4);
         for (int dx = -radius; dx <= radius; dx++) {
           for (int dy = -radius; dy <= radius; dy++) {
-            tilesToFetch
-                .add(TileCoordinates(centerTile.x + dx, centerTile.y + dy, z));
+            tilesToFetch.add(TileCoordinates(centerTile.x + dx, centerTile.y + dy, z));
           }
         }
       }
 
-      final bool canSaveTiles = !kIsWeb && _offlineBaseDir != null;
-      if (canSaveTiles) {
-        await prepareOfflineTilesDirectory(_offlineBaseDir!);
+      Directory? tilesDir;
+      if (!kIsWeb && _offlineBaseDir != null) {
+        tilesDir = Directory('$_offlineBaseDir/tiles');
+        if (!tilesDir.existsSync()) {
+          tilesDir.createSync(recursive: true);
+        }
       }
 
       int completed = 0;
       for (final tc in tilesToFetch) {
         if (!mounted) break;
-        if (canSaveTiles) {
-          final fileName = '${tc.z}_${tc.x}_${tc.y}.png';
-          if (!await offlineTileExists(_offlineBaseDir!, fileName)) {
+        if (tilesDir != null) {
+          final file = File('${tilesDir.path}/${tc.z}_${tc.x}_${tc.y}.png');
+          if (!file.existsSync()) {
             try {
               final url = Uri.parse(
                   'https://a.basemaps.cartocdn.com/rastertiles/voyager/${tc.z}/${tc.x}/${tc.y}.png');
-              final res =
-                  await http.get(url).timeout(const Duration(seconds: 4));
+              final res = await http.get(url).timeout(const Duration(seconds: 4));
               if (res.statusCode == 200 && res.bodyBytes.length > 100) {
-                await writeOfflineTile(
-                    _offlineBaseDir!, fileName, res.bodyBytes);
+                await file.writeAsBytes(res.bodyBytes);
               }
             } catch (_) {}
           }
@@ -2302,8 +1846,7 @@ class _HomeScreenState extends State<HomeScreen>
         completed++;
         if (mounted && completed % 5 == 0) {
           setState(() {
-            downloadProgress =
-                (completed / tilesToFetch.length).clamp(0.05, 1.0);
+            downloadProgress = (completed / tilesToFetch.length).clamp(0.05, 1.0);
           });
         }
       }
@@ -2356,7 +1899,6 @@ class _HomeScreenState extends State<HomeScreen>
       ),
     );
   }
-
 // ==================== نهاية الجزء 4 من 6 ====================
 // ==================== بداية الجزء 5 من 6 ====================
   @override
@@ -2414,8 +1956,7 @@ class _HomeScreenState extends State<HomeScreen>
 
     return Scaffold(
       key: _scaffoldKey,
-      backgroundColor:
-          isDark ? const Color(0xFF0b1918) : const Color(0xFFf0fdfa),
+      backgroundColor: isDark ? const Color(0xFF0b1918) : const Color(0xFFf0fdfa),
       drawer: _buildDrawer(),
       body: Stack(
         children: [
@@ -2424,8 +1965,6 @@ class _HomeScreenState extends State<HomeScreen>
           _buildFloatingControls(),
           if (showPlanSheet) _buildRoutePlanSheet(),
           if (showNavSheet) _buildActiveNavigationHud(),
-          if (showReportModal) _buildReportSheet(),
-          if (kIsWeb && showWebAppChoice) _buildWebAppChoice(),
         ],
       ),
     );
@@ -2433,10 +1972,7 @@ class _HomeScreenState extends State<HomeScreen>
 
   // ==================== الخريطة الرئيسية وتوابعها ====================
   Widget _buildMainMap() {
-    // Safari على iPhone قد يعيد تحميل الصفحة بسبب ذاكرة WebGL/Canvas.
-    // الويب يستخدم Raster خفيف؛ التطبيق الأصلي يحتفظ بالخريطة الشعاعية.
-    final ofmLayer = !kIsWeb &&
-            (isDark ? vectorThemeDark : vectorThemeLight) != null &&
+    final ofmLayer = (isDark ? vectorThemeDark : vectorThemeLight) != null &&
             vectorTileProviders != null
         ? vt.VectorTileLayer(
             tileProviders: vectorTileProviders!,
@@ -2455,8 +1991,7 @@ class _HomeScreenState extends State<HomeScreen>
         final List<dynamic> coords =
             (route['geometry']['coordinates'] as List?) ?? [];
         final pts = coords
-            .map((c) =>
-                LatLng((c[1] as num).toDouble(), (c[0] as num).toDouble()))
+            .map((c) => LatLng((c[1] as num).toDouble(), (c[0] as num).toDouble()))
             .toList();
         if (pts.length >= 2) {
           polylines.add(
@@ -2474,8 +2009,7 @@ class _HomeScreenState extends State<HomeScreen>
       final List<dynamic> mainCoords =
           (mainRoute['geometry']['coordinates'] as List?) ?? [];
       final mainPts = mainCoords
-          .map(
-              (c) => LatLng((c[1] as num).toDouble(), (c[0] as num).toDouble()))
+          .map((c) => LatLng((c[1] as num).toDouble(), (c[0] as num).toDouble()))
           .toList();
 
       if (mainPts.length >= 2) {
@@ -2488,8 +2022,7 @@ class _HomeScreenState extends State<HomeScreen>
         );
 
         // مقاطع التحذيرات والبلاغات الموضعية على المسار
-        polylines
-            .addAll(_buildRealTrafficAndHazardOverlays(mainRoute, mainPts));
+        polylines.addAll(_buildRealTrafficAndHazardOverlays(mainRoute, mainPts));
       }
     }
 
@@ -2498,35 +2031,13 @@ class _HomeScreenState extends State<HomeScreen>
       options: MapOptions(
         initialCenter: kDefaultCenter,
         initialZoom: currentMapZoom,
-        onMapReady: () {
-          _isMapReady = true;
-          final pendingLink = _pendingIncomingLink;
-          _pendingIncomingLink = null;
-          if (pendingLink != null) {
-            WidgetsBinding.instance.addPostFrameCallback((_) {
-              if (mounted) _handleIncomingLink(pendingLink);
-            });
-          } else if (me != null && follow && !_hasIncomingDeepLink) {
-            mapController.move(me!, 15.8);
-          }
-        },
         maxZoom: 20.0,
         minZoom: 4.0,
         onPositionChanged: (pos, hasGesture) {
-          final oldZoom = currentMapZoom;
-          final newZoom = pos.zoom;
-          final labelsChanged = (oldZoom < 6.0) != (newZoom < 6.0) ||
-              kIraqiCityLabels.any((city) {
-                final threshold = city.isMajor ? 4.0 : city.minZoom;
-                return (oldZoom >= threshold) != (newZoom >= threshold);
-              });
-          final stopFollowing = hasGesture && follow;
-          currentMapZoom = newZoom;
-          if (labelsChanged || stopFollowing) {
-            setState(() {
-              if (stopFollowing) follow = false;
-            });
+          if (hasGesture && follow) {
+            setState(() => follow = false);
           }
+          currentMapZoom = pos.zoom;
         },
         onTap: (_, pt) {
           if (!isNavigating) {
@@ -2543,13 +2054,12 @@ class _HomeScreenState extends State<HomeScreen>
         else
           ColorFiltered(
             key: ValueKey<String>(isDark ? 'raster_dark' : 'raster_light'),
-            colorFilter: isDark && !kIsWeb
+            colorFilter: isDark
                 ? kInstantDarkFilter
                 : const ColorFilter.mode(Colors.transparent, BlendMode.dst),
             child: TileLayer(
-              urlTemplate: kIsWeb && isDark
-                  ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png'
-                  : 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png',
+              urlTemplate:
+                  'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png',
               subdomains: const ['a', 'b', 'c', 'd'],
               maxZoom: 20,
               userAgentPackageName: 'com.dlinii.app',
@@ -2578,8 +2088,7 @@ class _HomeScreenState extends State<HomeScreen>
                     decoration: BoxDecoration(
                       color: const Color(0xFF142e2d),
                       shape: BoxShape.circle,
-                      border:
-                          Border.all(color: const Color(0xFFefbb52), width: 2),
+                      border: Border.all(color: const Color(0xFFefbb52), width: 2),
                       boxShadow: const [
                         BoxShadow(color: Colors.black54, blurRadius: 6)
                       ],
@@ -2617,8 +2126,7 @@ class _HomeScreenState extends State<HomeScreen>
                             color: Colors.white, size: 14),
                       ),
                       Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 4, vertical: 1),
+                        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
                         decoration: BoxDecoration(
                           color: Colors.black87,
                           borderRadius: BorderRadius.circular(4),
@@ -2638,18 +2146,16 @@ class _HomeScreenState extends State<HomeScreen>
               );
             }),
             // تسميات المدن والمناطق العراقية الثابتة بوضوح لمنع المربعات
-            ...kIraqiCityLabels
-                .where((c) => currentMapZoom >= (c.isMajor ? 4.0 : c.minZoom))
-                .map(
+            ...kIraqiCityLabels.where((c) => currentMapZoom >= c.minZoom).map(
                   (c) => Marker(
                     point: c.point,
-                    width: currentMapZoom < 6.0 ? 86 : 120,
-                    height: currentMapZoom < 6.0 ? 28 : 36,
+                    width: 120,
+                    height: 36,
                     child: GestureDetector(
                       onTap: () => _selectDestination(c.point, c.nameAr),
                       child: Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 6, vertical: 2),
+                        padding:
+                            const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                         decoration: BoxDecoration(
                           color: Colors.black.withOpacity(0.65),
                           borderRadius: BorderRadius.circular(6),
@@ -2660,12 +2166,10 @@ class _HomeScreenState extends State<HomeScreen>
                         alignment: Alignment.center,
                         child: Text(
                           c.nameAr,
-                          style: TextStyle(
+                          style: const TextStyle(
                             color: Colors.white,
-                            fontSize: currentMapZoom < 6.0 ? 9.0 : 11.0,
+                            fontSize: 11,
                             fontWeight: FontWeight.w900,
-                            fontFamily: 'Tajawal',
-                            fontFamilyFallback: const ['Cairo', 'Arial'],
                           ),
                         ),
                       ),
@@ -2698,9 +2202,8 @@ class _HomeScreenState extends State<HomeScreen>
                       angle: isNavigating && isFirstPerson3D
                           ? 0.0
                           : (st.bearing * math.pi / 180.0),
-                      child: SvgPicture.string(isNavigating
-                          ? kGreenNavArrowSvg
-                          : kMyLocationPulseSvg),
+                      child: SvgPicture.string(
+                          isNavigating ? kGreenNavArrowSvg : kMyLocationPulseSvg),
                     );
                   },
                 ),
@@ -2710,7 +2213,6 @@ class _HomeScreenState extends State<HomeScreen>
       ],
     );
   }
-
 // ==================== نهاية الجزء 5 من 6 ====================
 // ==================== بداية الجزء 6 والأخير ====================
   // ==================== شريط البحث العلوي والفئات السريعة ====================
@@ -2727,22 +2229,17 @@ class _HomeScreenState extends State<HomeScreen>
               color: isDark ? const Color(0xFF142e2d) : Colors.white,
               borderRadius: BorderRadius.circular(18),
               border: Border.all(
-                  color: isDark
-                      ? const Color(0xFF284e4b)
-                      : const Color(0xFF7ce0be),
+                  color: isDark ? const Color(0xFF284e4b) : const Color(0xFF7ce0be),
                   width: 1.5),
               boxShadow: const [
-                BoxShadow(
-                    color: Colors.black26, blurRadius: 12, offset: Offset(0, 4))
+                BoxShadow(color: Colors.black26, blurRadius: 12, offset: Offset(0, 4))
               ],
             ),
             child: Row(
               children: [
                 IconButton(
                   icon: Icon(Icons.menu_rounded,
-                      color: isDark
-                          ? const Color(0xFF7ce0be)
-                          : const Color(0xFF087e76)),
+                      color: isDark ? const Color(0xFF7ce0be) : const Color(0xFF087e76)),
                   onPressed: () => _scaffoldKey.currentState?.openDrawer(),
                 ),
                 Expanded(
@@ -2758,8 +2255,7 @@ class _HomeScreenState extends State<HomeScreen>
                       hintText: tr('إلى أين تريد الذهاب في العراق؟',
                           'Where to in Iraq?'),
                       hintStyle: TextStyle(
-                        color:
-                            isDark ? const Color(0xFF94a3b8) : Colors.black45,
+                        color: isDark ? const Color(0xFF94a3b8) : Colors.black45,
                         fontSize: 13.5,
                       ),
                       border: InputBorder.none,
@@ -2768,14 +2264,10 @@ class _HomeScreenState extends State<HomeScreen>
                 ),
                 IconButton(
                   icon: Icon(
-                    isListeningVoice
-                        ? Icons.mic_rounded
-                        : Icons.mic_none_rounded,
+                    isListeningVoice ? Icons.mic_rounded : Icons.mic_none_rounded,
                     color: isListeningVoice
                         ? Colors.redAccent
-                        : (isDark
-                            ? const Color(0xFF7ce0be)
-                            : const Color(0xFF087e76)),
+                        : (isDark ? const Color(0xFF7ce0be) : const Color(0xFF087e76)),
                   ),
                   onPressed: _toggleVoiceSearch,
                 ),
@@ -2848,8 +2340,7 @@ class _HomeScreenState extends State<HomeScreen>
                         fontWeight: FontWeight.w800,
                       ),
                     ),
-                    backgroundColor:
-                        active ? const Color(0xFF087e76) : cat.color,
+                    backgroundColor: active ? const Color(0xFF087e76) : cat.color,
                     shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(12)),
                     onPressed: () => _selectExploreCategory(cat),
@@ -2898,131 +2389,13 @@ class _HomeScreenState extends State<HomeScreen>
     );
   }
 
-  // ==================== نافذة إرسال بلاغ طريق ====================
-  Widget _buildReportSheet() {
-    return Positioned.fill(
-      child: GestureDetector(
-        onTap: () => setState(() => showReportModal = false),
-        child: Container(
-          color: Colors.black54,
-          child: Align(
-            alignment: Alignment.bottomCenter,
-            child: GestureDetector(
-              onTap: () {},
-              child: SafeArea(
-                top: false,
-                child: Container(
-                  width: double.infinity,
-                  margin: const EdgeInsets.all(14),
-                  padding: const EdgeInsets.all(18),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF142e2d),
-                    borderRadius: BorderRadius.circular(22),
-                    border: Border.all(color: const Color(0xFF426761)),
-                  ),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Row(
-                        children: [
-                          Expanded(
-                            child: Text(
-                              tr('ماذا يوجد على الطريق؟',
-                                  'What is on the road?'),
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 17,
-                                fontWeight: FontWeight.w900,
-                              ),
-                            ),
-                          ),
-                          IconButton(
-                            onPressed: () =>
-                                setState(() => showReportModal = false),
-                            icon: const Icon(Icons.close_rounded,
-                                color: Colors.grey),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 8),
-                      Wrap(
-                        spacing: 9,
-                        runSpacing: 9,
-                        children: [
-                          _reportChoice('ازدحام', 'Traffic congestion', '🚗',
-                              Icons.traffic_rounded, const Color(0xFFef4444)),
-                          _reportChoice('حادث', 'Accident', '⚠️',
-                              Icons.car_crash_rounded, const Color(0xFFf59e0b)),
-                          _reportChoice('طريق مغلق', 'Road closed', '⛔',
-                              Icons.block_rounded, const Color(0xFFf59e0b)),
-                          _reportChoice(
-                              'مطب أو حفرة',
-                              'Speed bump or pothole',
-                              '🕳️',
-                              Icons.warning_amber_rounded,
-                              const Color(0xFFf59e0b)),
-                          _reportChoice('سيطرة', 'Checkpoint', '🛡️',
-                              Icons.shield_rounded, const Color(0xFFf59e0b)),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _reportChoice(
-    String typeAr,
-    String typeEn,
-    String emoji,
-    IconData icon,
-    Color color,
-  ) {
-    return SizedBox(
-      width: 145,
-      child: GlassTapButton(
-        backgroundColor: const Color(0xFF203b38),
-        borderColor: color.withOpacity(0.65),
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
-        onTap: () => _sendReport(typeAr, typeEn, emoji),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(icon, color: color, size: 19),
-            const SizedBox(width: 7),
-            Flexible(
-              child: Text(
-                tr(typeAr, typeEn),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 12,
-                  fontWeight: FontWeight.w800,
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
   // ==================== نافذة خطة الرحلة وبدء الملاحة ====================
   Widget _buildRoutePlanSheet() {
     final route = routes.isNotEmpty
         ? (routes[selectedRouteIndex] as Map<String, dynamic>)
         : null;
-    final double distKm =
-        route != null ? ((route['distance'] as num?) ?? 0) / 1000.0 : 0.0;
-    final double durMin = route != null
-        ? (((route['duration'] as num?) ?? 0) / 60.0).ceil().toDouble()
-        : 0.0;
+    final double distKm = route != null ? ((route['distance'] as num?) ?? 0) / 1000.0 : 0.0;
+    final double durMin = route != null ? (((route['duration'] as num?) ?? 0) / 60.0).ceil().toDouble() : 0.0;
 
     return Positioned(
       bottom: 0,
@@ -3037,8 +2410,7 @@ class _HomeScreenState extends State<HomeScreen>
               color: isDark ? const Color(0xFF284e4b) : const Color(0xFF7ce0be),
               width: 1.5),
           boxShadow: const [
-            BoxShadow(
-                color: Colors.black45, blurRadius: 20, offset: Offset(0, -4))
+            BoxShadow(color: Colors.black45, blurRadius: 20, offset: Offset(0, -4))
           ],
         ),
         child: Column(
@@ -3187,8 +2559,7 @@ class _HomeScreenState extends State<HomeScreen>
           borderRadius: BorderRadius.circular(20),
           border: Border.all(color: const Color(0xFF7ce0be), width: 2),
           boxShadow: const [
-            BoxShadow(
-                color: Colors.black54, blurRadius: 16, offset: Offset(0, 6))
+            BoxShadow(color: Colors.black54, blurRadius: 16, offset: Offset(0, 6))
           ],
         ),
         child: Column(
@@ -3229,8 +2600,7 @@ class _HomeScreenState extends State<HomeScreen>
                   ),
                 ),
                 IconButton(
-                  icon: const Icon(Icons.stop_rounded,
-                      color: Colors.redAccent, size: 30),
+                  icon: const Icon(Icons.stop_rounded, color: Colors.redAccent, size: 30),
                   onPressed: _stopNav,
                 ),
               ],
@@ -3279,8 +2649,7 @@ class _HomeScreenState extends State<HomeScreen>
                     borderRadius: BorderRadius.circular(14),
                   ),
                   child: Center(
-                    child: SvgPicture.string(kGreenNavArrowSvg,
-                        width: 30, height: 30),
+                    child: SvgPicture.string(kGreenNavArrowSvg, width: 30, height: 30),
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -3301,11 +2670,8 @@ class _HomeScreenState extends State<HomeScreen>
             ),
             const Divider(color: Color(0xFF284e4b), height: 28),
             ListTile(
-              leading: const Icon(Icons.offline_bolt_rounded,
-                  color: Color(0xFF7ce0be)),
-              title: Text(
-                  tr('خرائط بدون نت (18 محافظة)',
-                      'Offline Maps (18 Provinces)'),
+              leading: const Icon(Icons.offline_bolt_rounded, color: Color(0xFF7ce0be)),
+              title: Text(tr('خرائط بدون نت (18 محافظة)', 'Offline Maps (18 Provinces)'),
                   style: TextStyle(
                       color: isDark ? Colors.white : Colors.black87,
                       fontWeight: FontWeight.w700)),
@@ -3326,8 +2692,7 @@ class _HomeScreenState extends State<HomeScreen>
               },
             ),
             SwitchListTile(
-              secondary:
-                  const Icon(Icons.dark_mode_rounded, color: Color(0xFF7ce0be)),
+              secondary: const Icon(Icons.dark_mode_rounded, color: Color(0xFF7ce0be)),
               title: Text(tr('الوضع الليلي', 'Dark Mode'),
                   style: TextStyle(
                       color: isDark ? Colors.white : Colors.black87,
@@ -3339,11 +2704,9 @@ class _HomeScreenState extends State<HomeScreen>
               },
             ),
             SwitchListTile(
-              secondary:
-                  const Icon(Icons.language_rounded, color: Color(0xFFefbb52)),
+              secondary: const Icon(Icons.language_rounded, color: Color(0xFFefbb52)),
               title: const Text('English Language',
-                  style: TextStyle(
-                      color: Colors.white, fontWeight: FontWeight.w700)),
+                  style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700)),
               value: isEnglish,
               onChanged: (val) {
                 setState(() => isEnglish = val);
@@ -3352,8 +2715,7 @@ class _HomeScreenState extends State<HomeScreen>
             ),
             const Divider(color: Color(0xFF284e4b), height: 28),
             ListTile(
-              leading:
-                  const Icon(Icons.share_rounded, color: Color(0xFF7ce0be)),
+              leading: const Icon(Icons.share_rounded, color: Color(0xFF7ce0be)),
               title: Text(tr('مشاركة موقعي (دلّي صديق)', 'Share My Location'),
                   style: TextStyle(
                       color: isDark ? Colors.white : Colors.black87,
@@ -3380,4 +2742,3 @@ class _HomeScreenState extends State<HomeScreen>
     );
   }
 // ==================== نهاية الجزء السادس والأخير ====================
-}
