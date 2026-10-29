@@ -54,17 +54,11 @@ const Map<String, String> kReportTypeSvgs = {
       '<svg viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="4" y="4" width="40" height="40" rx="14" fill="#efbb52" fill-opacity="0.18"/><rect x="17" y="8" width="14" height="32" rx="7" fill="#142e2d" stroke="#087e76" stroke-width="2"/><circle cx="24" cy="15" r="3.2" fill="#E5484D"/><circle cx="24" cy="24" r="3.2" fill="#efbb52"/><circle cx="24" cy="33" r="3.2" fill="#16a34a"/></svg>',
   'police':
       '<svg viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="4" y="4" width="40" height="40" rx="14" fill="#087e76" fill-opacity="0.16"/><path d="M24 9L36 14V24C36 32 24 39 24 39C24 39 12 32 12 24V14L24 9Z" fill="#087e76" stroke="#9cdbc0" stroke-width="2"/><circle cx="24" cy="23" r="4.5" fill="#efbb52"/></svg>',
-  'digging':
-      '<svg viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="4" y="4" width="40" height="40" rx="14" fill="#ea580c" fill-opacity="0.18"/><path d="M14 36H34L29 22H19L14 36Z" fill="#ea580c" stroke="#142e2d" stroke-width="2" stroke-linejoin="round"/><path d="M21 14H27L29 22H19L21 14Z" fill="#efbb52"/><line x1="10" y1="36" x2="38" y2="36" stroke="#142e2d" stroke-width="3" stroke-linecap="round"/></svg>',
-  'road_closed':
-      '<svg viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="4" y="4" width="40" height="40" rx="14" fill="#E5484D" fill-opacity="0.18"/><circle cx="24" cy="24" r="13" fill="#E5484D" stroke="#ffffff" stroke-width="2"/><rect x="15" y="21.5" width="18" height="5" rx="2.5" fill="#ffffff"/></svg>',
-  'camera':
-      '<svg viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="4" y="4" width="40" height="40" rx="14" fill="#2563eb" fill-opacity="0.18"/><rect x="11" y="15" width="26" height="18" rx="5" fill="#142e2d" stroke="#38BDF8" stroke-width="2"/><circle cx="24" cy="24" r="5.5" fill="#38BDF8"/><circle cx="24" cy="24" r="2.2" fill="#142e2d"/><circle cx="32" cy="19" r="1.5" fill="#E5484D"/></svg>',
   'hazard':
       '<svg viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="4" y="4" width="40" height="40" rx="14" fill="#efbb52" fill-opacity="0.2"/><path d="M24 10L39 36H9L24 10Z" fill="#efbb52" stroke="#142e2d" stroke-width="2.5" stroke-linejoin="round"/><path d="M24 20V27" stroke="#142e2d" stroke-width="3" stroke-linecap="round"/><circle cx="24" cy="32" r="2" fill="#142e2d"/></svg>',
 };
 
-// زر زجاجي بنعومة واستجابة لمسية مطابقة لأزرار الآيفون (iOS Spring Physics) ومحسّن للسرعة الفائقة
+// زر زجاجي بنعومة واستجابة لمسية مطابقة لأزرار الآيفون (iOS Spring Physics)
 class GlassTapButton extends StatefulWidget {
   final VoidCallback onTap;
   final Widget child;
@@ -103,8 +97,8 @@ class _GlassTapButtonState extends State<GlassTapButton>
   void initState() {
     super.initState();
     _ctrl = AnimationController(
-        vsync: this, duration: const Duration(milliseconds: 85));
-    _scale = Tween<double>(begin: 1.0, end: 0.93)
+        vsync: this, duration: const Duration(milliseconds: 90));
+    _scale = Tween<double>(begin: 1.0, end: 0.92)
         .animate(CurvedAnimation(parent: _ctrl, curve: Curves.easeOutCubic));
   }
 
@@ -134,44 +128,48 @@ class _GlassTapButtonState extends State<GlassTapButton>
   @override
   Widget build(BuildContext context) {
     final br = widget.borderRadius ?? BorderRadius.circular(14);
-    final bg = widget.backgroundColor ?? Colors.white.withOpacity(0.90);
+    final bg = widget.backgroundColor ?? Colors.white.withOpacity(0.86);
     final borderCol =
         widget.borderColor ?? const Color(0xFF087e76).withOpacity(0.28);
 
-    return RepaintBoundary(
-      child: GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        onTapDown: _down,
-        onTapUp: _up,
-        onTapCancel: _cancel,
-        child: ScaleTransition(
-          scale: _scale,
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 90),
-            curve: Curves.easeOutCubic,
-            width: widget.width,
-            height: widget.height,
-            padding: widget.padding,
-            alignment: Alignment.center,
-            decoration: BoxDecoration(
-              color: _pressed
-                  ? bg.withOpacity((bg.opacity + 0.14).clamp(0.0, 1.0))
-                  : bg,
-              shape: widget.isCircle ? BoxShape.circle : BoxShape.rectangle,
-              borderRadius: widget.isCircle ? null : br,
-              border: Border.all(
-                color: _pressed ? const Color(0xFFefbb52) : borderCol,
-                width: _pressed ? 1.6 : 1.1,
-              ),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(_pressed ? 0.05 : 0.14),
-                  blurRadius: _pressed ? 5 : 12,
-                  offset: Offset(0, _pressed ? 2 : 4),
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTapDown: _down,
+      onTapUp: _up,
+      onTapCancel: _cancel,
+      child: ScaleTransition(
+        scale: _scale,
+        child: ClipRRect(
+          borderRadius: widget.isCircle ? BorderRadius.circular(999) : br,
+          child: BackdropFilter(
+            filter: ui.ImageFilter.blur(sigmaX: 14, sigmaY: 14),
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 100),
+              curve: Curves.easeOutCubic,
+              width: widget.width,
+              height: widget.height,
+              padding: widget.padding,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                color: _pressed
+                    ? bg.withOpacity((bg.opacity + 0.14).clamp(0.0, 1.0))
+                    : bg,
+                shape: widget.isCircle ? BoxShape.circle : BoxShape.rectangle,
+                borderRadius: widget.isCircle ? null : br,
+                border: Border.all(
+                  color: _pressed ? const Color(0xFFefbb52) : borderCol,
+                  width: _pressed ? 1.6 : 1.1,
                 ),
-              ],
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(_pressed ? 0.06 : 0.16),
+                    blurRadius: _pressed ? 6 : 14,
+                    offset: Offset(0, _pressed ? 2 : 4),
+                  ),
+                ],
+              ),
+              child: widget.child,
             ),
-            child: widget.child,
           ),
         ),
       ),
@@ -264,6 +262,8 @@ class IraqProvince {
   final String nameEn;
   final LatLng center;
   final String sizeMb;
+
+  /// نصف المنطقة المحمّلة حول مركز المحافظة بالدرجات (0.30 تقريباً 33 كم)
   final double radiusDeg;
 
   const IraqProvince({
@@ -430,8 +430,10 @@ const List<VoiceProfile> kVoiceProfiles = [
 
 // ==================== إعدادات وأدوات الميزات الجديدة ====================
 
+/// دومين روابط المشاركة (App Links). يجب أن يكون دومين تملكه وعليه ملف assetlinks.json
 const String kShareHost = 'dlinii.app';
 
+/// فلتر ليلي فوري: يحوّل الخريطة الفاتحة إلى ليلية (أرض داكنة، طرق أغمق، نهر أزرق فاتح)
 const ColorFilter kInstantDarkFilter = ColorFilter.matrix(<double>[
   -0.1176,
   -1.4088,
@@ -524,6 +526,7 @@ class _OfflineTiles {
     return false;
   }
 
+  /// ينزّل بلاطات المحافظة فعلياً على الجهاز. يرجع true عند النجاح.
   static Future<bool> downloadProvince(IraqProvince p,
       {required void Function(double) onProgress}) async {
     if (dir == null) await init();
@@ -564,6 +567,7 @@ class _OfflineTiles {
     return failed <= total * 0.03;
   }
 
+  /// يحذف بلاطات المحافظة ويُبقي المشتركة مع محافظات أخرى محمّلة
   static Future<void> deleteProvince(
       IraqProvince p, Set<String> otherDownloadedIds) async {
     if (dir == null) await init();
@@ -589,6 +593,7 @@ class _OfflineTiles {
   }
 }
 
+/// يقرأ البلاطة من الجهاز إذا كانت محمّلة، وإلا يجلبها من الإنترنت
 class _OfflineTileProvider extends TileProvider {
   _OfflineTileProvider() : super(headers: {'User-Agent': 'com.dlinii.app'});
 
@@ -623,8 +628,6 @@ class _Snap {
 class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
 
-  bool _hasAskedPermission = false;
-
   static const int endVotesThreshold = 3;
   static const String playStoreUrl =
       'https://play.google.com/store/apps/details?id=com.dlinii.app';
@@ -653,9 +656,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   double downloadProgress = 0.0;
 
   // حالة الاتصال والميزات الجديدة
-  bool _forceOffline = false;
+  bool _forceOffline = false; // true = لا يوجد إنترنت فعلياً
   Timer? _connProbeTimer;
-  int _exploreReqId = 0;
+  int _exploreReqId = 0; // رقم آخر طلب في "اكتشف حولك" (لإلغاء القديم)
   final Map<String, List<Map<String, dynamic>>> _exploreCache = {};
   final Map<String, int> _exploreCacheTs = {};
   int _searchReqId = 0;
@@ -672,8 +675,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   String toastMessage = '';
   bool isToastVisible = false;
   Timer? toastTimer, pulseAnimationTimer;
-  // استخدام ValueNotifier بدلاً من setState المتكرر لمنع أي ثقل أو تقطيع أثناء التنقل
-  final ValueNotifier<double> _pulseNotifier = ValueNotifier<double>(0.0);
+  double pulseValue = 0.0;
 
   final MapController mapController = MapController();
 
@@ -893,15 +895,16 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   String hudArrow = '↑', hudInstruction = '—', hudStreet = '';
   String navEta = '—', navRemMins = '—', navRemKm = '—';
 
+  // نظام الصوت المزدوج النقي (0 = صوت فتاة، 1 = صوت رجل) لكل من العربي والإنجليزي
   bool voiceEnabled = true;
-  int selectedVoiceIndex = 0;
-  int voiceSpeedLevel = 1;
+  int selectedVoiceIndex = 0; // 0 = عربي، 1 = أجنبي
+  int voiceSpeedLevel = 1; // 0 = هادئ، 1 = طبيعي، 2 = سريع
   final FlutterTts flutterTts = FlutterTts();
   List<Map<String, String>> _availableVoices = [];
   bool _voicesLoadedOnce = false;
   final Map<String, int> _voiceSlot = {
-    'ar_voice': 0,
-    'en_voice': 0,
+    'ar_voice': 0, // 0: فتاة ، 1: رجل
+    'en_voice': 0, // 0: فتاة ، 1: رجل
   };
   final Map<String, int> _pinnedSlot = {};
 
@@ -969,9 +972,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     });
 
     pulseAnimationTimer =
-        Timer.periodic(const Duration(milliseconds: 90), (timer) {
+        Timer.periodic(const Duration(milliseconds: 60), (timer) {
       if (mounted && routes.isNotEmpty) {
-        _pulseNotifier.value = (_pulseNotifier.value + 0.08) % (2 * math.pi);
+        setState(() => pulseValue = (pulseValue + 0.06) % (2 * math.pi));
       }
     });
   }
@@ -983,7 +986,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     splashPulseController.dispose();
     _flyController?.dispose();
     pulseAnimationTimer?.cancel();
-    _pulseNotifier.dispose();
     positionStream?.cancel();
     simTimer?.cancel();
     searchDebounce?.cancel();
@@ -1304,8 +1306,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       final savedLang = prefs.getBool('dlini_is_en') ?? false;
       final savedDark = prefs.getBool('dlini_is_dark_default_v2') ?? true;
       final savedProvs = prefs.getStringList('dlini_offline_provinces') ?? [];
-      final bool alreadyAsked = prefs.getBool('dlini_perm_asked_v2') ?? false;
-
       downloadedProvinces = savedProvs.toSet();
 
       for (final vp in kVoiceProfiles) {
@@ -1323,8 +1323,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           voiceSpeedLevel = savedSpeed.clamp(0, 2);
           isEnglish = savedLang;
           isDark = savedDark;
-          // إذا لم يسبق له رؤية النافذة، نظهرها. وإذا اختار سابقاً، نخفيها نهائياً!
-          showNotifPermissionModal = !alreadyAsked;
         });
       }
     } catch (_) {}
@@ -1356,6 +1354,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
   String _normVoice(String s) => s.toLowerCase().replaceAll('_', '-');
 
+  // فحص دقيق جداً لتحديد ما إذا كان الصوت في المحرك أنثوياً (في جوجل، سامسونج، أبل، ومايكروسوفت)
   bool _isEngineVoiceFemale(Map<String, String> v) {
     final name = _normVoice(v['name'] ?? '');
     final g = _normVoice(v['gender'] ?? '');
@@ -1484,6 +1483,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
   Future<void> _applyVoiceProfile() async {
     try {
+      // إعادة فحص الأصوات لأن المتصفح يحمل الأصوات السحابية بعد ثانية من الفتح
       if (_availableVoices.length < 5) {
         _voicesLoadedOnce = false;
         await _loadAvailableVoicesOnce();
@@ -1523,6 +1523,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       bool foundRealGenderVoice = false;
 
       if (langVoices.isNotEmpty) {
+        // أولوية قصوى للأصوات الطبيعية النقية (Online Natural) في Edge ثم بقية الأصوات المطابقة للجنس
         final genderMatches = langVoices.where((v) {
           return wantFemale ? _isEngineVoiceFemale(v) : _isEngineVoiceMale(v);
         }).toList();
@@ -1561,6 +1562,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         await flutterTts.setLanguage(vp.locale);
       }
 
+      // إذا وجد صوت الرجل الحقيقي أو الفتاة الحقيقية نخلي النبرة طبيعية 1.0، وإذا لم يجد يغير التردد بقوة (1.65 فتاة / 0.50 رجل)
       final double targetPitch =
           foundRealGenderVoice ? 1.0 : (wantFemale ? 1.65 : 0.50);
 
@@ -1571,6 +1573,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     } catch (_) {}
   }
 
+  // 1. الضغط على البطاقة يختار اللغة فقط ولا يبدل الصوت
   Future<void> _onTapVoiceCardOnly(int index) async {
     setState(() => selectedVoiceIndex = index);
     final prefs = await SharedPreferences.getInstance();
@@ -1590,6 +1593,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         'Selected: ${vp.nameEn} ($voiceTypeLabel)'));
   }
 
+  // 2. الضغط على الزر الأخضر بالأسفل يبدل فوراً بين (صوت فتاة ⇄ صوت رجل) سواء كنت بالعربي أو الإنجليزي
   Future<void> _onTapSwitchVoiceButton() async {
     final vp = currentVoice;
     final int currentSlot = _voiceSlot[vp.id] ?? 0;
@@ -1620,6 +1624,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     _toast(voiceTypeLabel);
   }
 
+  // 3. تثبيت الصوت المختار للأبد
   Future<void> _togglePinCurrentVoice() async {
     final vp = currentVoice;
     final prefs = await SharedPreferences.getInstance();
@@ -1650,6 +1655,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   }
 
   Future<void> _openAndFetchCategory(ExploreCategory cat) async {
+    // كل ضغطة تأخذ رقم طلب جديد، وأي ردّ قديم يتأخر يُهمَل تلقائياً
     final int reqId = ++_exploreReqId;
     final LatLng center = me ?? mapController.camera.center;
     final String cacheKey =
@@ -1685,6 +1691,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         'User-Agent': 'com.dlinii.global.app'
       }).timeout(const Duration(seconds: 12));
 
+      // وصل ردّ متأخر لفئة قديمة: تجاهله
       if (reqId != _exploreReqId) return;
 
       if (res.statusCode == 200) {
@@ -1738,11 +1745,15 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     }
   }
 
+  // ---------- أدوات الميزات الجديدة ----------
+
   Future<void> _initOfflineTiles() async {
     await _OfflineTiles.init();
     if (mounted) setState(() {});
   }
 
+  /// يفحص وجود إنترنت فعلي كل 25 ثانية، وعند انقطاعه يتحول التطبيق للخرائط
+  /// المحفوظة والمسارات المحلية تلقائياً.
   void _startConnectivityProbe() {
     if (kIsWeb) return;
     _probeConnectivity();
@@ -1788,6 +1799,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         : '${d.toStringAsFixed(1)} ${tr('كم', 'km')} · ';
   }
 
+  /// البحث الصوتي بالمايكروفون (يفضّل اللهجة العراقية ar_IQ)
   Future<void> _toggleVoiceSearch() async {
     if (isListeningVoice) {
       try {
@@ -1977,12 +1989,13 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       }
 
       if (affectedSegment.length >= 2) {
-        final bool isSevereRed = type == 'traffic' || type == 'road_closed';
+        final bool isTrafficJam = type == 'traffic';
         overlays.add(
           Polyline(
             points: affectedSegment,
-            color:
-                isSevereRed ? const Color(0xFFE5484D) : const Color(0xFFefbb52),
+            color: isTrafficJam
+                ? const Color(0xFFE5484D)
+                : const Color(0xFFefbb52),
             strokeWidth: 9.5,
           ),
         );
@@ -2028,13 +2041,13 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   void _zoomIn() {
     final nextZoom = (mapController.camera.zoom + 1.0).clamp(3.0, 19.5);
     mapController.move(mapController.camera.center, nextZoom);
-    currentZoom = nextZoom;
+    setState(() => currentZoom = nextZoom);
   }
 
   void _zoomOut() {
     final nextZoom = (mapController.camera.zoom - 1.0).clamp(3.0, 19.5);
     mapController.move(mapController.camera.center, nextZoom);
-    currentZoom = nextZoom;
+    setState(() => currentZoom = nextZoom);
   }
 
   void _toggle3DPerspective() {
@@ -2071,12 +2084,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         return tr('ازدحام', 'Traffic Jam');
       case 'police':
         return tr('نقطة مرور', 'Police / Patrol');
-      case 'digging':
-        return tr('حفريات', 'Roadworks / Digging');
-      case 'road_closed':
-        return tr('طريق مغلق', 'Road Closed');
-      case 'camera':
-        return tr('كاميرا سرعة', 'Speed Camera');
       default:
         return tr('خطر آخر', 'Road Hazard');
     }
@@ -2161,7 +2168,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   void _onPositionUpdate(LatLng rawMe, double speedMps, double heading,
       {bool isFirst = false}) {
     if (!mounted) return;
-    final bool wasRealFix = _hasRealFix;
     _hasRealFix = true;
 
     LatLng nextMe = rawMe;
@@ -2187,16 +2193,11 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     final int gap = (nowMs - _lastFixMs).clamp(250, 1500).toInt();
     _lastFixMs = nowMs;
 
-    final int nextSpeed = math.max(0, (speedMps * 3.6).round());
-    currentBearing = newBearing;
-    me = nextMe;
-    if (!wasRealFix || nextSpeed != currentSpeedKmh) {
-      setState(() {
-        currentSpeedKmh = nextSpeed;
-      });
-    } else {
-      currentSpeedKmh = nextSpeed;
-    }
+    setState(() {
+      currentBearing = newBearing;
+      me = nextMe;
+      currentSpeedKmh = math.max(0, (speedMps * 3.6).round());
+    });
 
     if (isFirst) {
       _glideCtrl?.stop();
@@ -2261,6 +2262,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     final LatLng center = me ?? mapController.camera.center;
     try {
       final lang = isEnglish ? 'en' : 'ar';
+      // نميل بالنتائج نحو موقعك (بدون حصر) ثم نرتبها من الأقرب للأبعد
       const double delta = 1.5;
       final String viewbox =
           '${center.longitude - delta},${center.latitude + delta},${center.longitude + delta},${center.latitude - delta}';
@@ -2302,6 +2304,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     List<dynamic>? found;
     String source = 'online';
 
+    // 1) المحاولة الأونلاين (إذا لم ينقطع الإنترنت)
     if (!_forceOffline) {
       try {
         final url = Uri.parse(
@@ -2318,6 +2321,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       } catch (_) {}
     }
 
+    // 2) بدون إنترنت: مسار محفوظ من رحلة سابقة، وإلا مسار احتياطي محلي
     if (found == null) {
       final Map<String, dynamic>? cachedRoute = await _loadRouteFromCache(o, d);
       if (cachedRoute != null) {
@@ -2371,6 +2375,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     };
   }
 
+  /// يحفظ آخر الرحلات الناجحة ليعاد استخدامها عند انقطاع الإنترنت
   Future<void> _saveRouteToCache(LatLng o, LatLng d, dynamic route) async {
     try {
       final Map<String, dynamic> copy =
@@ -2420,6 +2425,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     } catch (_) {}
   }
 
+  /// يبحث عن مسار محفوظ لنفس الوجهة وموقعك قريب منه، ويقتطع الجزء المتبقي
   Future<Map<String, dynamic>?> _loadRouteFromCache(LatLng o, LatLng d) async {
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -2447,7 +2453,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
             bi = i;
           }
         }
-        if (bd > 350) continue;
+        if (bd > 350) continue; // موقعك بعيد عن المسار المحفوظ
         return _trimRouteFrom(route, pts, bi, o);
       }
     } catch (_) {}
@@ -2716,29 +2722,17 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         ? '${(distToStep / 1000).toStringAsFixed(1)} ${tr('كم', 'km')}'
         : '${((distToStep / 10).round() * 10)} ${tr('م', 'm')}';
 
-    final String nextKm = (remainingMeters / 1000).toStringAsFixed(1);
-    final String nextMins = mins.toString();
-    final String nextArrow = info[1];
-    final String nextInstr =
-        tr('بعد $distFormatted: ${info[0]}', 'In $distFormatted: ${info[0]}');
-    final String nextStreet =
-        (nx['name'] != null && nx['name'].toString().isNotEmpty)
-            ? nx['name']
-            : tr('الطريق الرئيسي', 'Main Road');
-
-    if (nextKm != navRemKm ||
-        nextMins != navRemMins ||
-        nextInstr != hudInstruction ||
-        nextStreet != hudStreet) {
-      setState(() {
-        navRemKm = nextKm;
-        navRemMins = nextMins;
-        navEta = etaStr;
-        hudArrow = nextArrow;
-        hudInstruction = nextInstr;
-        hudStreet = nextStreet;
-      });
-    }
+    setState(() {
+      navRemKm = (remainingMeters / 1000).toStringAsFixed(1);
+      navRemMins = mins.toString();
+      navEta = etaStr;
+      hudArrow = info[1];
+      hudInstruction =
+          tr('بعد $distFormatted: ${info[0]}', 'In $distFormatted: ${info[0]}');
+      hudStreet = (nx['name'] != null && nx['name'].toString().isNotEmpty)
+          ? nx['name']
+          : tr('الطريق الرئيسي', 'Main Road');
+    });
 
     if (distToStep < 200 && lastSpokenStep != currentStepIndex) {
       lastSpokenStep = currentStepIndex;
@@ -2784,21 +2778,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         msg = enMode
             ? 'Traffic checkpoint 250 meters ahead'
             : 'اِنْتَبِهْ، نُقْطَةُ مُرُورٍ أَمَامَكَ بَعْدَ مِائَتَيْنِ وَخَمْسِينَ مِتْرَاً';
-      } else if (type == 'digging') {
-        alertDist = 180;
-        msg = enMode
-            ? 'Caution, roadworks and digging ahead'
-            : 'اِنْتَبِهْ، أَمَامَكَ حَفْرِيَّاتٌ وَأَعْمَالُ طُرُقٍ';
-      } else if (type == 'road_closed') {
-        alertDist = 250;
-        msg = enMode
-            ? 'Warning, road closed ahead'
-            : 'تَحْذِيرٌ، الطَّرِيقُ أَمَامَكَ مُغْلَقٌ';
-      } else if (type == 'camera') {
-        alertDist = 300;
-        msg = enMode
-            ? 'Attention, speed camera 300 meters ahead'
-            : 'اِنْتَبِهْ، كَامِيرَا سُرْعَةٍ أَمَامَكَ بَعْدَ ثَلَاثِمِائَةِ مِتْرٍ';
       }
 
       if (dist <= alertDist && !warnedReports.contains(repId)) {
@@ -3000,8 +2979,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           'title': tr('2. نظام البلاغات المرورية التشاركي والمجهول',
               '2. Anonymous Community Road Reports'),
           'body': tr(
-              'عندما تقوم بإرسال تنبيه طريق (مثل: مطب، حفرة، حادث، ازدحام مروري، نقطة مرور، حفريات، طريق مغلق، أو كاميرا سرعة)، يتم رفع نوع البلاغ وإحداثيات الموقع الجغرافي للحدث فقط إلى قاعدة البيانات السحابية لتنبيه السائقين الآخرين، وذلك بشكل مجهول الهوية تماماً (Anonymous) دون إرفاق اسمك أو رقم هاتفك أو أي معرف شخصي.',
-              'When you submit a road alert (speed bump, pothole, accident, traffic jam, checkpoint, roadworks, closed road, or speed camera), only the incident type and coordinates are uploaded anonymously to warn other drivers, without any personal identifiers.')
+              'عندما تقوم بإرسال تنبيه طريق (مثل: مطب، حفرة، حادث، ازدحام مروري، أو نقطة مرور)، يتم رفع نوع البلاغ وإحداثيات الموقع الجغرافي للحدث فقط إلى قاعدة البيانات السحابية لتنبيه السائقين الآخرين، وذلك بشكل مجهول الهوية تماماً (Anonymous) دون إرفاق اسمك أو رقم هاتفك أو أي معرف شخصي.',
+              'When you submit a road alert (speed bump, pothole, accident, traffic jam, or checkpoint), only the incident type and coordinates are uploaded anonymously to warn other drivers, without any personal identifiers.')
         },
         {
           'title': tr('3. التخزين المحلي والخرائط بدون إنترنت',
@@ -3070,8 +3049,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           'title': tr('3. كشف الازدحامات المرورية وتنبيهات المخاطر الحية',
               '3. Real-Time Traffic & Road Hazard Alerts'),
           'body': tr(
-              '• يلوّن التطبيق مقاطع المسار تلقائياً بناءً على البيانات الحقيقية: الأخضر الزمردي للطرق السالكة، الأصفر لمناطق الحوادث والحفريات والمطبات، والأحمر لمناطق الازدحام المروري والطرق المغلقة.\n• نظام بلاغات تشاركي يتيح للسائقين الإبلاغ الفوري عن (مطب، حفرة، حادث، ازدحام، نقطة مرور، حفريات، طريق مغلق، كاميرا سرعة، أو خطر) مع تنبيه صوتي تلقائي قبل الوصول للخطر، ونظام تصويت ذكي (موجود / منتهي) يحذف البلاغ تلقائياً عند انتهائه.',
-              '• Color-coded route segments based on real data: Emerald Green for clear roads, Yellow for hazards/accidents/digging, and Red for traffic jams and closed roads.\n• Community reporting system for speed bumps, potholes, crashes, checkpoints, roadworks, closed roads, and speed cameras with automatic voice warnings and smart crowd-voting.')
+              '• يلوّن التطبيق مقاطع المسار تلقائياً بناءً على البيانات الحقيقية: الأخضر الزمردي للطرق السالكة، الأصفر لمناطق الحوادث والحفريات والمطبات، والأحمر لمناطق الازدحام المروري.\n• نظام بلاغات تشاركي يتيح للسائقين الإبلاغ الفوري عن (مطب، حفرة، حادث، ازدحام، نقطة مرور، أو خطر) مع تنبيه صوتي تلقائي قبل الوصول للخطر، ونظام تصويت ذكي (موجود / منتهي) يحذف البلاغ تلقائياً عند انتهائه.',
+              '• Color-coded route segments based on real data: Emerald Green for clear roads, Yellow for hazards/accidents, and Red for traffic jams.\n• Community reporting system for speed bumps, potholes, crashes, and checkpoints with automatic voice warnings and smart crowd-voting.')
         },
         {
           'title': tr('4. ميزة "اكتشف ما حولك" المرتبة حسب الأقرب إليك',
@@ -3369,7 +3348,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     );
   }
 
-// ==================== بداية الجزء 4 من 5 ====================
   @override
   Widget build(BuildContext context) {
     final TextDirection outerDir = Directionality.of(context);
@@ -3387,6 +3365,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   }
 
   Widget _buildMain(BuildContext context) {
+    // تبديل ليلي/نهاري فوري: إذا الستايل الليلي لم يجهز بعد نستخدم النهاري مع فلتر ليلي مؤقت
     vt.Style? activeVtStyle = isDark ? _vtDark : _vtLight;
     bool tempDarkFilter = false;
     if (isDark && _vtDark == null && _vtLight != null) {
@@ -3474,8 +3453,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                 },
               ),
               children: [
-                // طبقة الخرائط الذكية (تعمل أونلاين وتتحول أوفلاين تلقائياً عند انقطاع الإنترنت أو تحميل المحافظة)
-                if (ofmLayer != null && !_forceOffline)
+                if (ofmLayer != null)
                   ofmLayer
                 else
                   ColorFiltered(
@@ -3491,7 +3469,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                       subdomains: const ['a', 'b', 'c', 'd'],
                       maxZoom: 20,
                       userAgentPackageName: 'com.dlinii.app',
-                      // هنا السر: استخدام _OfflineTileProvider الذي يفحص الملفات المخزنة محلياً أولاً
                       tileProvider: _offlineTileProvider,
                     ),
                   ),
@@ -3541,11 +3518,15 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                               .map((c) => LatLng((c[1] as num).toDouble(),
                                   (c[0] as num).toDouble()))
                               .toList();
+                          final double flowAlpha =
+                              (0.55 + 0.35 * math.sin(pulseValue))
+                                  .clamp(0.25, 0.90);
                           return Polyline(
                             points: points,
-                            color: isDark
-                                ? const Color(0xFF6ee7b7).withOpacity(0.8)
-                                : const Color(0xFF087e76).withOpacity(0.8),
+                            color: (isDark
+                                    ? const Color(0xFF6ee7b7)
+                                    : const Color(0xFF99f6e4))
+                                .withOpacity(flowAlpha),
                             strokeWidth: 3.8,
                           );
                         }),
@@ -4980,7 +4961,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                   child: ClipRRect(
                     borderRadius: BorderRadius.circular(22),
                     child: BackdropFilter(
-                      filter: ui.ImageFilter.blur(sigmaX: 14, sigmaY: 14),
+                      filter: ui.ImageFilter.blur(sigmaX: 16, sigmaY: 16),
                       child: Container(
                         padding: const EdgeInsets.all(14),
                         decoration: BoxDecoration(
@@ -5424,7 +5405,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                           ),
                         ),
                         const SizedBox(height: 10),
-                        // شبكة البلاغات المرورية المحدثة (تضم كاميرا السرعة، الطريق المغلق، والحفريات)
                         GridView.count(
                           crossAxisCount: 3,
                           shrinkWrap: true,
@@ -5432,12 +5412,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                           crossAxisSpacing: 8,
                           childAspectRatio: 1.12,
                           children: [
-                            _buildRepGridBtn(
-                                'camera', tr('كاميرا سرعة', 'Speed Cam')),
-                            _buildRepGridBtn(
-                                'road_closed', tr('طريق مغلق', 'Closed')),
-                            _buildRepGridBtn(
-                                'digging', tr('حفريات', 'Roadworks')),
                             _buildRepGridBtn('bump', tr('مطب', 'Bump')),
                             _buildRepGridBtn('pothole', tr('حفرة', 'Pothole')),
                             _buildRepGridBtn('crash', tr('حادث', 'Crash')),
