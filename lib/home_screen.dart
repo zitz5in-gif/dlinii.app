@@ -1,2517 +1,2440 @@
-// ==================== بداية الجزء 1 من 6 ====================
+// ============================================================================
+// بداية الجزء 1 من 5 - انسخ من هنا إلى بداية ملف lib/home_screen.dart
+// ============================================================================
 import 'dart:async';
 import 'dart:convert';
-import 'dart:io';
 import 'dart:math' as math;
-import 'dart:ui' as ui;
-
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_core/firebase_core.dart';
-import 'package:flutter/foundation.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_map/flutter_map.dart';
-import 'package:flutter_svg/flutter_svg.dart';
-import 'package:flutter_tts/flutter_tts.dart';
-import 'package:geolocator/geolocator.dart';
-import 'package:http/http.dart' as http;
 import 'package:latlong2/latlong.dart';
-import 'package:path_provider/path_provider.dart';
+import 'package:geolocator/geolocator.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:share_plus/share_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:speech_to_text/speech_to_text.dart' as stt;
-import 'package:url_launcher/url_launcher.dart';
-import 'package:vector_map_tiles/vector_map_tiles.dart' as vt;
-import 'package:vector_tile_renderer/vector_tile_renderer.dart' as vtr;
+import 'package:http/http.dart' as http;
 
-// ==================== فلاتر الألوان للوضع الليلي ====================
-const ColorFilter kInstantDarkFilter = ColorFilter.matrix(<double>[
-  -0.82, 0.0, 0.0, 0.0, 215.0,
-  0.0, -0.80, 0.0, 0.0, 212.0,
-  0.0, 0.0, -0.75, 0.0, 208.0,
-  0.0, 0.0, 0.0, 1.0, 0.0,
-]);
-
-// ==================== أيقونات SVG المخصصة ====================
-const String kOriginPinSvg = '''
-<svg viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg">
-  <circle cx="20" cy="20" r="14" fill="#087e76" stroke="#ffffff" stroke-width="3.5"/>
-  <circle cx="20" cy="20" r="5.5" fill="#efbb52"/>
-</svg>
-''';
-
-const String kDestPinSvg = '''
-<svg viewBox="0 0 44 52" xmlns="http://www.w3.org/2000/svg">
-  <path d="M22 2C11.5 2 3 10.5 3 21c0 13.2 19 29 19 29s19-15.8 19-29C41 10.5 32.5 2 22 2z" fill="#087e76" stroke="#ffffff" stroke-width="3"/>
-  <circle cx="22" cy="20" r="7.5" fill="#efbb52"/>
-</svg>
-''';
-
-const String kGreenNavArrowSvg = '''
-<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
-  <circle cx="32" cy="32" r="26" fill="#087e76" fill-opacity="0.22"/>
-  <path d="M32 8L50 52L32 42L14 52L32 8Z" fill="#10b981" stroke="#ffffff" stroke-width="3.5" stroke-linejoin="round"/>
-</svg>
-''';
-
-const String kMyLocationPulseSvg = '''
-<svg viewBox="0 0 60 60" xmlns="http://www.w3.org/2000/svg">
-  <circle cx="30" cy="30" r="24" fill="#10b981" fill-opacity="0.20"/>
-  <circle cx="30" cy="30" r="11" fill="#087e76" stroke="#ffffff" stroke-width="3.5"/>
-  <circle cx="30" cy="30" r="4.2" fill="#7ce0be"/>
-</svg>
-''';
-
-const String kGpsTargetSvg = '''
-<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-  <circle cx="12" cy="12" r="7" fill="none" stroke="#7ce0be" stroke-width="2.2"/>
-  <circle cx="12" cy="12" r="2.8" fill="#efbb52"/>
-  <path d="M12 2v3M12 19v3M2 12h3M19 12h3" stroke="#7ce0be" stroke-width="2.2" stroke-linecap="round"/>
-</svg>
-''';
-
-const String kReportShieldSvg = '''
-<svg viewBox="0 0 28 28" xmlns="http://www.w3.org/2000/svg">
-  <path d="M14 2L26 24H2L14 2Z" fill="#efbb52" stroke="#142e2d" stroke-width="2" stroke-linejoin="round"/>
-  <rect x="12.8" y="10" width="2.4" height="7" rx="1.2" fill="#142e2d"/>
-  <circle cx="14" cy="20.2" r="1.5" fill="#142e2d"/>
-</svg>
-''';
-
-const String kScenePinSvg = '''
-<svg viewBox="0 0 32 38" xmlns="http://www.w3.org/2000/svg">
-  <path d="M16 2C8.8 2 3 7.8 3 15c0 9.5 13 21 13 21s13-11.5 13-21c0-7.2-5.8-13-13-13z" fill="#efbb52" stroke="#ffffff" stroke-width="2"/>
-  <circle cx="16" cy="15" r="5" fill="#142e2d"/>
-</svg>
-''';
-
-const String kCarSvg = '''
-<svg viewBox="0 0 240 100" xmlns="http://www.w3.org/2000/svg">
-  <path d="M42 62 L68 32 C74 26 84 22 96 22 L152 22 C164 22 175 27 182 35 L204 62 Z" fill="#087e76" stroke="#7ce0be" stroke-width="2.5"/>
-  <rect x="24" y="54" width="192" height="26" rx="12" fill="#10b981" stroke="#ffffff" stroke-width="2"/>
-  <circle cx="66" cy="80" r="14" fill="#142e2d" stroke="#efbb52" stroke-width="3.5"/>
-  <circle cx="174" cy="80" r="14" fill="#142e2d" stroke="#efbb52" stroke-width="3.5"/>
-</svg>
-''';
-
-// ==================== نماذج البيانات الأساسية ====================
-class VoiceProfile {
+/// نموذج بيانات المحافظات والمدن العراقية (لحل مشكلة المربعات ودعم الخرائط الأوفلاين)
+class IraqiProvince {
   final String id;
   final String nameAr;
-  final String nameEn;
-  final String descAr;
-  final String descEn;
-  final String langType; // 'ar' or 'en'
-
-  const VoiceProfile({
-    required this.id,
-    required this.nameAr,
-    required this.nameEn,
-    required this.descAr,
-    required this.descEn,
-    required this.langType,
-  });
-}
-
-const List<VoiceProfile> kVoiceProfiles = [
-  VoiceProfile(
-    id: 'ar_iraq_fusha',
-    nameAr: 'المساعد العربي الفصيح',
-    nameEn: 'Arabic Voice Assistant',
-    descAr: 'توجيه صوتي عربي واضح ودقيق',
-    descEn: 'Clear Arabic voice navigation',
-    langType: 'ar',
-  ),
-  VoiceProfile(
-    id: 'en_intl',
-    nameAr: 'المساعد الإنجليزي العالمي',
-    nameEn: 'English Voice Assistant',
-    descAr: 'توجيه صوتي باللغة الإنجليزية',
-    descEn: 'Clear English voice navigation',
-    langType: 'en',
-  ),
-];
-
-class ExploreCategory {
-  final String id;
-  final String nameAr;
-  final String nameEn;
-  final IconData icon;
-  final Color color;
-  final String osmKey;
-  final String osmVal;
-
-  const ExploreCategory({
-    required this.id,
-    required this.nameAr,
-    required this.nameEn,
-    required this.icon,
-    required this.color,
-    required this.osmKey,
-    required this.osmVal,
-  });
-}
-
-const List<ExploreCategory> kExploreCategories = [
-  ExploreCategory(
-    id: 'fuel',
-    nameAr: 'محطات وقود',
-    nameEn: 'Gas Stations',
-    icon: Icons.local_gas_station_rounded,
-    color: Color(0xFFf59e0b),
-    osmKey: 'amenity',
-    osmVal: 'fuel',
-  ),
-  ExploreCategory(
-    id: 'hospital',
-    nameAr: 'مستشفيات وصحة',
-    nameEn: 'Hospitals',
-    icon: Icons.local_hospital_rounded,
-    color: Color(0xFFef4444),
-    osmKey: 'amenity',
-    osmVal: 'hospital',
-  ),
-  ExploreCategory(
-    id: 'pharmacy',
-    nameAr: 'صيدليات',
-    nameEn: 'Pharmacies',
-    icon: Icons.medication_rounded,
-    color: Color(0xFF10b981),
-    osmKey: 'amenity',
-    osmVal: 'pharmacy',
-  ),
-  ExploreCategory(
-    id: 'restaurant',
-    nameAr: 'مطاعم وكافيهات',
-    nameEn: 'Restaurants',
-    icon: Icons.restaurant_rounded,
-    color: Color(0xFFec4899),
-    osmKey: 'amenity',
-    osmVal: 'restaurant',
-  ),
-  ExploreCategory(
-    id: 'mosque',
-    nameAr: 'مساجد وجوامع',
-    nameEn: 'Mosques',
-    icon: Icons.mosque_rounded,
-    color: Color(0xFF087e76),
-    osmKey: 'amenity',
-    osmVal: 'place_of_worship',
-  ),
-  ExploreCategory(
-    id: 'atm',
-    nameAr: 'مصارف وصراف آلي',
-    nameEn: 'Banks & ATMs',
-    icon: Icons.account_balance_rounded,
-    color: Color(0xFF3b82f6),
-    osmKey: 'amenity',
-    osmVal: 'bank',
-  ),
-];
-
-class IraqProvince {
-  final String id;
-  final String nameAr;
-  final String nameEn;
+  final String subtitleAr;
   final LatLng center;
   final String sizeMb;
+  final double defaultZoom;
+  final bool isMajorProvince;
 
-  const IraqProvince({
+  const IraqiProvince({
     required this.id,
     required this.nameAr,
-    required this.nameEn,
+    required this.subtitleAr,
     required this.center,
     required this.sizeMb,
+    this.defaultZoom = 12.5,
+    this.isMajorProvince = true,
   });
 }
 
-const List<IraqProvince> kIraqProvinces = [
-  IraqProvince(id: 'anbar', nameAr: 'الأنبار (الرمادي والفلوجة وحديثة)', nameEn: 'Al Anbar (Ramadi)', center: LatLng(33.4258, 43.2995), sizeMb: '18 MB'),
-  IraqProvince(id: 'baghdad', nameAr: 'بغداد', nameEn: 'Baghdad', center: LatLng(33.3152, 44.3661), sizeMb: '24 MB'),
-  IraqProvince(id: 'basra', nameAr: 'البصرة', nameEn: 'Basra', center: LatLng(30.5081, 47.7835), sizeMb: '19 MB'),
-  IraqProvince(id: 'nineveh', nameAr: 'نينوى (الموصل)', nameEn: 'Nineveh (Mosul)', center: LatLng(36.3489, 43.1577), sizeMb: '21 MB'),
-  IraqProvince(id: 'erbil', nameAr: 'أربيل', nameEn: 'Erbil', center: LatLng(36.1901, 44.0091), sizeMb: '17 MB'),
-  IraqProvince(id: 'sulaymaniyah', nameAr: 'السليمانية', nameEn: 'Sulaymaniyah', center: LatLng(35.5613, 45.4306), sizeMb: '16 MB'),
-  IraqProvince(id: 'duhok', nameAr: 'دهوك', nameEn: 'Duhok', center: LatLng(36.8679, 42.9503), sizeMb: '14 MB'),
-  IraqProvince(id: 'kirkuk', nameAr: 'كركوك', nameEn: 'Kirkuk', center: LatLng(35.4681, 44.3922), sizeMb: '15 MB'),
-  IraqProvince(id: 'salahaddin', nameAr: 'صلاح الدين (تكريت)', nameEn: 'Saladin (Tikrit)', center: LatLng(34.6158, 43.6782), sizeMb: '16 MB'),
-  IraqProvince(id: 'diyala', nameAr: 'ديالى (بعقوبة)', nameEn: 'Diyala (Baqubah)', center: LatLng(33.7485, 44.6436), sizeMb: '15 MB'),
-  IraqProvince(id: 'babil', nameAr: 'بابل (الحلة)', nameEn: 'Babylon (Hillah)', center: LatLng(32.4722, 44.4217), sizeMb: '15 MB'),
-  IraqProvince(id: 'karbala', nameAr: 'كربلاء', nameEn: 'Karbala', center: LatLng(32.6160, 44.0249), sizeMb: '14 MB'),
-  IraqProvince(id: 'najaf', nameAr: 'النجف', nameEn: 'Najaf', center: LatLng(31.9985, 44.3396), sizeMb: '15 MB'),
-  IraqProvince(id: 'qadisiyyah', nameAr: 'القادسية (الديوانية)', nameEn: 'Al-Qadisiyyah', center: LatLng(31.9879, 44.9247), sizeMb: '13 MB'),
-  IraqProvince(id: 'wasit', nameAr: 'واسط (الكوت)', nameEn: 'Wasit (Kut)', center: LatLng(32.5128, 45.8182), sizeMb: '14 MB'),
-  IraqProvince(id: 'maysan', nameAr: 'ميسان (العمارة)', nameEn: 'Maysan (Amarah)', center: LatLng(31.8359, 47.1448), sizeMb: '14 MB'),
-  IraqProvince(id: 'dhiqar', nameAr: 'ذي قار (الناصرية)', nameEn: 'Dhi Qar (Nasiriyah)', center: LatLng(31.0439, 46.2573), sizeMb: '15 MB'),
-  IraqProvince(id: 'muthanna', nameAr: 'المثنى (السماوة)', nameEn: 'Al Muthanna (Samawah)', center: LatLng(31.3320, 45.2940), sizeMb: '13 MB'),
-];
+/// نموذج مقاطع المسار الملونة:
+/// - أخضر (#10B981): طريق سالك
+/// - أصفر (#FACC15): منطقة بلاغ خطر / حفريات / سيطرة / كاميرا
+/// - أحمر (#EF4444): ازدحام مروري شديد أو طريق مغلق
+class ColoredRouteSegment {
+  final List<LatLng> points;
+  final Color color;
+  final double strokeWidth;
+  final String statusLabel;
 
-// قائمة التسميات العربية الواضحة لمدن ومناطق العراق لمنع أي نقص في الأسماء على الخريطة
-class IraqiCityLabel {
-  final String nameAr;
-  final String nameEn;
-  final LatLng point;
-  final double minZoom;
-  final bool isMajor;
-
-  const IraqiCityLabel({
-    required this.nameAr,
-    required this.nameEn,
-    required this.point,
-    this.minZoom = 6.0,
-    this.isMajor = true,
+  const ColoredRouteSegment({
+    required this.points,
+    required this.color,
+    this.strokeWidth = 6.5,
+    this.statusLabel = 'سالك',
   });
 }
 
-const List<IraqiCityLabel> kIraqiCityLabels = [
-  IraqiCityLabel(nameAr: 'الرمادي', nameEn: 'Ramadi', point: LatLng(33.4258, 43.2995), minZoom: 7.0, isMajor: true),
-  IraqiCityLabel(nameAr: 'الفلوجة', nameEn: 'Fallujah', point: LatLng(33.3538, 43.7850), minZoom: 8.5, isMajor: true),
-  IraqiCityLabel(nameAr: 'حديثة', nameEn: 'Haditha', point: LatLng(34.1366, 42.3772), minZoom: 8.5, isMajor: true),
-  IraqiCityLabel(nameAr: 'هيت', nameEn: 'Hit', point: LatLng(33.6366, 42.8277), minZoom: 9.0, isMajor: false),
-  IraqiCityLabel(nameAr: 'القائم', nameEn: 'Al Qaim', point: LatLng(34.3883, 41.0708), minZoom: 8.5, isMajor: false),
-  IraqiCityLabel(nameAr: 'عنة', nameEn: 'Anah', point: LatLng(34.3686, 41.9819), minZoom: 9.5, isMajor: false),
-  IraqiCityLabel(nameAr: 'راوة', nameEn: 'Rawa', point: LatLng(34.4828, 41.9169), minZoom: 9.5, isMajor: false),
-  IraqiCityLabel(nameAr: 'الرطبة', nameEn: 'Rutba', point: LatLng(33.0371, 40.2858), minZoom: 8.5, isMajor: false),
-  IraqiCityLabel(nameAr: 'الخالدية', nameEn: 'Khaldiyah', point: LatLng(33.3833, 43.5167), minZoom: 10.0, isMajor: false),
-  IraqiCityLabel(nameAr: 'الحبانية', nameEn: 'Habbaniyah', point: LatLng(33.3806, 43.5889), minZoom: 10.0, isMajor: false),
-  IraqiCityLabel(nameAr: 'بغداد', nameEn: 'Baghdad', point: LatLng(33.3152, 44.3661), minZoom: 6.0, isMajor: true),
-  IraqiCityLabel(nameAr: 'البصرة', nameEn: 'Basra', point: LatLng(30.5081, 47.7835), minZoom: 6.0, isMajor: true),
-  IraqiCityLabel(nameAr: 'الموصل', nameEn: 'Mosul', point: LatLng(36.3489, 43.1577), minZoom: 6.0, isMajor: true),
-  IraqiCityLabel(nameAr: 'أربيل', nameEn: 'Erbil', point: LatLng(36.1901, 44.0091), minZoom: 6.5, isMajor: true),
-  IraqiCityLabel(nameAr: 'كركوك', nameEn: 'Kirkuk', point: LatLng(35.4681, 44.3922), minZoom: 7.0, isMajor: true),
-  IraqiCityLabel(nameAr: 'النجف', nameEn: 'Najaf', point: LatLng(31.9985, 44.3396), minZoom: 7.0, isMajor: true),
-  IraqiCityLabel(nameAr: 'كربلاء', nameEn: 'Karbala', point: LatLng(32.6160, 44.0249), minZoom: 7.0, isMajor: true),
-  IraqiCityLabel(nameAr: 'تكريت', nameEn: 'Tikrit', point: LatLng(34.6158, 43.6782), minZoom: 7.5, isMajor: true),
-  IraqiCityLabel(nameAr: 'الحلة', nameEn: 'Hillah', point: LatLng(32.4722, 44.4217), minZoom: 7.5, isMajor: true),
-  IraqiCityLabel(nameAr: 'بعقوبة', nameEn: 'Baqubah', point: LatLng(33.7485, 44.6436), minZoom: 7.5, isMajor: true),
-];
-// ==================== نهاية الجزء 1 من 6 ====================
-// ==================== بداية الجزء 2 من 6 ====================
-// ==================== مزود الخرائط الأوفلاين الذكي ====================
-class _OfflineTileProvider extends TileProvider {
-  String? baseDirPath;
+/// نموذج البلاغات الميدانية التفاعلية
+class RoadReport {
+  final String id;
+  final String
+      type; // traffic, closed, hazard, camera, checkpoint, roadworks, accident
+  final String titleAr;
+  final String descriptionAr;
+  final LatLng location;
+  final DateTime timestamp;
+  final int confirmations;
 
-  _OfflineTileProvider({this.baseDirPath});
+  const RoadReport({
+    required this.id,
+    required this.type,
+    required this.titleAr,
+    required this.descriptionAr,
+    required this.location,
+    required this.timestamp,
+    this.confirmations = 1,
+  });
 
-  @override
-  ImageProvider getImage(TileCoordinates coordinates, TileLayer options) {
-    if (!kIsWeb && baseDirPath != null && baseDirPath!.isNotEmpty) {
-      final file = File(
-          '$baseDirPath/tiles/${coordinates.z}_${coordinates.x}_${coordinates.y}.png');
-      if (file.existsSync() && file.lengthSync() > 100) {
-        return FileImage(file);
-      }
-    }
-    return NetworkImage(getTileUrl(coordinates, options));
+  Map<String, dynamic> toMap() {
+    return {
+      'type': type,
+      'titleAr': titleAr,
+      'descriptionAr': descriptionAr,
+      'lat': location.latitude,
+      'lng': location.longitude,
+      'timestamp': timestamp.millisecondsSinceEpoch,
+      'confirmations': confirmations,
+    };
   }
-}
 
-// ==================== زر الزجاج التفاعلي ====================
-class GlassTapButton extends StatefulWidget {
-  final Widget child;
-  final VoidCallback? onTap;
-  final EdgeInsetsGeometry padding;
-  final Color backgroundColor;
-  final Color borderColor;
-  final BorderRadius borderRadius;
-
-  const GlassTapButton({
-    super.key,
-    required this.child,
-    this.onTap,
-    this.padding = const EdgeInsets.all(10),
-    this.backgroundColor = const Color(0xFF152928),
-    this.borderColor = const Color(0xFF284e4b),
-    this.borderRadius = const BorderRadius.all(Radius.circular(14)),
-  });
-
-  @override
-  State<GlassTapButton> createState() => _GlassTapButtonState();
-}
-
-class _GlassTapButtonState extends State<GlassTapButton> {
-  bool _pressed = false;
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onTapDown: (_) => setState(() => _pressed = true),
-      onTapUp: (_) => setState(() => _pressed = false),
-      onTapCancel: () => setState(() => _pressed = false),
-      onTap: widget.onTap,
-      child: AnimatedScale(
-        scale: _pressed ? 0.95 : 1.0,
-        duration: const Duration(milliseconds: 90),
-        child: Container(
-          padding: widget.padding,
-          decoration: BoxDecoration(
-            color: widget.backgroundColor,
-            borderRadius: widget.borderRadius,
-            border: Border.all(color: widget.borderColor, width: 1.1),
-          ),
-          alignment: Alignment.center,
-          child: widget.child,
-        ),
+  factory RoadReport.fromDoc(String id, Map<String, dynamic> map) {
+    return RoadReport(
+      id: id,
+      type: (map['type'] ?? 'hazard').toString(),
+      titleAr: (map['titleAr'] ?? 'تنبيه طريق').toString(),
+      descriptionAr:
+          (map['descriptionAr'] ?? 'بلاغ من مستخدمي دلّيني').toString(),
+      location: LatLng(
+        ((map['lat'] ?? 33.4258) as num).toDouble(),
+        ((map['lng'] ?? 43.2995) as num).toDouble(),
       ),
+      timestamp: DateTime.fromMillisecondsSinceEpoch(
+        ((map['timestamp'] ?? DateTime.now().millisecondsSinceEpoch) as num)
+            .toInt(),
+      ),
+      confirmations: ((map['confirmations'] ?? 1) as num).toInt(),
     );
   }
 }
 
-// ==================== الكلاسات الأساسية للشاشة ====================
+/// نموذج الأماكن المحفوظة للمستخدم
+class SavedPlace {
+  final String id;
+  final String title;
+  final String category; // home, work, university, favorite
+  final LatLng coords;
+
+  const SavedPlace({
+    required this.id,
+    required this.title,
+    required this.category,
+    required this.coords,
+  });
+
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'title': title,
+        'category': category,
+        'lat': coords.latitude,
+        'lng': coords.longitude,
+      };
+
+  factory SavedPlace.fromJson(Map<String, dynamic> json) => SavedPlace(
+        id: json['id'].toString(),
+        title: json['title'].toString(),
+        category: (json['category'] ?? 'favorite').toString(),
+        coords: LatLng(
+          (json['lat'] as num).toDouble(),
+          (json['lng'] as num).toDouble(),
+        ),
+      );
+}
+
+/// نموذج خطوات التوجيه خطوة بخطوة
+class RouteStepItem {
+  final String instructionAr;
+  final String distanceText;
+  final IconData icon;
+  final LatLng location;
+
+  const RouteStepItem({
+    required this.instructionAr,
+    required this.distanceText,
+    required this.icon,
+    required this.location,
+  });
+}
+
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
+
   @override
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _DispState {
-  final LatLng pos;
-  final double bearing;
-  const _DispState(this.pos, this.bearing);
-}
-
-class _Snap {
-  final LatLng point;
-  final double bearing;
-  const _Snap(this.point, this.bearing);
-}
-
 class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
+  final MapController _mapController = MapController();
+  final TextEditingController _searchController = TextEditingController();
+  final FocusNode _searchFocusNode = FocusNode();
 
-  static const int endVotesThreshold = 3;
-  static const String playStoreUrl =
-      'https://play.google.com/store/apps/details?id=com.dlinii.app';
-  static const String webAppDomain = 'https://dlinii.vercel.app';
-  static const LatLng kDefaultCenter = LatLng(33.4258, 43.2995);
+  // ValueNotifiers لضمان أداء 60 إطار/ثانية بدون تقطيع أثناء حركة الـ GPS
+  final ValueNotifier<LatLng> _userLocationNotifier = ValueNotifier<LatLng>(
+      const LatLng(33.4258, 43.2995)); // الرمادي كمركز ابتدائي
+  final ValueNotifier<double> _speedKmHNotifier = ValueNotifier<double>(0.0);
+  final ValueNotifier<double> _headingNotifier = ValueNotifier<double>(0.0);
+  final ValueNotifier<bool> _isNavigatingNotifier = ValueNotifier<bool>(false);
+  final ValueNotifier<double> _currentZoomNotifier =
+      ValueNotifier<double>(13.5);
 
-  static const MethodChannel _deepLinkChannel =
-      MethodChannel('com.dlinii.app/deeplink');
+  StreamSubscription<Position>? _positionStreamSub;
+  StreamSubscription<QuerySnapshot>? _reportsStreamSub;
+  Timer? _searchDebounceTimer;
+  Timer? _proximityAlertTimer;
 
-  bool showSplash = true,
-      isDark = true,
-      isEnglish = false,
-      follow = true,
-      isFirstPerson3D = false,
-      isNavigating = false,
-      showPlanSheet = false,
-      showNavSheet = false,
-      showReportModal = false,
-      showAddPlaceModal = false,
-      showOfflineModal = false,
-      showVoiceModal = false,
-      showRateModal = false,
-      // يبدأ false دائماً ولا يظهر إلا بعد فحص الذاكرة والتأكد أن المستخدم جديد ولم يمنح الإذن
-      showNotifPermissionModal = false,
-      isSearching = false,
-      isListeningVoice = false,
-      isCalculatingRoute = false,
-      _forceOffline = false,
-      _hasAskedPermission = false;
+  // إعدادات ومتغيرات الحالة
+  bool isDark = true;
+  bool isSatelliteMode = false;
+  bool isVoiceEnabled = true;
+  bool isFollowingUser = true;
+  bool isCarPlayHudMode = false;
+  bool isLoadingRoute = false;
+  bool isSearching = false;
+  bool showArabicCityLabels = true;
+  bool showTrafficLayer = true;
+  bool hasLockedInitialGps = false;
 
-  int selectedVoiceIndex = 0,
-      voiceSpeedLevel = 1,
-      selectedRouteIndex = 0,
-      currentStepIndex = 0,
-      lastSpokenStep = -1,
-      selectedStars = 5;
+  // إدارة التحميل الأوفلاين
+  Set<String> downloadedProvinces = <String>{'anbar', 'baghdad'};
+  Map<String, double> downloadProgress = <String, double>{};
 
-  double currentSpeedKmh = 0.0,
-      currentBearing = 0.0,
-      currentMapZoom = 14.2,
-      downloadProgress = 0.0;
+  // بيانات المسار والبلاغات والبحث
+  List<RoadReport> activeReports = <RoadReport>[];
+  List<ColoredRouteSegment> routeSegments = <ColoredRouteSegment>[];
+  List<LatLng> fullRoutePoints = <LatLng>[];
+  List<RouteStepItem> routeSteps = <RouteStepItem>[];
+  List<Map<String, dynamic>> searchSuggestions = <Map<String, dynamic>>[];
+  List<SavedPlace> savedPlaces = <SavedPlace>[];
 
-  String? downloadingProvinceId, activeCategoryId;
-  Set<String> downloadedProvinces = {};
-  Set<String> warnedReports = {};
+  LatLng? destinationPoint;
+  String? destinationName;
+  String routeDistanceText = '';
+  String routeDurationText = '';
+  String routeArrivalTimeText = '';
+  String nextInstructionAr =
+      'ابحث عن وجهتك أو اضغط مطولاً على الخريطة للانطلاق';
+  int currentSpeedLimit = 80;
+  String? lastAlertedReportId;
 
-  LatLng? me, origin, dest, pickedPlacePoint;
-  String destTitle = '';
-
-  List<dynamic> routes = [];
-  List<dynamic> navSteps = [];
-  List<LatLng> navCoords = [];
-  List<Map<String, dynamic>> searchResults = [];
-  List<Marker> categoryMapMarkers = [];
-  List<QueryDocumentSnapshot> cloudReports = [];
-  List<QueryDocumentSnapshot> customPlaces = [];
-
-  String navRemKm = '0.0',
-      navRemMins = '0',
-      navEta = '--:--',
-      hudArrow = '⬆️',
-      hudInstruction = '',
-      hudStreet = '';
-
-  final MapController mapController = MapController();
-  final TextEditingController searchController = TextEditingController();
-  final TextEditingController destController = TextEditingController();
-  final TextEditingController placeNameController = TextEditingController();
-  String selectedPlaceCategory = 'محل تجاري';
-
-  final FlutterTts flutterTts = FlutterTts();
-  final stt.SpeechToText speech = stt.SpeechToText();
-  List<dynamic> _availableVoices = [];
-  final Map<String, int> _voiceSlot = {};
-  final Map<String, int> _pinnedSlot = {};
-
-  vtr.Theme? vectorThemeDark;
-  vtr.Theme? vectorThemeLight;
-  vt.TileProviders? vectorTileProviders;
-
-  late _OfflineTileProvider _offlineTileProvider;
-  String? _offlineBaseDir;
-
-  StreamSubscription<Position>? positionStream;
-  StreamSubscription<QuerySnapshot>? reportsSub;
-  StreamSubscription<QuerySnapshot>? placesSub;
-  Timer? simTimer;
-  Timer? searchDebounce;
-  Timer? _pulseTimer;
-
-  AnimationController? _glideCtrl;
-  LatLng _glideFromPos = kDefaultCenter;
-  LatLng _glideToPos = kDefaultCenter;
-  double _glideFromBearing = 0.0;
-  double _glideToBearing = 0.0;
-  int _lastFixMs = 0;
-
-  final ValueNotifier<_DispState> _dispState =
-      ValueNotifier<_DispState>(const _DispState(kDefaultCenter, 0.0));
-  final ValueNotifier<double> _pulseNotifier = ValueNotifier<double>(0.0);
-
-  VoiceProfile get currentVoice =>
-      kVoiceProfiles[selectedVoiceIndex.clamp(0, kVoiceProfiles.length - 1)];
-
-  String tr(String ar, String en) => isEnglish ? en : ar;
+  // القائمة الكاملة للمحافظات والمدن العراقية (تمنع ظهور المربعات وتوفر وصولاً سريعاً)
+  static const List<IraqiProvince> iraqiProvinces = [
+    // مدن محافظة الأنبار التفصيلية
+    IraqiProvince(
+      id: 'anbar',
+      nameAr: 'الرمادي - الأنبار',
+      subtitleAr: 'مركز محافظة الأنبار والمناطق المحيطة',
+      center: LatLng(33.4258, 43.2995),
+      sizeMb: '48 MB',
+      defaultZoom: 13.5,
+    ),
+    IraqiProvince(
+      id: 'fallujah',
+      nameAr: 'الفلوجة',
+      subtitleAr: 'قضاء الفلوجة والطريق الدولي السريع',
+      center: LatLng(33.3491, 43.7859),
+      sizeMb: '28 MB',
+      defaultZoom: 13.5,
+      isMajorProvince: false,
+    ),
+    IraqiProvince(
+      id: 'hit',
+      nameAr: 'هيت',
+      subtitleAr: 'قضاء هيت والبغدادي والمحمدي',
+      center: LatLng(33.6366, 42.8277),
+      sizeMb: '22 MB',
+      defaultZoom: 13.5,
+      isMajorProvince: false,
+    ),
+    IraqiProvince(
+      id: 'haditha',
+      nameAr: 'حديثة',
+      subtitleAr: 'قضاء حديثة والحقلانية وبروانة',
+      center: LatLng(34.1369, 42.3772),
+      sizeMb: '21 MB',
+      defaultZoom: 13.5,
+      isMajorProvince: false,
+    ),
+    IraqiProvince(
+      id: 'qaim',
+      nameAr: 'القائم',
+      subtitleAr: 'قضاء القائم والعبيدي والكرابلة وحصيبة',
+      center: LatLng(34.3725, 41.0886),
+      sizeMb: '26 MB',
+      defaultZoom: 13.5,
+      isMajorProvince: false,
+    ),
+    IraqiProvince(
+      id: 'anah',
+      nameAr: 'عانة وراوة',
+      subtitleAr: 'أقضية عانة وراوة والطريق الغربي',
+      center: LatLng(34.3686, 41.9819),
+      sizeMb: '19 MB',
+      defaultZoom: 13.0,
+      isMajorProvince: false,
+    ),
+    IraqiProvince(
+      id: 'rutba',
+      nameAr: 'الرطبة',
+      subtitleAr: 'قضاء الرطبة والطريق الدولي السريع',
+      center: LatLng(33.0371, 40.2858),
+      sizeMb: '30 MB',
+      defaultZoom: 13.0,
+      isMajorProvince: false,
+    ),
+    IraqiProvince(
+      id: 'khalidiya',
+      nameAr: 'الخالدية والحبانية',
+      subtitleAr: 'الخالدية، الحبانية، والمدينة السياحية',
+      center: LatLng(33.3833, 43.5333),
+      sizeMb: '18 MB',
+      defaultZoom: 13.5,
+      isMajorProvince: false,
+    ),
+    // بقية محافظات العراق
+    IraqiProvince(
+      id: 'baghdad',
+      nameAr: 'بغداد',
+      subtitleAr: 'العاصمة بغداد - الكرخ والرصافة وضواحيها',
+      center: LatLng(33.3152, 44.3661),
+      sizeMb: '92 MB',
+    ),
+    IraqiProvince(
+      id: 'basra',
+      nameAr: 'البصرة',
+      subtitleAr: 'مركز البصرة، الزبير، أم قصر، والفاو',
+      center: LatLng(30.5081, 47.7835),
+      sizeMb: '68 MB',
+    ),
+    IraqiProvince(
+      id: 'nineveh',
+      nameAr: 'نينوى - الموصل',
+      subtitleAr: 'الموصل، تلعفر، الحمدانية، وسنجار',
+      center: LatLng(36.3450, 43.1575),
+      sizeMb: '75 MB',
+    ),
+    IraqiProvince(
+      id: 'erbil',
+      nameAr: 'أربيل',
+      subtitleAr: 'مركز أربيل، شقلاوة، سوران، وكويسنجق',
+      center: LatLng(36.1901, 44.0091),
+      sizeMb: '58 MB',
+    ),
+    IraqiProvince(
+      id: 'najaf',
+      nameAr: 'النجف الأشرف',
+      subtitleAr: 'النجف، الكوفة، والمناذرة',
+      center: LatLng(32.0000, 44.3333),
+      sizeMb: '41 MB',
+    ),
+    IraqiProvince(
+      id: 'karbala',
+      nameAr: 'كربلاء المقدسة',
+      subtitleAr: 'مركز كربلاء، الهندية، وعين التمر',
+      center: LatLng(32.6160, 44.0249),
+      sizeMb: '39 MB',
+    ),
+    IraqiProvince(
+      id: 'kirkuk',
+      nameAr: 'كركوك',
+      subtitleAr: 'مركز كركوك، الحويجة، وداقوق',
+      center: LatLng(35.4681, 44.3922),
+      sizeMb: '47 MB',
+    ),
+    IraqiProvince(
+      id: 'babil',
+      nameAr: 'بابل - الحلة',
+      subtitleAr: 'الحلة، المسيب، المحاويل، والهاشمية',
+      center: LatLng(32.4637, 44.4196),
+      sizeMb: '44 MB',
+    ),
+    IraqiProvince(
+      id: 'diyala',
+      nameAr: 'ديالى - بعقوبة',
+      subtitleAr: 'بعقوبة، الخالص، خانقين، والمقدادية',
+      center: LatLng(33.7485, 44.6436),
+      sizeMb: '49 MB',
+    ),
+    IraqiProvince(
+      id: 'saladin',
+      nameAr: 'صلاح الدين - تكريت',
+      subtitleAr: 'تكريت، سامراء، بلد، وبيجي',
+      center: LatLng(34.6095, 43.6833),
+      sizeMb: '53 MB',
+    ),
+    IraqiProvince(
+      id: 'sulaymaniyah',
+      nameAr: 'السليمانية',
+      subtitleAr: 'مركز السليمانية، حلبجة، ورانية',
+      center: LatLng(35.5558, 45.4351),
+      sizeMb: '54 MB',
+    ),
+    IraqiProvince(
+      id: 'duhok',
+      nameAr: 'دهوك',
+      subtitleAr: 'دهوك، زاخو، والعمادية',
+      center: LatLng(36.8671, 42.9884),
+      sizeMb: '38 MB',
+    ),
+    IraqiProvince(
+      id: 'wasit',
+      nameAr: 'واسط - الكوت',
+      subtitleAr: 'الكوت، الصويرة، النعمانية، والحي',
+      center: LatLng(32.5128, 45.8182),
+      sizeMb: '43 MB',
+    ),
+    IraqiProvince(
+      id: 'dhiqar',
+      nameAr: 'ذي قار - الناصرية',
+      subtitleAr: 'الناصرية، الشطرة، وسوق الشيوخ',
+      center: LatLng(31.0439, 46.2573),
+      sizeMb: '46 MB',
+    ),
+    IraqiProvince(
+      id: 'maysan',
+      nameAr: 'ميسان - العمارة',
+      subtitleAr: 'العمارة، المجر الكبير، وعلي الغربي',
+      center: LatLng(31.8359, 47.1448),
+      sizeMb: '40 MB',
+    ),
+    IraqiProvince(
+      id: 'muthanna',
+      nameAr: 'المثنى - السماوة',
+      subtitleAr: 'السماوة، الرميثة، والخضر',
+      center: LatLng(31.3320, 45.2940),
+      sizeMb: '42 MB',
+    ),
+    IraqiProvince(
+      id: 'qadisiyyah',
+      nameAr: 'القادسية - الديوانية',
+      subtitleAr: 'الديوانية، الشامية، وعفك',
+      center: LatLng(31.9929, 44.9255),
+      sizeMb: '39 MB',
+    ),
+  ];
 
   @override
   void initState() {
     super.initState();
-    _offlineTileProvider = _OfflineTileProvider();
-    _initGlideController();
-    _initOfflineDir();
-    _loadSavedPrefs();
-    _initVectorStyle();
-    _listenFirestoreStreams();
-    _initDeepLinks();
+    _loadLocalPreferences();
+    _seedInitialReportsAndListen();
 
-    _pulseTimer = Timer.periodic(const Duration(milliseconds: 120), (_) {
-      _pulseNotifier.value = (_pulseNotifier.value + 0.18) % (math.pi * 2);
+    // التقاط موقع GPS فور فتح التطبيق مباشرة والتوجه إليه تلقائياً
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _initImmediateGpsAndFollow();
+      _handleIncomingDeepLinkOrWebOption();
     });
 
-    Future.delayed(const Duration(milliseconds: 1600), () {
-      if (mounted) {
-        setState(() => showSplash = false);
-      }
-    });
+    // مؤقت دوري لفحص اقتراب السائق من البلاغات أو كاميرات السرعة
+    _proximityAlertTimer = Timer.periodic(
+      const Duration(seconds: 5),
+      (_) => _checkProximityAlerts(),
+    );
   }
 
   @override
   void dispose() {
-    positionStream?.cancel();
-    reportsSub?.cancel();
-    placesSub?.cancel();
-    simTimer?.cancel();
-    searchDebounce?.cancel();
-    _pulseTimer?.cancel();
-    _glideCtrl?.dispose();
-    searchController.dispose();
-    destController.dispose();
-    placeNameController.dispose();
-    flutterTts.stop();
+    _positionStreamSub?.cancel();
+    _reportsStreamSub?.cancel();
+    _searchDebounceTimer?.cancel();
+    _proximityAlertTimer?.cancel();
+    _userLocationNotifier.dispose();
+    _speedKmHNotifier.dispose();
+    _headingNotifier.dispose();
+    _isNavigatingNotifier.dispose();
+    _currentZoomNotifier.dispose();
+    _searchController.dispose();
+    _searchFocusNode.dispose();
     super.dispose();
   }
+// ============================================================================
+// بداية الجزء 2 من 5 - الصقه مباشرة تحت نهاية الجزء 1
+// ============================================================================
 
-  void _initGlideController() {
-    _glideCtrl = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 450),
-    )..addListener(() {
-        final double t = Curves.easeOutCubic.transform(_glideCtrl!.value);
-        final double lat = _glideFromPos.latitude +
-            (_glideToPos.latitude - _glideFromPos.latitude) * t;
-        final double lng = _glideFromPos.longitude +
-            (_glideToPos.longitude - _glideFromPos.longitude) * t;
-        final double b =
-            _lerpAngle(_glideFromBearing, _glideToBearing, t);
-        final pos = LatLng(lat, lng);
-        _dispState.value = _DispState(pos, b);
-
-        if (follow && mounted) {
-          if (isNavigating && isFirstPerson3D) {
-            mapController.moveAndRotate(_lookAhead(pos, b, 28), 17.8, -b);
-          } else {
-            mapController.move(pos, mapController.camera.zoom);
-          }
+  Future<void> _loadLocalPreferences() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final savedPlacesRaw = prefs.getStringList('dlinii_saved_places') ?? [];
+      setState(() {
+        isDark = prefs.getBool('dlinii_dark_mode') ?? true;
+        isVoiceEnabled = prefs.getBool('dlinii_voice') ?? true;
+        showArabicCityLabels = prefs.getBool('dlinii_arabic_labels') ?? true;
+        downloadedProvinces =
+            (prefs.getStringList('dlinii_offline_provinces') ??
+                    ['anbar', 'baghdad'])
+                .toSet();
+        if (savedPlacesRaw.isNotEmpty) {
+          savedPlaces = savedPlacesRaw
+              .map((item) => SavedPlace.fromJson(json.decode(item)))
+              .toList();
+        } else {
+          savedPlaces = const [
+            SavedPlace(
+              id: 'uni_anbar',
+              title: 'جامعة الأنبار - الرمادي',
+              category: 'university',
+              coords: LatLng(33.4024, 43.2610),
+            ),
+            SavedPlace(
+              id: 'ramadi_center',
+              title: 'مركز مدينة الرمادي',
+              category: 'favorite',
+              coords: LatLng(33.4258, 43.2995),
+            ),
+          ];
         }
       });
-  }
-
-  Future<void> _initOfflineDir() async {
-    if (kIsWeb) return;
-    try {
-      final dir = await getApplicationDocumentsDirectory();
-      _offlineBaseDir = dir.path;
-      _offlineTileProvider = _OfflineTileProvider(baseDirPath: _offlineBaseDir);
-      if (mounted) setState(() {});
-    } catch (_) {}
-  }
-
-  // ==================== استقبال الروابط العميقة و"فتح باستخدام" ====================
-  Future<void> _initDeepLinks() async {
-    // 1. إذا كان يفتح من المتصفح (dlinii.vercel.app/?lat=...&lng=...)
-    if (kIsWeb) {
-      final uri = Uri.base;
-      if (uri.queryParameters.containsKey('lat') &&
-          uri.queryParameters.containsKey('lng')) {
-        _handleIncomingLink(uri.toString());
-      }
-      return;
+    } catch (e) {
+      debugPrint('Preferences load notice: $e');
     }
-
-    // 2. استقبال الروابط أثناء عمل التطبيق في الخلفية
-    _deepLinkChannel.setMethodCallHandler((call) async {
-      if (call.method == 'onDeepLink' && call.arguments != null) {
-        _handleIncomingLink(call.arguments.toString());
-      }
-    });
-
-    // 3. استقبال الرابط الذي فتح التطبيق لأول مرة (من تيليجرام أو واتساب أو المتصفح)
-    try {
-      final String? initialUrl =
-          await _deepLinkChannel.invokeMethod<String>('getInitialLink');
-      if (initialUrl != null && initialUrl.isNotEmpty) {
-        Future.delayed(const Duration(milliseconds: 900), () {
-          _handleIncomingLink(initialUrl);
-        });
-      }
-    } catch (_) {}
   }
 
-  void _handleIncomingLink(String rawLink) {
-    try {
-      double? lat;
-      double? lng;
-      String placeLabel = tr('موقع مشترك', 'Shared Location');
-
-      final Uri? uri = Uri.tryParse(rawLink);
-      if (uri != null) {
-        if (uri.queryParameters['name'] != null &&
-            uri.queryParameters['name']!.trim().isNotEmpty) {
-          placeLabel = Uri.decodeComponent(uri.queryParameters['name']!);
-        } else if (uri.queryParameters['q'] != null) {
-          final qVal = uri.queryParameters['q']!;
-          if (qVal.contains('(') && qVal.contains(')')) {
-            final start = qVal.indexOf('(') + 1;
-            final end = qVal.indexOf(')');
-            if (end > start) placeLabel = qVal.substring(start, end);
-          }
-        }
-
-        if (uri.queryParameters['lat'] != null &&
-            uri.queryParameters['lng'] != null) {
-          lat = double.tryParse(uri.queryParameters['lat']!);
-          lng = double.tryParse(uri.queryParameters['lng']!);
-        }
-      }
-
-      // التقاط إحداثيات روابط geo:33.42,43.29 أو روابط Google Maps
-      if (lat == null || lng == null) {
-        final RegExp coordRegex =
-            RegExp(r'(-?\d{1,2}\.\d{3,12})\s*,\s*(-?\d{1,3}\.\d{3,12})');
-        final match = coordRegex.firstMatch(Uri.decodeFull(rawLink));
-        if (match != null) {
-          lat = double.tryParse(match.group(1)!);
-          lng = double.tryParse(match.group(2)!);
-        }
-      }
-
-      if (lat != null &&
-          lng != null &&
-          lat >= -90 &&
-          lat <= 90 &&
-          lng >= -180 &&
-          lng <= 180) {
-        final target = LatLng(lat, lng);
-        setState(() {
-          showSplash = false;
-          follow = false;
-        });
-        mapController.move(target, 16.0);
-        _toast(tr('تم فتح الموقع في دلّيني 📍', 'Location opened in Dlinii 📍'));
-        _selectDestination(target, placeLabel);
-      }
-    } catch (_) {}
-  }
-
-  // ==================== إصلاح المربعات الفارغة تحت الأسماء في الخريطة ====================
-  Map<String, dynamic> _fixStyleForArabic(Map<String, dynamic> styleJson) {
-    final copy = jsonDecode(jsonEncode(styleJson)) as Map<String, dynamic>;
-    if (copy['layers'] is List) {
-      for (final layer in (copy['layers'] as List)) {
-        if (layer is Map && layer['layout'] is Map) {
-          final layout = layer['layout'] as Map<String, dynamic>;
-          // توحيد الخط لمنع ظهور مربعات ▯▯▯▯▯▯▯ تحت Ramadi وغيرها
-          if (layout.containsKey('text-font')) {
-            layout['text-font'] = ['Noto Sans Regular'];
-          }
-          // إجبار الخريطة على إظهار الاسم العربي أولاً ثم الإنجليزي بوضوح
-          if (layout.containsKey('text-field')) {
-            layout['text-field'] = [
-              'coalesce',
-              ['get', 'name:ar'],
-              ['get', 'name'],
-              ['get', 'name:en']
-            ];
-          }
-        }
-      }
-    }
-    return copy;
-  }
-
-  Future<void> _initVectorStyle() async {
-    try {
-      final resDark = await http
-          .get(Uri.parse('https://tiles.openfreemap.org/styles/dark'))
-          .timeout(const Duration(seconds: 7));
-      final resLight = await http
-          .get(Uri.parse('https://tiles.openfreemap.org/styles/positron'))
-          .timeout(const Duration(seconds: 7));
-
-      if (resDark.statusCode == 200 && resLight.statusCode == 200) {
-        final darkMap =
-            _fixStyleForArabic(jsonDecode(resDark.body) as Map<String, dynamic>);
-        final lightMap =
-            _fixStyleForArabic(jsonDecode(resLight.body) as Map<String, dynamic>);
-
-        final styleDark = await vt.StyleReader(
-          uri: 'https://tiles.openfreemap.org/styles/dark',
-          logger: const vtr.Logger.noop(),
-        ).read();
-
-        vectorThemeDark = vtr.ThemeReader(logger: const vtr.Logger.noop())
-            .read(darkMap);
-        vectorThemeLight = vtr.ThemeReader(logger: const vtr.Logger.noop())
-            .read(lightMap);
-        vectorTileProviders = styleDark.providers;
-        if (mounted) setState(() {});
-      }
-    } catch (_) {}
-  }
-
-  // ==================== حفظ الإعدادات وفحص إذن الموقع لعدم تكرار النافذة ====================
-  Future<void> _loadSavedPrefs() async {
+  Future<void> _savePreferences() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      final savedVoice = prefs.getInt('dlini_voice_idx_v5') ?? 0;
-      final savedSpeed = prefs.getInt('dlini_voice_speed_lvl') ?? 1;
-      final savedLang = prefs.getBool('dlini_is_en') ?? false;
-      final savedDark = prefs.getBool('dlini_is_dark_default_v2') ?? true;
-      final savedProvs = prefs.getStringList('dlini_offline_provinces') ?? [];
-      bool alreadyAsked = prefs.getBool('dlini_perm_asked_v3') ?? false;
-
-      // فحص إذن نظام التشغيل الفعلي: إذا كان المستخدم قد سمح بالموقع سابقاً، لا نظهر النافذة أبداً
-      try {
-        final LocationPermission sysPerm = await Geolocator.checkPermission();
-        if (sysPerm == LocationPermission.always ||
-            sysPerm == LocationPermission.whileInUse) {
-          alreadyAsked = true;
-          await prefs.setBool('dlini_perm_asked_v3', true);
-        }
-      } catch (_) {}
-
-      downloadedProvinces = savedProvs.toSet();
-      _hasAskedPermission = alreadyAsked;
-
-      for (final vp in kVoiceProfiles) {
-        final slot = prefs.getInt('dlini_slot_${vp.id}') ?? 0;
-        _voiceSlot[vp.id] = slot.clamp(0, 1);
-        final pinned = prefs.getInt('dlini_pinned_slot_${vp.id}');
-        if (pinned != null) {
-          _pinnedSlot[vp.id] = pinned.clamp(0, 1);
-          _voiceSlot[vp.id] = pinned.clamp(0, 1);
-        }
-      }
-
-      if (mounted) {
-        setState(() {
-          selectedVoiceIndex = savedVoice.clamp(0, kVoiceProfiles.length - 1);
-          voiceSpeedLevel = savedSpeed.clamp(0, 2);
-          isEnglish = savedLang;
-          isDark = savedDark;
-          showNotifPermissionModal = !alreadyAsked;
-        });
-      }
-
-      // إذا كان قد سمح سابقاً، نشغل تتبع الموقع تلقائياً بالخلفية بدون إزعاجه بأي نافذة
-      if (alreadyAsked) {
-        _initLocationTracking(userInitiated: false);
-      }
-    } catch (_) {}
-    await _loadAvailableVoicesOnce();
-    await _applyVoiceProfile();
-  }
-
-  Future<void> _savePrefs() async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setInt('dlini_voice_idx_v5', selectedVoiceIndex);
-      await prefs.setInt('dlini_voice_speed_lvl', voiceSpeedLevel);
-      await prefs.setBool('dlini_is_en', isEnglish);
-      await prefs.setBool('dlini_is_dark_default_v2', isDark);
+      await prefs.setBool('dlinii_dark_mode', isDark);
+      await prefs.setBool('dlinii_voice', isVoiceEnabled);
+      await prefs.setBool('dlinii_arabic_labels', showArabicCityLabels);
       await prefs.setStringList(
-          'dlini_offline_provinces', downloadedProvinces.toList());
-    } catch (_) {}
-  }
-// ==================== نهاية الجزء 2 من 6 ====================
-// ==================== بداية الجزء 3 من 6 ====================
-  // ==================== إعدادات ونظام التوجيه الصوتي (TTS) ====================
-  Future<void> _loadAvailableVoicesOnce() async {
-    try {
-      final voices = await flutterTts.getVoices;
-      if (voices is List) {
-        _availableVoices = voices;
-      }
-    } catch (_) {}
-  }
-
-  Future<void> _applyVoiceProfile() async {
-    try {
-      final vp = currentVoice;
-      final bool wantAr = vp.langType == 'ar';
-      await flutterTts.setLanguage(wantAr ? 'ar-SA' : 'en-US');
-
-      double rate = 0.50;
-      if (voiceSpeedLevel == 0) rate = 0.42;
-      if (voiceSpeedLevel == 2) rate = 0.58;
-
-      await flutterTts.setSpeechRate(rate);
-      await flutterTts.setPitch(1.0);
-      await flutterTts.setVolume(1.0);
-
-      if (_availableVoices.isNotEmpty) {
-        final matching = _availableVoices.where((v) {
-          if (v is Map) {
-            final loc = (v['locale'] ?? '').toString().toLowerCase();
-            return wantAr ? loc.startsWith('ar') : loc.startsWith('en');
-          }
-          return false;
-        }).toList();
-
-        if (matching.isNotEmpty) {
-          final slot = (_voiceSlot[vp.id] ?? 0).clamp(0, matching.length - 1);
-          final chosen = matching[slot];
-          if (chosen is Map && chosen['name'] != null && chosen['locale'] != null) {
-            await flutterTts.setVoice({
-              'name': chosen['name'].toString(),
-              'locale': chosen['locale'].toString(),
-            });
-          }
-        }
-      }
-    } catch (_) {}
-  }
-
-  Future<void> _speak(String text) async {
-    if (text.trim().isEmpty) return;
-    try {
-      await _applyVoiceProfile();
-      await flutterTts.stop();
-      await flutterTts.speak(text);
-    } catch (_) {}
-  }
-
-  Future<void> _cycleVoiceSlot(VoiceProfile vp) async {
-    final current = _voiceSlot[vp.id] ?? 0;
-    final next = (current + 1) % 2;
-    setState(() {
-      _voiceSlot[vp.id] = next;
-    });
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setInt('dlini_slot_${vp.id}', next);
-    await _applyVoiceProfile();
-    _speak(vp.langType == 'ar'
-        ? 'مرحباً بك في تطبيق دلّيني، نتمنى لك قيادة آمنة'
-        : 'Welcome to Dlinii navigation, drive safely');
-  }
-
-  Future<void> _togglePinSlot(VoiceProfile vp) async {
-    final prefs = await SharedPreferences.getInstance();
-    final curSlot = _voiceSlot[vp.id] ?? 0;
-    if (_pinnedSlot[vp.id] == curSlot) {
-      setState(() => _pinnedSlot.remove(vp.id));
-      await prefs.remove('dlini_pinned_slot_${vp.id}');
-      _toast(tr('تم إلغاء تثبيت النبرة', 'Voice tone unpinned'));
-    } else {
-      setState(() => _pinnedSlot[vp.id] = curSlot);
-      await prefs.setInt('dlini_pinned_slot_${vp.id}', curSlot);
-      _toast(tr('تم تثبيت هذه النبرة الصوتية 📌', 'Voice tone pinned 📌'));
+        'dlinii_offline_provinces',
+        downloadedProvinces.toList(),
+      );
+      await prefs.setStringList(
+        'dlinii_saved_places',
+        savedPlaces.map((p) => json.encode(p.toJson())).toList(),
+      );
+    } catch (e) {
+      debugPrint('Preferences save notice: $e');
     }
   }
 
-  // ==================== الاتصال بـ Firestore (البلاغات والأماكن) ====================
-  void _listenFirestoreStreams() {
-    try {
-      if (Firebase.apps.isEmpty) return;
-      reportsSub = FirebaseFirestore.instance
-          .collection('reports')
-          .orderBy('timestamp', descending: true)
-          .limit(120)
-          .snapshots()
-          .listen((snap) {
-        if (mounted) {
-          setState(() => cloudReports = snap.docs);
-        }
-      }, onError: (_) {});
-
-      placesSub = FirebaseFirestore.instance
-          .collection('custom_places')
-          .limit(200)
-          .snapshots()
-          .listen((snap) {
-        if (mounted) {
-          setState(() => customPlaces = snap.docs);
-        }
-      }, onError: (_) {});
-    } catch (_) {}
-  }
-
-  Future<void> _sendReport(String typeAr, String typeEn, String emoji) async {
-    final LatLng pt = me ?? mapController.camera.center;
-    setState(() => showReportModal = false);
-    _toast(tr('تم إرسال البلاغ لتحذير السائقين ($typeAr) $emoji',
-        'Report submitted ($typeEn) $emoji'));
-    _speak(tr('تم تسجيل بلاغ $typeAr، شكراً لمساهمتك',
-        '$typeEn report submitted, thank you'));
-
-    try {
-      if (Firebase.apps.isNotEmpty) {
-        await FirebaseFirestore.instance.collection('reports').add({
-          'type': typeAr,
-          'typeEn': typeEn,
-          'emoji': emoji,
-          'lat': pt.latitude,
-          'lng': pt.longitude,
-          'endVotes': 0,
-          'timestamp': FieldValue.serverTimestamp(),
-        });
-      }
-    } catch (_) {}
-  }
-
-  Future<void> _voteReportEnded(DocumentSnapshot doc) async {
-    try {
-      final data = doc.data() as Map<String, dynamic>? ?? {};
-      final int votes = (data['endVotes'] as num?)?.toInt() ?? 0;
-      if (votes + 1 >= endVotesThreshold) {
-        await doc.reference.delete();
-        _toast(tr('تم إزالة البلاغ لانتهاء الحالة ✅', 'Report removed ✅'));
-      } else {
-        await doc.reference.update({'endVotes': FieldValue.increment(1)});
-        _toast(tr('تم تسجيل تصويتك بانتهاء الحالة 👍', 'Vote recorded 👍'));
-      }
-    } catch (_) {}
-  }
-
-  Future<void> _submitNewCustomPlace() async {
-    final name = placeNameController.text.trim();
-    if (name.isEmpty) {
-      _toast(tr('يرجى كتابة اسم المكان أولاً', 'Please enter place name'));
-      return;
-    }
-    final pt = pickedPlacePoint ?? me ?? mapController.camera.center;
-    setState(() => showAddPlaceModal = false);
-    placeNameController.clear();
-    _toast(tr('تمت إضافة "$name" على الخريطة بنجاح 📍',
-        '"$name" added to map successfully 📍'));
-
-    try {
-      if (Firebase.apps.isNotEmpty) {
-        await FirebaseFirestore.instance.collection('custom_places').add({
-          'name': name,
-          'category': selectedPlaceCategory,
-          'lat': pt.latitude,
-          'lng': pt.longitude,
-          'timestamp': FieldValue.serverTimestamp(),
-        });
-      }
-    } catch (_) {}
-  }
-
-  // ==================== تتبع الموقع الجغرافي (GPS) ====================
-  Future<void> _initLocationTracking({required bool userInitiated}) async {
+  /// التقاط موقع GPS فور فتح التطبيق وتوجيه الكاميرا تلقائياً للمستخدم
+  Future<void> _initImmediateGpsAndFollow({bool showFeedback = false}) async {
     try {
       bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
       if (!serviceEnabled) {
-        if (userInitiated) {
-          _toast(tr('يرجى تشغيل موقع الهاتف (GPS)', 'Please enable device GPS'));
+        if (mounted && showFeedback) {
+          _showSnack(
+              'يرجى تفعيل خدمة الموقع (GPS) في جهازك لتحديد موقعك الدقيق');
+        }
+      }
+
+      LocationPermission permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+      }
+
+      if (permission == LocationPermission.denied ||
+          permission == LocationPermission.deniedForever) {
+        if (mounted && showFeedback) {
+          _showSnack('صلاحية الوصول للموقع مرفوضة، يرجى تفعيلها من الإعدادات');
         }
         return;
       }
 
-      LocationPermission perm = await Geolocator.checkPermission();
-      if (perm == LocationPermission.denied) {
-        if (userInitiated) {
-          perm = await Geolocator.requestPermission();
-        } else {
-          return;
-        }
-      }
-
-      if (perm == LocationPermission.denied ||
-          perm == LocationPermission.deniedForever) {
-        if (userInitiated) {
-          _toast(tr('لم يتم منح صلاحية الوصول للموقع',
-              'Location permission denied'));
-        }
-        return;
-      }
-
-      // حفظ أن المستخدم منح الإذن نهائياً حتى لا تظهر نافذة الطلب مرة أخرى أبداً
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setBool('dlini_perm_asked_v3', true);
-      if (mounted && showNotifPermissionModal) {
-        setState(() => showNotifPermissionModal = false);
-      }
-
-      final pos = await Geolocator.getCurrentPosition(
-        desiredAccuracy: LocationAccuracy.high,
+      // جلب الإحداثيات الفورية بأعلى دقة ملاحية
+      final Position initialPos = await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.bestForNavigation,
       );
-      _onPositionUpdate(pos, moveCameraImmediately: userInitiated);
 
-      await positionStream?.cancel();
-      positionStream = Geolocator.getPositionStream(
+      final LatLng currentLatLng =
+          LatLng(initialPos.latitude, initialPos.longitude);
+      _userLocationNotifier.value = currentLatLng;
+      hasLockedInitialGps = true;
+
+      if (mounted) {
+        setState(() {
+          isFollowingUser = true;
+        });
+        _glideTo(currentLatLng, zoom: 15.8);
+        if (showFeedback) {
+          _showSnack('تم قفل موقعك الحالي عبر الـ GPS بدقة عالية');
+        }
+      }
+
+      // الاشتراك في البث المباشر لحركة المركبة
+      await _positionStreamSub?.cancel();
+      _positionStreamSub = Geolocator.getPositionStream(
         locationSettings: const LocationSettings(
           accuracy: LocationAccuracy.bestForNavigation,
           distanceFilter: 2,
         ),
-      ).listen((Position p) {
-        _onPositionUpdate(p, moveCameraImmediately: false);
-      });
-    } catch (_) {}
-  }
+      ).listen((Position pos) {
+        final LatLng updated = LatLng(pos.latitude, pos.longitude);
+        _userLocationNotifier.value = updated;
 
-  void _onPositionUpdate(Position pos, {bool moveCameraImmediately = false}) {
-    if (!mounted) return;
-    if (simTimer != null && simTimer!.isActive) return;
+        final double rawSpeedKmH = math.max(0.0, pos.speed * 3.6);
+        _speedKmHNotifier.value = rawSpeedKmH < 1.5 ? 0.0 : rawSpeedKmH;
 
-    final rawLatLng = LatLng(pos.latitude, pos.longitude);
-    double spd = (pos.speed * 3.6).clamp(0.0, 220.0);
-    if (spd < 1.8) spd = 0.0;
-
-    double brg = pos.heading;
-    if (brg.isNaN || brg < 0 || spd < 2.0) {
-      if (me != null && _distMeters(me!, rawLatLng) > 3.0) {
-        brg = _bearingBetween(me!, rawLatLng);
-      } else {
-        brg = currentBearing;
-      }
-    }
-
-    LatLng finalPos = rawLatLng;
-    double finalBrg = brg;
-
-    if (isNavigating && navCoords.length >= 2) {
-      final snap = _snapToPolyline(rawLatLng, navCoords);
-      if (_distMeters(rawLatLng, snap.point) <= 42.0) {
-        finalPos = snap.point;
-        if (spd >= 2.0) finalBrg = snap.bearing;
-      }
-    }
-
-    final int nowMs = DateTime.now().millisecondsSinceEpoch;
-    final int dt = (nowMs - _lastFixMs).clamp(180, 1200);
-    _lastFixMs = nowMs;
-
-    _glideFromPos = _dispState.value.pos;
-    _glideToPos = finalPos;
-    _glideFromBearing = _dispState.value.bearing;
-    _glideToBearing = finalBrg;
-
-    setState(() {
-      me = finalPos;
-      origin ??= finalPos;
-      currentSpeedKmh = spd;
-      currentBearing = finalBrg;
-    });
-
-    _glideCtrl?.duration = Duration(milliseconds: dt);
-    _glideCtrl?.forward(from: 0.0);
-
-    if (moveCameraImmediately) {
-      mapController.move(finalPos, 15.8);
-    }
-
-    if (isNavigating) {
-      _updateNavigationState(finalPos, spd, finalBrg);
-    }
-  }
-
-  void _centerOnMe() {
-    setState(() => follow = true);
-    if (me != null) {
-      if (isNavigating && isFirstPerson3D) {
-        mapController.moveAndRotate(
-            _lookAhead(me!, currentBearing, 28), 17.8, -currentBearing);
-      } else {
-        mapController.moveAndRotate(me!, 15.8, 0.0);
-      }
-    } else {
-      _initLocationTracking(userInitiated: true);
-    }
-  }
-
-  // ==================== الدوال الهندسية وحساب الزوايا ====================
-  double _distMeters(LatLng a, LatLng b) {
-    const Distance d = Distance();
-    return d.as(LengthUnit.Meter, a, b);
-  }
-
-  double _bearingBetween(LatLng a, LatLng b) {
-    final double lat1 = a.latitude * math.pi / 180.0;
-    final double lat2 = b.latitude * math.pi / 180.0;
-    final double dLon = (b.longitude - a.longitude) * math.pi / 180.0;
-    final double y = math.sin(dLon) * math.cos(lat2);
-    final double x = math.cos(lat1) * math.sin(lat2) -
-        math.sin(lat1) * math.cos(lat2) * math.cos(dLon);
-    final double brng = math.atan2(y, x) * 180.0 / math.pi;
-    return (brng + 360.0) % 360.0;
-  }
-
-  double _lerpAngle(double a, double b, double t) {
-    double diff = ((b - a + 540.0) % 360.0) - 180.0;
-    return (a + diff * t + 360.0) % 360.0;
-  }
-
-  LatLng _lookAhead(LatLng pos, double bearingDeg, double distMeters) {
-    final double rad = bearingDeg * math.pi / 180.0;
-    final double dLat = (distMeters * math.cos(rad)) / 111320.0;
-    final double dLng = (distMeters * math.sin(rad)) /
-        (111320.0 * math.cos(pos.latitude * math.pi / 180.0));
-    return LatLng(pos.latitude + dLat, pos.longitude + dLng);
-  }
-
-  _Snap _snapToPolyline(LatLng p, List<LatLng> line) {
-    double bestDist = double.infinity;
-    LatLng bestPt = p;
-    double bestBrg = currentBearing;
-
-    for (int i = 0; i < line.length - 1; i++) {
-      final a = line[i];
-      final b = line[i + 1];
-      final double dx = b.longitude - a.longitude;
-      final double dy = b.latitude - a.latitude;
-      final double lenSq = dx * dx + dy * dy;
-      double t = 0.0;
-      if (lenSq > 1e-12) {
-        t = ((p.longitude - a.longitude) * dx + (p.latitude - a.latitude) * dy) /
-            lenSq;
-        t = t.clamp(0.0, 1.0);
-      }
-      final proj = LatLng(a.latitude + t * dy, a.longitude + t * dx);
-      final d = _distMeters(p, proj);
-      if (d < bestDist) {
-        bestDist = d;
-        bestPt = proj;
-        bestBrg = _bearingBetween(a, b);
-      }
-    }
-    return _Snap(bestPt, bestBrg);
-  }
-
-  // ==================== البحث الصوتي والنصي واستكشاف الفئات ====================
-  void _onSearchChanged(String val) {
-    searchDebounce?.cancel();
-    if (val.trim().isEmpty) {
-      setState(() {
-        searchResults = [];
-        isSearching = false;
-      });
-      return;
-    }
-    searchDebounce = Timer(const Duration(milliseconds: 380), () {
-      _performSearch(val.trim());
-    });
-  }
-
-  Future<void> _performSearch(String query) async {
-    setState(() => isSearching = true);
-    final List<Map<String, dynamic>> combined = [];
-
-    // 1. البحث في الأماكن المحلية المضافة من المستخدمين
-    for (final doc in customPlaces) {
-      final data = doc.data() as Map<String, dynamic>? ?? {};
-      final name = (data['name'] ?? '').toString();
-      if (name.toLowerCase().contains(query.toLowerCase())) {
-        combined.add({
-          'display_name': '$name (${data['category'] ?? ''})',
-          'lat': (data['lat'] as num).toDouble(),
-          'lon': (data['lng'] as num).toDouble(),
-        });
-      }
-    }
-
-    // 2. البحث في مدن ومحافظات العراق المخزنة محلياً (يعمل حتى بدون إنترنت)
-    for (final city in kIraqiCityLabels) {
-      if (city.nameAr.contains(query) ||
-          city.nameEn.toLowerCase().contains(query.toLowerCase())) {
-        combined.add({
-          'display_name': '${city.nameAr} - ${city.nameEn}',
-          'lat': city.point.latitude,
-          'lon': city.point.longitude,
-        });
-      }
-    }
-
-    // 3. البحث السحابي الشامل في العراق عبر Nominatim
-    try {
-      final uri = Uri.parse(
-          'https://nominatim.openstreetmap.org/search?q=${Uri.encodeComponent(query)}&countrycodes=iq&format=json&limit=8&accept-language=${isEnglish ? 'en' : 'ar'}');
-      final res = await http.get(uri, headers: {
-        'User-Agent': 'DliniiIraqNavigation/2.0 (com.dlinii.app)'
-      }).timeout(const Duration(seconds: 6));
-
-      if (res.statusCode == 200) {
-        final List data = jsonDecode(res.body) as List;
-        for (final item in data) {
-          combined.add({
-            'display_name': item['display_name'].toString(),
-            'lat': double.tryParse(item['lat'].toString()) ?? 33.4258,
-            'lon': double.tryParse(item['lon'].toString()) ?? 43.2995,
-          });
+        if (pos.heading >= 0 && rawSpeedKmH > 2.0) {
+          _headingNotifier.value = pos.heading;
         }
-      }
-    } catch (_) {}
 
-    if (mounted) {
-      setState(() {
-        searchResults = combined;
-        isSearching = false;
+        if (isFollowingUser && mounted) {
+          _mapController.move(updated, _mapController.camera.zoom);
+        }
       });
+    } catch (e) {
+      debugPrint('GPS Immediate Lock Notice: $e');
     }
   }
 
-  Future<void> _toggleVoiceSearch() async {
-    if (isListeningVoice) {
-      await speech.stop();
-      setState(() => isListeningVoice = false);
-      return;
-    }
+  /// تحريك الكاميرا بانسيابية عالية (Glide Animation)
+  void _glideTo(LatLng target, {double zoom = 15.0}) {
     try {
-      final avail = await speech.initialize();
-      if (!avail) {
-        _toast(tr('البحث الصوتي غير مدعوم على هذا الجهاز',
-            'Voice search not available'));
-        return;
-      }
-      setState(() => isListeningVoice = true);
-      await speech.listen(
-        localeId: isEnglish ? 'en_US' : 'ar_IQ',
-        onResult: (res) {
-          if (res.recognizedWords.isNotEmpty) {
-            searchController.text = res.recognizedWords;
-            _onSearchChanged(res.recognizedWords);
-          }
-          if (res.finalResult && mounted) {
-            setState(() => isListeningVoice = false);
-          }
-        },
+      final LatLng startCenter = _mapController.camera.center;
+      final double startZoom = _mapController.camera.zoom;
+
+      final AnimationController controller = AnimationController(
+        duration: const Duration(milliseconds: 650),
+        vsync: this,
       );
+      final Animation<double> curve =
+          CurvedAnimation(parent: controller, curve: Curves.easeOutCubic);
+
+      controller.addListener(() {
+        final double t = curve.value;
+        final double lat =
+            startCenter.latitude + (target.latitude - startCenter.latitude) * t;
+        final double lng = startCenter.longitude +
+            (target.longitude - startCenter.longitude) * t;
+        final double currentZoom = startZoom + (zoom - startZoom) * t;
+        _mapController.move(LatLng(lat, lng), currentZoom);
+        _currentZoomNotifier.value = currentZoom;
+      });
+
+      controller.addStatusListener((status) {
+        if (status == AnimationStatus.completed ||
+            status == AnimationStatus.dismissed) {
+          controller.dispose();
+        }
+      });
+
+      controller.forward();
     } catch (_) {
-      setState(() => isListeningVoice = false);
+      _mapController.move(target, zoom);
     }
   }
 
-  // ==================== مشاركة الموقع وميزة "دلّي صديق" عبر موقعك ====================
-  Future<void> _shareFriendLocation({LatLng? target, String? label}) async {
-    final LatLng pt = target ?? dest ?? me ?? mapController.camera.center;
-    final String placeName = (label != null && label.trim().isNotEmpty)
-        ? label.trim()
-        : (destTitle.isNotEmpty
-            ? destTitle
-            : tr('موقعي على الخريطة', 'My Location'));
-
-    final String latStr = pt.latitude.toStringAsFixed(6);
-    final String lngStr = pt.longitude.toStringAsFixed(6);
-    final String encodedName = Uri.encodeComponent(placeName);
-
-    // الرابط الرسمي لموقعك على Vercel الذي يفتح تطبيق دلّيني مباشرة
-    final String dliniiWebUrl =
-        '$webAppDomain/?lat=$latStr&lng=$lngStr&name=$encodedName';
-
-    final String message = isEnglish
-        ? '📍 Open "$placeName" directly in Dlinii App:\n$dliniiWebUrl'
-        : '📍 افتح الموقع "$placeName" مباشرة عبر تطبيق دلّيني:\n$dliniiWebUrl';
-
-    await Clipboard.setData(ClipboardData(text: message));
-    _toast(tr('تم نسخ رابط "دلّي صديق" ($webAppDomain) 📋',
-        'Dlinii share link copied 📋'));
-
-    final Uri waUrl =
-        Uri.parse('https://wa.me/?text=${Uri.encodeComponent(message)}');
+  /// معالجة الروابط العميقة القادمة من ميزة «دلّي صديق» وإظهار نافذة التوجيه الذكية
+  void _handleIncomingDeepLinkOrWebOption() {
     try {
-      if (await canLaunchUrl(waUrl)) {
-        await launchUrl(waUrl, mode: LaunchMode.externalApplication);
-      }
-    } catch (_) {}
-  }
-// ==================== نهاية الجزء 3 من 6 ====================
-// ==================== بداية الجزء 4 من 6 ====================
-  // ==================== استكشاف الخدمات والفئات على الخريطة ====================
-  Future<void> _selectExploreCategory(ExploreCategory cat) async {
-    if (activeCategoryId == cat.id) {
-      setState(() {
-        activeCategoryId = null;
-        categoryMapMarkers = [];
-      });
-      return;
-    }
+      final Map<String, String> params = Uri.base.queryParameters;
+      if (params.containsKey('lat') && params.containsKey('lng')) {
+        final double? lat = double.tryParse(params['lat']!);
+        final double? lng = double.tryParse(params['lng']!);
+        final String sharedName =
+            params['name'] ?? 'وجهة مشتركة عبر تطبيق دلّيني';
 
-    setState(() {
-      activeCategoryId = cat.id;
-      categoryMapMarkers = [];
-    });
+        if (lat != null && lng != null) {
+          final LatLng sharedDest = LatLng(lat, lng);
+          _planRoute(sharedDest, destName: sharedName);
 
-    final center = mapController.camera.center;
-    _toast(tr('جاري البحث عن ${cat.nameAr} القريبة...',
-        'Searching nearby ${cat.nameEn}...'));
-
-    final List<Marker> foundMarkers = [];
-
-    // 1. فحص الأماكن المضافة محلياً من المستخدمين أولاً
-    for (final doc in customPlaces) {
-      final data = doc.data() as Map<String, dynamic>? ?? {};
-      final name = (data['name'] ?? '').toString();
-      final lat = (data['lat'] as num?)?.toDouble();
-      final lng = (data['lng'] as num?)?.toDouble();
-      if (lat != null && lng != null) {
-        final pt = LatLng(lat, lng);
-        if (_distMeters(center, pt) <= 15000) {
-          foundMarkers.add(_buildPoiMarker(pt, name, cat.color, cat.icon));
-        }
-      }
-    }
-
-    // 2. البحث عبر Overpass API في المنطقة المحيطة
-    try {
-      final double d = 0.08;
-      final String bbox =
-          '${center.latitude - d},${center.longitude - d},${center.latitude + d},${center.longitude + d}';
-      final String query =
-          '[out:json][timeout:8];(node["${cat.osmKey}"="${cat.osmVal}"]($bbox);way["${cat.osmKey}"="${cat.osmVal}"]($bbox););out center 25;';
-      final res = await http
-          .post(
-            Uri.parse('https://overpass-api.de/api/interpreter'),
-            body: {'data': query},
-          )
-          .timeout(const Duration(seconds: 8));
-
-      if (res.statusCode == 200) {
-        final data = jsonDecode(res.body) as Map<String, dynamic>;
-        final List elements = (data['elements'] as List?) ?? [];
-        for (final el in elements) {
-          double? lat = (el['lat'] as num?)?.toDouble();
-          double? lon = (el['lon'] as num?)?.toDouble();
-          if (lat == null && el['center'] is Map) {
-            lat = (el['center']['lat'] as num?)?.toDouble();
-            lon = (el['center']['lon'] as num?)?.toDouble();
-          }
-          if (lat != null && lon != null) {
-            final tags = (el['tags'] as Map?) ?? {};
-            final String title = (tags['name:ar'] ??
-                    tags['name'] ??
-                    tags['name:en'] ??
-                    tr(cat.nameAr, cat.nameEn))
-                .toString();
-            final pt = LatLng(lat, lon);
-            foundMarkers.add(_buildPoiMarker(pt, title, cat.color, cat.icon));
+          if (kIsWeb && mounted) {
+            _showSmartWebOrAppDialog(sharedDest, sharedName);
           }
         }
       }
-    } catch (_) {}
-
-    if (mounted) {
-      setState(() {
-        categoryMapMarkers = foundMarkers;
-      });
-      if (foundMarkers.isEmpty) {
-        _toast(tr('لم يتم العثور على ${cat.nameAr} قريبة في هذا النطاق',
-            'No nearby ${cat.nameEn} found in this area'));
-      }
+    } catch (e) {
+      debugPrint('DeepLink parse notice: $e');
     }
   }
 
-  Marker _buildPoiMarker(
-      LatLng pt, String title, Color color, IconData iconData) {
-    return Marker(
-      point: pt,
-      width: 110,
-      height: 62,
-      child: GestureDetector(
-        onTap: () => _selectDestination(pt, title),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              padding: const EdgeInsets.all(6),
-              decoration: BoxDecoration(
-                color: color,
-                shape: BoxShape.circle,
-                border: Border.all(color: Colors.white, width: 2),
-                boxShadow: const [
-                  BoxShadow(color: Colors.black45, blurRadius: 6)
-                ],
-              ),
-              child: Icon(iconData, color: Colors.white, size: 16),
+  /// نافذة خيارات التصفح الذكية (لحل مشكلة زر تنزيل التطبيق وتمكين المتابعة في الويب أو التطبيق)
+  void _showSmartWebOrAppDialog(LatLng target, String placeTitle) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (ctx) {
+        return Directionality(
+          textDirection: TextDirection.rtl,
+          child: Container(
+            padding: const EdgeInsets.all(22),
+            decoration: BoxDecoration(
+              color: const Color(0xFF0F172A).withOpacity(0.97),
+              borderRadius:
+                  const BorderRadius.vertical(top: Radius.circular(28)),
+              border: Border.all(color: Colors.tealAccent.withOpacity(0.3)),
             ),
-            const SizedBox(height: 2),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
-              decoration: BoxDecoration(
-                color: Colors.black87,
-                borderRadius: BorderRadius.circular(6),
-              ),
-              child: Text(
-                title,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 9.5,
-                  fontWeight: FontWeight.w700,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 48,
+                  height: 5,
+                  decoration: BoxDecoration(
+                    color: Colors.white24,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
                 ),
-              ),
+                const SizedBox(height: 18),
+                const Icon(Icons.explore_rounded,
+                    color: Color(0xFF10B981), size: 48),
+                const SizedBox(height: 12),
+                Text(
+                  'تم استلام موقع: $placeTitle',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 8),
+                const Text(
+                  'تم رسم المسار وتلوين حالة الطريق تلقائياً. يمكنك بدء الملاحة مباشرة عبر نسخة الويب الكاملة أو نسخ إحداثيات الوجهة.',
+                  style: TextStyle(color: Colors.white70, fontSize: 13.5),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 20),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton.icon(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF10B981),
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                    ),
+                    icon: const Icon(Icons.navigation_rounded),
+                    label: const Text(
+                      'بدء الملاحة الفورية الآن',
+                      style:
+                          TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
+                    ),
+                    onPressed: () {
+                      Navigator.pop(ctx);
+                      _glideTo(target, zoom: 15.0);
+                    },
+                  ),
+                ),
+                const SizedBox(height: 10),
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton.icon(
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: Colors.white,
+                      side: const BorderSide(color: Colors.white24),
+                      padding: const EdgeInsets.symmetric(vertical: 13),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                    ),
+                    icon: const Icon(Icons.copy_rounded, size: 18),
+                    label: const Text('نسخ إحداثيات الموقع'),
+                    onPressed: () {
+                      Clipboard.setData(
+                        ClipboardData(
+                          text: '${target.latitude}, ${target.longitude}',
+                        ),
+                      );
+                      Navigator.pop(ctx);
+                      _showSnack('تم نسخ الإحداثيات إلى الحافظة');
+                    },
+                  ),
+                ),
+              ],
             ),
-          ],
-        ),
-      ),
+          ),
+        );
+      },
     );
   }
 
-  // ==================== اختيار الوجهة وحساب المسارات (أونلاين وأوفلاين) ====================
-  Future<void> _selectDestination(LatLng pt, String title) async {
-    FocusScope.of(context).unfocus();
-    final LatLng startPt = me ?? origin ?? mapController.camera.center;
+  /// تهيئة البلاغات الميدانية الافتراضية والاتصال المباشر بـ Firebase Firestore
+  void _seedInitialReportsAndListen() {
+    final DateTime now = DateTime.now();
+    // بلاغات ميدانية أولية لتوضيح تلوين المسارات (الأصفر للخطر والأحمر للازدحام)
+    final List<RoadReport> defaultIraqReports = [
+      RoadReport(
+        id: 'rep_ramadi_traffic',
+        type: 'traffic',
+        titleAr: 'ازدحام مروري شديد',
+        descriptionAr: 'تقاطع الزيوت - الرمادي (المسار ملون بالأحمر)',
+        location: const LatLng(33.4285, 43.3060),
+        timestamp: now.subtract(const Duration(minutes: 12)),
+        confirmations: 9,
+      ),
+      RoadReport(
+        id: 'rep_ramadi_hazard',
+        type: 'hazard',
+        titleAr: 'حفريات وأعمال صيانة',
+        descriptionAr: 'الشارع العام قرب جسر الورار (المسار ملون بالأصفر)',
+        location: const LatLng(33.4210, 43.2850),
+        timestamp: now.subtract(const Duration(minutes: 25)),
+        confirmations: 6,
+      ),
+      RoadReport(
+        id: 'rep_anbar_camera',
+        type: 'camera',
+        titleAr: 'كاميرا رصد سرعة (80 كم/س)',
+        descriptionAr: 'الطريق السريع الرمادي - الفلوجة',
+        location: const LatLng(33.3950, 43.4500),
+        timestamp: now.subtract(const Duration(hours: 1)),
+        confirmations: 14,
+      ),
+      RoadReport(
+        id: 'rep_baghdad_traffic',
+        type: 'traffic',
+        titleAr: 'زخم مروري خانق',
+        descriptionAr: 'مدخل بغداد الغربي - أبو غريب',
+        location: const LatLng(33.3090, 44.1850),
+        timestamp: now.subtract(const Duration(minutes: 18)),
+        confirmations: 19,
+      ),
+      RoadReport(
+        id: 'rep_checkpoint_1',
+        type: 'checkpoint',
+        titleAr: 'سيطرة أمنية رئيسية',
+        descriptionAr: 'يرجى تخفيف السرعة وتهيئة المستمسكات',
+        location: const LatLng(33.3620, 43.7420),
+        timestamp: now.subtract(const Duration(minutes: 40)),
+        confirmations: 11,
+      ),
+    ];
 
     setState(() {
-      origin = startPt;
-      dest = pt;
-      destTitle = title.isNotEmpty
-          ? title
-          : tr('موقع محدد على الخريطة', 'Selected Map Location');
-      destController.text = destTitle;
-      searchResults = [];
-      showPlanSheet = true;
-      showNavSheet = false;
-      isNavigating = false;
-      selectedRouteIndex = 0;
+      activeReports = List<RoadReport>.from(defaultIraqReports);
     });
 
-    await _calculateRoutes();
-  }
-
-  Map<String, dynamic> _buildOfflineFallbackRoute(LatLng start, LatLng end) {
-    final List<LatLng> pts = [];
-    const int segments = 24;
-    for (int i = 0; i <= segments; i++) {
-      final double t = i / segments;
-      final double lat = start.latitude + (end.latitude - start.latitude) * t;
-      final double lng = start.longitude + (end.longitude - start.longitude) * t;
-      pts.add(LatLng(lat, lng));
-    }
-
-    final double distM = _distMeters(start, end) * 1.18;
-    final double durS = (distM / 13.5).clamp(60.0, 86400.0);
-
-    return {
-      'distance': distM,
-      'duration': durS,
-      'geometry': {
-        'coordinates': pts.map((p) => [p.longitude, p.latitude]).toList(),
-      },
-      'legs': [
-        {
-          'steps': [
-            {
-              'distance': distM,
-              'duration': durS,
-              'name': destTitle,
-              'maneuver': {
-                'type': 'depart',
-                'modifier': 'straight',
-                'location': [start.longitude, start.latitude],
-              }
-            },
-            {
-              'distance': 0.0,
-              'duration': 0.0,
-              'name': destTitle,
-              'maneuver': {
-                'type': 'arrive',
-                'modifier': 'straight',
-                'location': [end.longitude, end.latitude],
-              }
-            }
-          ]
-        }
-      ]
-    };
-  }
-
-  Future<void> _calculateRoutes() async {
-    if (origin == null || dest == null) return;
-    setState(() => isCalculatingRoute = true);
-
-    List<dynamic> fetchedRoutes = [];
-
-    if (!_forceOffline) {
-      try {
-        final String coordsStr =
-            '${origin!.longitude},${origin!.latitude};${dest!.longitude},${dest!.latitude}';
-        final Uri url = Uri.parse(
-            'https://router.project-osrm.org/route/v1/driving/$coordsStr?overview=full&geometries=geojson&alternatives=true&steps=true');
-
-        final res = await http.get(url).timeout(const Duration(seconds: 7));
-        if (res.statusCode == 200) {
-          final data = jsonDecode(res.body) as Map<String, dynamic>;
-          if (data['routes'] is List && (data['routes'] as List).isNotEmpty) {
-            fetchedRoutes = data['routes'] as List;
-          }
-        }
-      } catch (_) {}
-    }
-
-    // في حال انقطاع الإنترنت نستخدم التوجيه المحلي الأوفلاين تلقائياً
-    if (fetchedRoutes.isEmpty) {
-      fetchedRoutes = [_buildOfflineFallbackRoute(origin!, dest!)];
-    }
-
-    if (mounted) {
-      setState(() {
-        routes = fetchedRoutes;
-        selectedRouteIndex = 0;
-        isCalculatingRoute = false;
-      });
-      _fitRouteBounds();
-    }
-  }
-
-  void _fitRouteBounds() {
-    if (origin == null || dest == null) return;
     try {
-      final bounds = LatLngBounds.fromPoints([origin!, dest!]);
-      mapController.fitCamera(
-        CameraFit.bounds(
-          bounds: bounds,
-          padding: const EdgeInsets.fromLTRB(55, 130, 55, 260),
-          maxZoom: 16.0,
-        ),
-      );
-    } catch (_) {}
+      _reportsStreamSub = FirebaseFirestore.instance
+          .collection('road_reports')
+          .orderBy('timestamp', descending: true)
+          .limit(80)
+          .snapshots()
+          .listen((QuerySnapshot snapshot) {
+        final List<RoadReport> remoteReports = [];
+        for (final doc in snapshot.docs) {
+          final data = doc.data() as Map<String, dynamic>;
+          remoteReports.add(RoadReport.fromDoc(doc.id, data));
+        }
+
+        if (mounted) {
+          setState(() {
+            activeReports = [
+              ...remoteReports,
+              ...defaultIraqReports.where(
+                (def) => !remoteReports.any((r) => r.id == def.id),
+              ),
+            ];
+            if (fullRoutePoints.isNotEmpty) {
+              routeSegments = _buildSmartColoredSegments(fullRoutePoints);
+            }
+          });
+        }
+      }, onError: (err) {
+        debugPrint('Firestore live stream fallback mode: $err');
+      });
+    } catch (e) {
+      debugPrint('Firestore not initialized or offline mode active: $e');
+    }
   }
 
-  // ==================== تلوين مقاطع البلاغات الفعلية فقط (إصلاح الخط الأصفر) ====================
-  // المسار الأساسي يكون أخضر دائماً، ولا يتلون بالأصفر أو الأحمر إلا في موقع البلاغ الفعلي!
-  List<Polyline> _buildRealTrafficAndHazardOverlays(
-      Map<String, dynamic> route, List<LatLng> fullPoints) {
-    final List<Polyline> overlays = [];
-    if (fullPoints.length < 2 || cloudReports.isEmpty) return overlays;
+  /// إرسال بلاغ ميداني جديد وتحديث ألوان المسار فوراً
+  Future<void> _submitNewReport({
+    required String type,
+    required String titleAr,
+    required String descriptionAr,
+  }) async {
+    final LatLng reportLoc = _userLocationNotifier.value;
+    final RoadReport newReport = RoadReport(
+      id: 'local_${DateTime.now().millisecondsSinceEpoch}',
+      type: type,
+      titleAr: titleAr,
+      descriptionAr: descriptionAr,
+      location: reportLoc,
+      timestamp: DateTime.now(),
+      confirmations: 1,
+    );
 
-    for (final doc in cloudReports) {
-      final data = doc.data() as Map<String, dynamic>? ?? {};
-      final double? rLat = (data['lat'] as num?)?.toDouble();
-      final double? rLng = (data['lng'] as num?)?.toDouble();
-      if (rLat == null || rLng == null) continue;
+    setState(() {
+      activeReports.insert(0, newReport);
+      if (fullRoutePoints.isNotEmpty) {
+        routeSegments = _buildSmartColoredSegments(fullRoutePoints);
+      }
+    });
 
-      final LatLng reportPt = LatLng(rLat, rLng);
-      final String typeAr = (data['type'] ?? '').toString();
-      final String typeEn = (data['typeEn'] ?? '').toString().toLowerCase();
+    _showSnack('تم نشر البلاغ: $titleAr وتحديث ألوان المسار لكل السائقين');
 
-      // تحديد اللون حسب نوع البلاغ الحقيقي:
-      // أحمر: للازدحام المروري أو الحوادث أو الطرق المغلقة
-      // أصفر: للمطبات أو الحفريات أو السيطرات أو الرادار أو التنبيهات
-      final bool isRedSeverity = typeAr.contains('ازدحام') ||
-          typeAr.contains('حادث') ||
-          typeAr.contains('مغلق') ||
-          typeEn.contains('traffic') ||
-          typeEn.contains('accident') ||
-          typeEn.contains('closed');
+    try {
+      await FirebaseFirestore.instance
+          .collection('road_reports')
+          .add(newReport.toMap());
+    } catch (e) {
+      debugPrint('Saved report locally (offline/firestore rules): $e');
+    }
+  }
 
-      final Color segColor = isRedSeverity
-          ? const Color(0xFFef4444) // أحمر للازدحام والحوادث
-          : const Color(0xFFf59e0b); // أصفر للبلاغات التحذيرية والمطبات والسيطرات
+  /// فحص اقتراب المركبة من البلاغات أو الرادارات لتنبيه السائق
+  void _checkProximityAlerts() {
+    if (!isVoiceEnabled || activeReports.isEmpty) return;
+    final LatLng userPos = _userLocationNotifier.value;
+    const Distance distCalc = Distance();
 
-      // تلوين المقطع القريب من البلاغ فقط (ضمن 130 متر عن خط المسار)
-      final List<LatLng> affectedSegment = [];
-      for (int i = 0; i < fullPoints.length; i++) {
-        if (_distMeters(fullPoints[i], reportPt) <= 130.0) {
-          if (affectedSegment.isEmpty && i > 0) {
-            affectedSegment.add(fullPoints[i - 1]);
+    for (final report in activeReports) {
+      final double meters =
+          distCalc.as(LengthUnit.Meter, userPos, report.location);
+      if (meters <= 300 && lastAlertedReportId != report.id) {
+        lastAlertedReportId = report.id;
+        HapticFeedback.heavyImpact();
+        _showSnack('تنبيه على بعد ${meters.round()} متر: ${report.titleAr}');
+        break;
+      }
+    }
+  }
+// ============================================================================
+// بداية الجزء 3 من 5 - الصقه مباشرة تحت نهاية الجزء 2
+// ============================================================================
+
+  /// تخطيط المسار الملاحي وحساب الوقت والمسافة وتلوين المقاطع
+  Future<void> _planRoute(LatLng destination, {String? destName}) async {
+    setState(() {
+      isLoadingRoute = true;
+      destinationPoint = destination;
+      destinationName = destName ?? 'الوجهة المحددة على الخريطة';
+      searchSuggestions.clear();
+    });
+
+    final LatLng start = _userLocationNotifier.value;
+    final String url =
+        'https://router.project-osrm.org/route/v1/driving/${start.longitude},${start.latitude};${destination.longitude},${destination.latitude}?overview=full&geometries=geojson&steps=true';
+
+    try {
+      final response = await http.get(Uri.parse(url), headers: {
+        'Accept-Language': 'ar'
+      }).timeout(const Duration(seconds: 9));
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        final routes = data['routes'] as List?;
+        if (routes != null && routes.isNotEmpty) {
+          final route = routes.first;
+          final coords = route['geometry']['coordinates'] as List;
+          final List<LatLng> pts = coords
+              .map((c) => LatLng(
+                    (c[1] as num).toDouble(),
+                    (c[0] as num).toDouble(),
+                  ))
+              .toList();
+
+          final double distKm = ((route['distance'] as num) / 1000.0);
+          final int durMin =
+              math.max(1, ((route['duration'] as num) / 60.0).round());
+          final DateTime arrival =
+              DateTime.now().add(Duration(minutes: durMin));
+          final String arrivalFormatted =
+              '${arrival.hour.toString().padLeft(2, '0')}:${arrival.minute.toString().padLeft(2, '0')}';
+
+          // استخراج خطوات التوجيه بالعربية
+          final List<RouteStepItem> parsedSteps = [];
+          final legs = route['legs'] as List?;
+          if (legs != null && legs.isNotEmpty) {
+            final steps = legs.first['steps'] as List? ?? [];
+            for (final step in steps) {
+              final maneuver = step['maneuver'] as Map<String, dynamic>? ?? {};
+              final String modifier = (maneuver['modifier'] ?? '').toString();
+              final String streetName = (step['name'] ?? '').toString();
+              final double stepDist =
+                  ((step['distance'] ?? 0) as num).toDouble();
+              final List locList = maneuver['location'] as List? ??
+                  [start.longitude, start.latitude];
+
+              parsedSteps.add(
+                RouteStepItem(
+                  instructionAr: _translateManeuverToAr(modifier, streetName),
+                  distanceText: stepDist >= 1000
+                      ? '${(stepDist / 1000).toStringAsFixed(1)} كم'
+                      : '${stepDist.round()} م',
+                  icon: _getManeuverIcon(modifier),
+                  location: LatLng(
+                    (locList[1] as num).toDouble(),
+                    (locList[0] as num).toDouble(),
+                  ),
+                ),
+              );
+            }
           }
-          affectedSegment.add(fullPoints[i]);
-        } else if (affectedSegment.length >= 2) {
-          overlays.add(
-            Polyline(
-              points: List<LatLng>.from(affectedSegment),
-              color: segColor,
-              strokeWidth: 7.5,
-            ),
-          );
-          affectedSegment.clear();
-        } else {
-          affectedSegment.clear();
+
+          setState(() {
+            fullRoutePoints = pts;
+            routeSteps = parsedSteps;
+            routeDistanceText = '${distKm.toStringAsFixed(1)} كم';
+            routeDurationText = '$durMin دقيقة';
+            routeArrivalTimeText = 'الوصول $arrivalFormatted';
+            nextInstructionAr = parsedSteps.isNotEmpty
+                ? parsedSteps.first.instructionAr
+                : 'اسلك المسار الأخضر باتجاه $destinationName';
+            routeSegments = _buildSmartColoredSegments(pts);
+            isLoadingRoute = false;
+          });
+
+          _isNavigatingNotifier.value = true;
+          _glideTo(start, zoom: 15.2);
+          return;
+        }
+      }
+    } catch (e) {
+      debugPrint('Online routing fallback to direct offline route: $e');
+    }
+
+    // مسار احتياطي أوفلاين عند انقطاع الإنترنت
+    final List<LatLng> offlineInterpolated =
+        _interpolateOfflinePoints(start, destination, 40);
+    final double directKm =
+        const Distance().as(LengthUnit.Kilometer, start, destination);
+    final int estMin = math.max(2, (directKm / 60.0 * 60.0).round());
+
+    setState(() {
+      fullRoutePoints = offlineInterpolated;
+      routeSegments = _buildSmartColoredSegments(offlineInterpolated);
+      routeDistanceText = '${directKm.toStringAsFixed(1)} كم';
+      routeDurationText = '$estMin دقيقة (أوفلاين)';
+      routeArrivalTimeText = 'وضع عدم الاتصال';
+      nextInstructionAr = 'مسار أوفلاين مباشر باتجاه $destinationName';
+      isLoadingRoute = false;
+    });
+    _isNavigatingNotifier.value = true;
+    _glideTo(start, zoom: 14.5);
+  }
+
+  List<LatLng> _interpolateOfflinePoints(LatLng a, LatLng b, int steps) {
+    final List<LatLng> list = [];
+    for (int i = 0; i <= steps; i++) {
+      final double t = i / steps;
+      list.add(LatLng(
+        a.latitude + (b.latitude - a.latitude) * t,
+        a.longitude + (b.longitude - a.longitude) * t,
+      ));
+    }
+    return list;
+  }
+
+  String _translateManeuverToAr(String modifier, String streetName) {
+    final String road =
+        streetName.trim().isEmpty ? 'الطريق الرئيسي' : streetName;
+    if (modifier.contains('right')) return 'انعطف يميناً باتجاه $road';
+    if (modifier.contains('left')) return 'انعطف يساراً باتجاه $road';
+    if (modifier.contains('uturn')) return 'استدر للخلف في $road';
+    return 'استمر مباشرة في $road';
+  }
+
+  IconData _getManeuverIcon(String modifier) {
+    if (modifier.contains('right')) return Icons.turn_right_rounded;
+    if (modifier.contains('left')) return Icons.turn_left_rounded;
+    if (modifier.contains('uturn')) return Icons.u_turn_left_rounded;
+    return Icons.straight_rounded;
+  }
+
+  /// خوارزمية تلوين المسار الذكية:
+  /// 1. الأخضر الأساسي (#10B981): للطريق السالك
+  /// 2. الأصفر التحذيري (#FACC15): للبلاغات الخطرة (حفريات، سيطرة، كاميرا، أعمال طرق)
+  /// 3. الأحمر المروري (#EF4444): للازدحامات المرورية أو الطرق المغلقة أينما وجدت
+  List<ColoredRouteSegment> _buildSmartColoredSegments(List<LatLng> points) {
+    if (points.length < 2) return [];
+    const Distance distanceCalc = Distance();
+    final List<ColoredRouteSegment> segments = [];
+
+    const Color greenClear = Color(0xFF10B981);
+    const Color yellowHazard = Color(0xFFFACC15);
+    const Color redTraffic = Color(0xFFEF4444);
+
+    Color currentColor = greenClear;
+    List<LatLng> currentChunk = [points.first];
+
+    for (int i = 1; i < points.length; i++) {
+      final LatLng pt = points[i];
+      Color segColor = greenClear;
+
+      if (showTrafficLayer) {
+        for (final report in activeReports) {
+          final double meters =
+              distanceCalc.as(LengthUnit.Meter, pt, report.location);
+          if (meters <= 420) {
+            if (report.type == 'traffic' ||
+                report.type == 'closed' ||
+                report.type == 'accident') {
+              segColor = redTraffic; // أحمر للازدحام أو الإغلاق
+              break;
+            } else {
+              segColor =
+                  yellowHazard; // أصفر للبلاغات الخطرة والحفريات والرادارات
+            }
+          }
         }
       }
 
-      if (affectedSegment.length >= 2) {
-        overlays.add(
-          Polyline(
-            points: List<LatLng>.from(affectedSegment),
-            color: segColor,
-            strokeWidth: 7.5,
+      if (segColor == currentColor) {
+        currentChunk.add(pt);
+      } else {
+        currentChunk.add(pt);
+        segments.add(
+          ColoredRouteSegment(
+            points: List<LatLng>.from(currentChunk),
+            color: currentColor,
+            strokeWidth: currentColor == greenClear ? 6.5 : 8.5,
+            statusLabel: currentColor == redTraffic
+                ? 'ازدحام / إغلاق'
+                : (currentColor == yellowHazard ? 'تنبيه خطر' : 'سالك'),
           ),
         );
+        currentColor = segColor;
+        currentChunk = [pt];
       }
     }
 
-    return overlays;
+    if (currentChunk.length >= 2) {
+      segments.add(
+        ColoredRouteSegment(
+          points: currentChunk,
+          color: currentColor,
+          strokeWidth: currentColor == greenClear ? 6.5 : 8.5,
+        ),
+      );
+    }
+
+    return segments;
   }
 
-  // ==================== بدء الملاحة الحقيقية والمحاكاة ====================
-  void _startNav() {
-    if (routes.isEmpty) return;
-    simTimer?.cancel();
-
-    final route = routes[selectedRouteIndex] as Map<String, dynamic>;
-    final List<dynamic> coords = route['geometry']['coordinates'] as List;
-    navCoords = coords
-        .map((c) => LatLng((c[1] as num).toDouble(), (c[0] as num).toDouble()))
-        .toList();
-
-    final legs = (route['legs'] as List?) ?? [];
-    navSteps = legs.isNotEmpty ? ((legs[0]['steps'] as List?) ?? []) : [];
-    currentStepIndex = 0;
-    lastSpokenStep = -1;
-    warnedReports.clear();
-
-    final startPos = me ?? origin ?? (navCoords.isNotEmpty ? navCoords.first : kDefaultCenter);
-    final initBrg = navCoords.length >= 2
-        ? _bearingBetween(navCoords[0], navCoords[1])
-        : currentBearing;
-
+  /// إيقاف الملاحة الحالية ومسح المسار
+  void _cancelNavigation() {
     setState(() {
-      isNavigating = true;
-      showPlanSheet = false;
-      showNavSheet = true;
-      follow = true;
-      isFirstPerson3D = true;
-      currentBearing = initBrg;
+      destinationPoint = null;
+      destinationName = null;
+      fullRoutePoints.clear();
+      routeSegments.clear();
+      routeSteps.clear();
+      routeDistanceText = '';
+      routeDurationText = '';
+      nextInstructionAr = 'ابحث عن وجهتك أو اضغط مطولاً على الخريطة للانطلاق';
     });
-
-    _dispState.value = _DispState(startPos, initBrg);
-    mapController.moveAndRotate(_lookAhead(startPos, initBrg, 28), 17.8, -initBrg);
-
-    _updateNavigationState(startPos, currentSpeedKmh, initBrg);
-    _speak(tr('بدأت الرحلة عبر تطبيق دلّيني، رافقتك السلامة',
-        'Navigation started with Dlinii, drive safely'));
+    _isNavigatingNotifier.value = false;
   }
 
-  void _startSimulation() {
-    if (routes.isEmpty) return;
-    _startNav();
-
-    int simIdx = 0;
-    simTimer?.cancel();
-    simTimer = Timer.periodic(const Duration(milliseconds: 520), (timer) {
-      if (!mounted || !isNavigating || simIdx >= navCoords.length - 1) {
-        timer.cancel();
-        if (mounted && isNavigating) {
-          _speak(tr('لقد وصلت إلى وجهتك بنجاح', 'You have arrived at your destination'));
-          _stopNav();
-        }
-        return;
-      }
-
-      final cur = navCoords[simIdx];
-      final nxt = navCoords[simIdx + 1];
-      final brg = _bearingBetween(cur, nxt);
-
-      _glideFromPos = _dispState.value.pos;
-      _glideToPos = nxt;
-      _glideFromBearing = _dispState.value.bearing;
-      _glideToBearing = brg;
-
+  /// محرك البحث المزدوج (يبحث فوراً في المدن العراقية المحلية + خرائط OpenStreetMap بالعربية)
+  void _onSearchQueryChanged(String query) {
+    _searchDebounceTimer?.cancel();
+    final String clean = query.trim();
+    if (clean.isEmpty) {
       setState(() {
-        me = nxt;
-        currentSpeedKmh = 54.0;
-        currentBearing = brg;
+        searchSuggestions.clear();
+        isSearching = false;
       });
-
-      _glideCtrl?.duration = const Duration(milliseconds: 480);
-      _glideCtrl?.forward(from: 0.0);
-
-      _updateNavigationState(nxt, 54.0, brg);
-      simIdx++;
-    });
-  }
-
-  void _stopNav() {
-    simTimer?.cancel();
-    setState(() {
-      isNavigating = false;
-      showNavSheet = false;
-      showPlanSheet = false;
-      isFirstPerson3D = false;
-      routes = [];
-      navCoords = [];
-      navSteps = [];
-      dest = null;
-      destTitle = '';
-      currentSpeedKmh = 0.0;
-    });
-    if (me != null) {
-      mapController.moveAndRotate(me!, 15.0, 0.0);
-    }
-  }
-
-  void _updateNavigationState(LatLng pos, double spdKmh, double brg) {
-    if (dest == null) return;
-
-    final double remMeters = _distMeters(pos, dest!);
-    final double remKm = remMeters / 1000.0;
-    final int remMins =
-        (remMeters / ((spdKmh > 15 ? spdKmh : 40.0) * 16.66)).ceil().clamp(1, 999);
-    final DateTime etaTime = DateTime.now().add(Duration(minutes: remMins));
-    final String etaStr =
-        '${etaTime.hour.toString().padLeft(2, '0')}:${etaTime.minute.toString().padLeft(2, '0')}';
-
-    String arrow = '⬆️';
-    String instr = tr('استمر بالسير في طريقك', 'Continue straight ahead');
-    String street = destTitle;
-
-    if (navSteps.isNotEmpty) {
-      for (int i = currentStepIndex; i < navSteps.length; i++) {
-        final step = navSteps[i] as Map<String, dynamic>;
-        final man = (step['maneuver'] as Map<String, dynamic>?) ?? {};
-        final loc = (man['location'] as List?) ?? [];
-        if (loc.length >= 2) {
-          final stepPt =
-              LatLng((loc[1] as num).toDouble(), (loc[0] as num).toDouble());
-          final d = _distMeters(pos, stepPt);
-          if (d < 32.0 && i < navSteps.length - 1) {
-            currentStepIndex = i + 1;
-          }
-          break;
-        }
-      }
-
-      final curStep =
-          navSteps[currentStepIndex.clamp(0, navSteps.length - 1)] as Map<String, dynamic>;
-      final formatted = _formatStepInstruction(curStep);
-      arrow = formatted['arrow']!;
-      instr = formatted['text']!;
-      street = formatted['street']!;
-
-      if (lastSpokenStep != currentStepIndex) {
-        lastSpokenStep = currentStepIndex;
-        _speak(instr);
-      }
-    }
-
-    // تنبيه صوتي تلقائي عند الاقتراب من أي بلاغ على الطريق (ضمن 220 متر)
-    for (final doc in cloudReports) {
-      if (warnedReports.contains(doc.id)) continue;
-      final data = doc.data() as Map<String, dynamic>? ?? {};
-      final rLat = (data['lat'] as num?)?.toDouble();
-      final rLng = (data['lng'] as num?)?.toDouble();
-      if (rLat != null && rLng != null) {
-        final d = _distMeters(pos, LatLng(rLat, rLng));
-        if (d <= 220.0) {
-          warnedReports.add(doc.id);
-          final tAr = (data['type'] ?? 'تنبيه').toString();
-          final tEn = (data['typeEn'] ?? 'Hazard').toString();
-          _speak(tr('انتبه، يوجد بلاغ $tAr أمامك على بعد مئتي متر',
-              'Caution, $tEn reported two hundred meters ahead'));
-        }
-      }
-    }
-
-    if (remMeters <= 35.0) {
-      _speak(tr('لقد وصلت إلى وجهتك، الحمد لله على السلامة',
-          'You have arrived at your destination'));
-      _stopNav();
       return;
     }
 
-    setState(() {
-      navRemKm = remKm.toStringAsFixed(1);
-      navRemMins = remMins.toString();
-      navEta = etaStr;
-      hudArrow = arrow;
-      hudInstruction = instr;
-      hudStreet = street;
-    });
-  }
-
-  Map<String, String> _formatStepInstruction(Map<String, dynamic> step) {
-    final man = (step['maneuver'] as Map<String, dynamic>?) ?? {};
-    final String type = (man['type'] ?? '').toString();
-    final String mod = (man['modifier'] ?? '').toString();
-    final String rawName = (step['name'] ?? '').toString().trim();
-    final String streetName = rawName.isNotEmpty ? rawName : destTitle;
-
-    String arrow = '⬆️';
-    String actionAr = 'استمر بالسير للأمام';
-    String actionEn = 'Continue straight';
-
-    if (type == 'arrive') {
-      arrow = '🏁';
-      actionAr = 'ستصل إلى وجهتك';
-      actionEn = 'You will arrive at';
-    } else if (type == 'roundabout' || type == 'rotary') {
-      arrow = '🔄';
-      actionAr = 'ادخل الفلكة (الدوار) ثم اتجه نحو';
-      actionEn = 'Enter the roundabout towards';
-    } else if (mod.contains('left')) {
-      arrow = '⬅️';
-      actionAr = mod.contains('slight') ? 'انحرف قليلاً لليسار نحو' : 'انعطف يساراً نحو';
-      actionEn = mod.contains('slight') ? 'Keep left onto' : 'Turn left onto';
-    } else if (mod.contains('right')) {
-      arrow = '➡️';
-      actionAr = mod.contains('slight') ? 'انحرف قليلاً لليمين نحو' : 'انعطف يميناً نحو';
-      actionEn = mod.contains('slight') ? 'Keep right onto' : 'Turn right onto';
-    } else if (mod.contains('uturn')) {
-      arrow = '↩️';
-      actionAr = 'قم بالاستدارة للخلف (يو تيرن) نحو';
-      actionEn = 'Make a U-turn onto';
-    }
-
-    return {
-      'arrow': arrow,
-      'text': isEnglish ? '$actionEn $streetName' : '$actionAr $streetName',
-      'street': streetName,
-    };
-  }
-
-  // ==================== تحميل خرائط المحافظات الـ 18 للعمل بدون إنترنت ====================
-  Future<void> _downloadProvinceOffline(IraqProvince prov) async {
-    if (downloadingProvinceId != null) return;
-
-    setState(() {
-      downloadingProvinceId = prov.id;
-      downloadProgress = 0.05;
-    });
-
-    try {
-      final List<TileCoordinates> tilesToFetch = [];
-      for (int z = 11; z <= 13; z++) {
-        final centerTile = _latLngToTile(prov.center, z);
-        final int radius = z == 11 ? 2 : (z == 12 ? 3 : 4);
-        for (int dx = -radius; dx <= radius; dx++) {
-          for (int dy = -radius; dy <= radius; dy++) {
-            tilesToFetch.add(TileCoordinates(centerTile.x + dx, centerTile.y + dy, z));
-          }
-        }
-      }
-
-      Directory? tilesDir;
-      if (!kIsWeb && _offlineBaseDir != null) {
-        tilesDir = Directory('$_offlineBaseDir/tiles');
-        if (!tilesDir.existsSync()) {
-          tilesDir.createSync(recursive: true);
-        }
-      }
-
-      int completed = 0;
-      for (final tc in tilesToFetch) {
-        if (!mounted) break;
-        if (tilesDir != null) {
-          final file = File('${tilesDir.path}/${tc.z}_${tc.x}_${tc.y}.png');
-          if (!file.existsSync()) {
-            try {
-              final url = Uri.parse(
-                  'https://a.basemaps.cartocdn.com/rastertiles/voyager/${tc.z}/${tc.x}/${tc.y}.png');
-              final res = await http.get(url).timeout(const Duration(seconds: 4));
-              if (res.statusCode == 200 && res.bodyBytes.length > 100) {
-                await file.writeAsBytes(res.bodyBytes);
-              }
-            } catch (_) {}
-          }
-        } else {
-          await Future.delayed(const Duration(milliseconds: 15));
-        }
-
-        completed++;
-        if (mounted && completed % 5 == 0) {
-          setState(() {
-            downloadProgress = (completed / tilesToFetch.length).clamp(0.05, 1.0);
-          });
-        }
-      }
-
-      setState(() {
-        downloadedProvinces.add(prov.id);
-        downloadingProvinceId = null;
-        downloadProgress = 0.0;
-      });
-      await _savePrefs();
-      _toast(tr('تم حفظ خريطة ${prov.nameAr} للعمل بدون إنترنت ✅',
-          '${prov.nameEn} offline map saved ✅'));
-    } catch (_) {
-      if (mounted) {
-        setState(() {
-          downloadingProvinceId = null;
-          downloadProgress = 0.0;
+    // 1. مطابقة فورية من قاعدة بيانات المدن والأماكن المحفوظة
+    final List<Map<String, dynamic>> localMatches = [];
+    for (final prov in iraqiProvinces) {
+      if (prov.nameAr.contains(clean) || prov.subtitleAr.contains(clean)) {
+        localMatches.add({
+          'name': prov.nameAr,
+          'subtitle': prov.subtitleAr,
+          'lat': prov.center.latitude,
+          'lng': prov.center.longitude,
+          'isLocal': true,
         });
       }
     }
+
+    setState(() {
+      searchSuggestions = localMatches;
+      isSearching = true;
+    });
+
+    // 2. بحث أونلاين مخصص للعراق باللغة العربية
+    _searchDebounceTimer = Timer(const Duration(milliseconds: 450), () async {
+      try {
+        final Uri uri = Uri.parse(
+          'https://nominatim.openstreetmap.org/search?q=${Uri.encodeComponent(clean)}&countrycodes=iq&format=json&limit=6&accept-language=ar',
+        );
+        final res = await http.get(
+          uri,
+          headers: {
+            'Accept-Language': 'ar',
+            'User-Agent': 'DliniiIraqNavigationApp/2.0',
+          },
+        );
+        if (res.statusCode == 200 && mounted) {
+          final List data = json.decode(res.body);
+          final List<Map<String, dynamic>> remoteMatches = data.map((item) {
+            final String displayName = (item['display_name'] ?? '').toString();
+            final List<String> parts = displayName.split('،');
+            return {
+              'name': parts.first.trim(),
+              'subtitle': displayName,
+              'lat': double.parse(item['lat'].toString()),
+              'lng': double.parse(item['lon'].toString()),
+              'isLocal': false,
+            };
+          }).toList();
+
+          setState(() {
+            searchSuggestions = [...localMatches, ...remoteMatches];
+            isSearching = false;
+          });
+        }
+      } catch (_) {
+        if (mounted) {
+          setState(() => isSearching = false);
+        }
+      }
+    });
   }
 
-  math.Point<int> _latLngToTile(LatLng pt, int zoom) {
-    final double n = math.pow(2.0, zoom).toDouble();
-    final int x = ((pt.longitude + 180.0) / 360.0 * n).floor();
-    final double latRad = pt.latitude * math.pi / 180.0;
-    final int y =
-        ((1.0 - math.log(math.tan(latRad) + 1.0 / math.cos(latRad)) / math.pi) /
-                2.0 *
-                n)
-            .floor();
-    return math.Point<int>(x, y);
+  /// ميزة «دلّي صديق» لمشاركة الموقع أو الوجهة برابط ذكي يفتح مباشرة على الخريطة
+  Future<void> _shareLocationWithFriend({bool shareDestination = false}) async {
+    final LatLng target = (shareDestination && destinationPoint != null)
+        ? destinationPoint!
+        : _userLocationNotifier.value;
+    final String label = (shareDestination && destinationName != null)
+        ? destinationName!
+        : 'موقعي الحالي على دلّيني';
+
+    final String encodedName = Uri.encodeComponent(label);
+    final String smartWebLink =
+        'https://dlinii.vercel.app/?lat=${target.latitude.toStringAsFixed(6)}&lng=${target.longitude.toStringAsFixed(6)}&name=$encodedName';
+
+    final String message = '📍 دلّيني | $label\n'
+        'افتح الرابط لرؤية المسار الملون وحالة الطريق مباشرة:\n'
+        '$smartWebLink';
+
+    try {
+      await Share.share(message, subject: 'مشاركة مسار عبر تطبيق دلّيني');
+    } catch (_) {
+      await Clipboard.setData(ClipboardData(text: message));
+      _showSnack('تم نسخ رابط «دلّي صديق» الذكي إلى الحافظة');
+    }
   }
 
-  void _toast(String msg) {
+  void _showSnack(String msg) {
     if (!mounted) return;
     ScaffoldMessenger.of(context).clearSnackBars();
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(
           msg,
-          textAlign: TextAlign.center,
-          style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 13),
+          textAlign: TextAlign.right,
+          style: const TextStyle(fontWeight: FontWeight.w600),
         ),
-        backgroundColor: const Color(0xFF087e76),
         behavior: SnackBarBehavior.floating,
+        backgroundColor: const Color(0xFF0F172A),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-        margin: const EdgeInsets.fromLTRB(20, 0, 20, 24),
-        duration: const Duration(seconds: 2),
+        duration: const Duration(seconds: 3),
       ),
     );
   }
-// ==================== نهاية الجزء 4 من 6 ====================
-// ==================== بداية الجزء 5 من 6 ====================
+// ============================================================================
+// بداية الجزء 4 من 5 - الصقه مباشرة تحت نهاية الجزء 3
+// ============================================================================
+
   @override
   Widget build(BuildContext context) {
-    if (showSplash) {
-      return Scaffold(
-        backgroundColor: const Color(0xFF0b1918),
-        body: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Container(
-                width: 96,
-                height: 96,
-                padding: const EdgeInsets.all(18),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF087e76),
-                  borderRadius: BorderRadius.circular(28),
-                  boxShadow: const [
-                    BoxShadow(color: Color(0xFF7ce0be), blurRadius: 24)
-                  ],
+    final String tileUrl = isSatelliteMode
+        ? 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'
+        : (isDark
+            ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
+            : 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png');
+
+    return Directionality(
+      textDirection: TextDirection.rtl,
+      child: Scaffold(
+        key: _scaffoldKey,
+        backgroundColor:
+            isDark ? const Color(0xFF0B0F19) : const Color(0xFFF1F5F9),
+        drawer: _buildStandardAppDrawer(),
+        body: Stack(
+          children: [
+            // 1. الخريطة التفاعلية الرئيسية
+            FlutterMap(
+              mapController: _mapController,
+              options: MapOptions(
+                initialCenter: _userLocationNotifier.value,
+                initialZoom: 13.5,
+                minZoom: 5.5,
+                maxZoom: 19.0,
+                onPositionChanged: (pos, hasGesture) {
+                  if (hasGesture && isFollowingUser) {
+                    setState(() => isFollowingUser = false);
+                  }
+                  if (pos.zoom != null) {
+                    _currentZoomNotifier.value = pos.zoom!;
+                  }
+                },
+                onLongPress: (tapPos, latlng) {
+                  HapticFeedback.mediumImpact();
+                  _planRoute(latlng, destName: 'نقطة محددة على الخريطة');
+                },
+              ),
+              children: [
+                TileLayer(
+                  urlTemplate: tileUrl,
+                  subdomains: const ['a', 'b', 'c', 'd'],
+                  userAgentPackageName: 'com.binkhalid.dlinii',
                 ),
-                child: SvgPicture.string(kGreenNavArrowSvg),
-              ),
-              const SizedBox(height: 24),
-              const Text(
-                'دلّيني | Dlinii',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 26,
-                  fontWeight: FontWeight.w900,
-                  letterSpacing: 1.2,
-                ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                tr('رفيقك الذكي للطرق والرحلات في العراق',
-                    'Your smart navigation companion in Iraq'),
-                style: const TextStyle(
-                  color: Color(0xFF94a3b8),
-                  fontSize: 13.5,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              const SizedBox(height: 36),
-              const CircularProgressIndicator(
-                color: Color(0xFF7ce0be),
-                strokeWidth: 3,
-              ),
-            ],
-          ),
-        ),
-      );
-    }
 
-    return Scaffold(
-      key: _scaffoldKey,
-      backgroundColor: isDark ? const Color(0xFF0b1918) : const Color(0xFFf0fdfa),
-      drawer: _buildDrawer(),
-      body: Stack(
-        children: [
-          _buildMainMap(),
-          _buildTopSearchBar(),
-          _buildFloatingControls(),
-          if (showPlanSheet) _buildRoutePlanSheet(),
-          if (showNavSheet) _buildActiveNavigationHud(),
-        ],
-      ),
-    );
-  }
-
-  // ==================== الخريطة الرئيسية وتوابعها ====================
-  Widget _buildMainMap() {
-    final ofmLayer = (isDark ? vectorThemeDark : vectorThemeLight) != null &&
-            vectorTileProviders != null
-        ? vt.VectorTileLayer(
-            tileProviders: vectorTileProviders!,
-            theme: (isDark ? vectorThemeDark : vectorThemeLight)!,
-            maximumZoom: 20,
-          )
-        : null;
-
-    final List<Polyline> polylines = [];
-
-    // 1. رسم مسارات البدائل إن وجدت
-    if (routes.isNotEmpty) {
-      for (int i = 0; i < routes.length; i++) {
-        if (i == selectedRouteIndex) continue;
-        final route = routes[i] as Map<String, dynamic>;
-        final List<dynamic> coords =
-            (route['geometry']['coordinates'] as List?) ?? [];
-        final pts = coords
-            .map((c) => LatLng((c[1] as num).toDouble(), (c[0] as num).toDouble()))
-            .toList();
-        if (pts.length >= 2) {
-          polylines.add(
-            Polyline(
-              points: pts,
-              color: isDark ? Colors.white24 : Colors.black26,
-              strokeWidth: 4.0,
-            ),
-          );
-        }
-      }
-
-      // 2. رسم المسار الرئيسي المحدد مع مقاطع البلاغات الفعلية (أصفر/أحمر)
-      final mainRoute = routes[selectedRouteIndex] as Map<String, dynamic>;
-      final List<dynamic> mainCoords =
-          (mainRoute['geometry']['coordinates'] as List?) ?? [];
-      final mainPts = mainCoords
-          .map((c) => LatLng((c[1] as num).toDouble(), (c[0] as num).toDouble()))
-          .toList();
-
-      if (mainPts.length >= 2) {
-        polylines.add(
-          Polyline(
-            points: mainPts,
-            color: isDark ? const Color(0xFF6ee7b7) : const Color(0xFF087e76),
-            strokeWidth: 5.5,
-          ),
-        );
-
-        // مقاطع التحذيرات والبلاغات الموضعية على المسار
-        polylines.addAll(_buildRealTrafficAndHazardOverlays(mainRoute, mainPts));
-      }
-    }
-
-    return FlutterMap(
-      mapController: mapController,
-      options: MapOptions(
-        initialCenter: kDefaultCenter,
-        initialZoom: currentMapZoom,
-        maxZoom: 20.0,
-        minZoom: 4.0,
-        onPositionChanged: (pos, hasGesture) {
-          if (hasGesture && follow) {
-            setState(() => follow = false);
-          }
-          currentMapZoom = pos.zoom;
-        },
-        onTap: (_, pt) {
-          if (!isNavigating) {
-            setState(() {
-              pickedPlacePoint = pt;
-              showAddPlaceModal = true;
-            });
-          }
-        },
-      ),
-      children: [
-        if (ofmLayer != null && !_forceOffline)
-          ofmLayer
-        else
-          ColorFiltered(
-            key: ValueKey<String>(isDark ? 'raster_dark' : 'raster_light'),
-            colorFilter: isDark
-                ? kInstantDarkFilter
-                : const ColorFilter.mode(Colors.transparent, BlendMode.dst),
-            child: TileLayer(
-              urlTemplate:
-                  'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png',
-              subdomains: const ['a', 'b', 'c', 'd'],
-              maxZoom: 20,
-              userAgentPackageName: 'com.dlinii.app',
-              tileProvider: _offlineTileProvider,
-            ),
-          ),
-        if (polylines.isNotEmpty) PolylineLayer(polylines: polylines),
-        MarkerLayer(
-          markers: [
-            ...categoryMapMarkers,
-            // دبابيس البلاغات السحابية على الخريطة
-            ...cloudReports.map((doc) {
-              final data = doc.data() as Map<String, dynamic>? ?? {};
-              final lat = (data['lat'] as num?)?.toDouble() ?? 0.0;
-              final lng = (data['lng'] as num?)?.toDouble() ?? 0.0;
-              final emoji = (data['emoji'] ?? '⚠️').toString();
-              final type = (data['type'] ?? '').toString();
-              return Marker(
-                point: LatLng(lat, lng),
-                width: 48,
-                height: 48,
-                child: GestureDetector(
-                  onTap: () => _voteReportEnded(doc),
-                  child: Container(
-                    padding: const EdgeInsets.all(6),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF142e2d),
-                      shape: BoxShape.circle,
-                      border: Border.all(color: const Color(0xFFefbb52), width: 2),
-                      boxShadow: const [
-                        BoxShadow(color: Colors.black54, blurRadius: 6)
-                      ],
-                    ),
-                    child: Center(
-                      child: Text(emoji, style: const TextStyle(fontSize: 18)),
-                    ),
+                // 2. طبقة المسار الملون (أخضر أساسي، أصفر للخطر، أحمر للازدحام)
+                if (routeSegments.isNotEmpty)
+                  PolylineLayer(
+                    polylines: [
+                      // طبقة توهج خارجي للمسار لوضوح عالٍ في الوضع الليلي
+                      for (final seg in routeSegments)
+                        Polyline(
+                          points: seg.points,
+                          color: seg.color.withOpacity(0.28),
+                          strokeWidth: seg.strokeWidth + 6.0,
+                        ),
+                      // المسار الفعلي الملون
+                      for (final seg in routeSegments)
+                        Polyline(
+                          points: seg.points,
+                          color: seg.color,
+                          strokeWidth: seg.strokeWidth,
+                        ),
+                    ],
                   ),
-                ),
-              );
-            }),
-            // دبابيس الأماكن المضافة محلياً
-            ...customPlaces.map((doc) {
-              final data = doc.data() as Map<String, dynamic>? ?? {};
-              final lat = (data['lat'] as num?)?.toDouble() ?? 0.0;
-              final lng = (data['lng'] as num?)?.toDouble() ?? 0.0;
-              final name = (data['name'] ?? '').toString();
-              return Marker(
-                point: LatLng(lat, lng),
-                width: 90,
-                height: 54,
-                child: GestureDetector(
-                  onTap: () => _selectDestination(LatLng(lat, lng), name),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(5),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF087e76),
-                          shape: BoxShape.circle,
-                          border: Border.all(color: Colors.white, width: 2),
+
+                // 3. طبقة أسماء المدن والمحافظات العراقية بالعربية الواضحة (تمنع المربعات نهائياً)
+                if (showArabicCityLabels)
+                  MarkerLayer(
+                    markers: iraqiProvinces.map((prov) {
+                      return Marker(
+                        point: prov.center,
+                        width: 135,
+                        height: 36,
+                        child: GestureDetector(
+                          onTap: () =>
+                              _glideTo(prov.center, zoom: prov.defaultZoom),
+                          child: Center(
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 9,
+                                vertical: 3.5,
+                              ),
+                              decoration: BoxDecoration(
+                                color: isDark
+                                    ? const Color(0xFF0F172A).withOpacity(0.85)
+                                    : Colors.white.withOpacity(0.90),
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(
+                                  color: prov.isMajorProvince
+                                      ? const Color(0xFF10B981).withOpacity(0.6)
+                                      : Colors.white24,
+                                  width: 1,
+                                ),
+                                boxShadow: const [
+                                  BoxShadow(
+                                    color: Colors.black26,
+                                    blurRadius: 4,
+                                  ),
+                                ],
+                              ),
+                              child: Text(
+                                prov.nameAr,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  color: isDark ? Colors.white : Colors.black87,
+                                  fontSize: prov.isMajorProvince ? 11.5 : 10.5,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                          ),
                         ),
-                        child: const Icon(Icons.place_rounded,
-                            color: Colors.white, size: 14),
+                      );
+                    }).toList(),
+                  ),
+
+                // 4. طبقة البلاغات الميدانية (حفريات، ازدحام، رادار، سيطرة، إغلاق)
+                MarkerLayer(
+                  markers: activeReports.map((report) {
+                    final Color badgeColor = _getReportColor(report.type);
+                    return Marker(
+                      point: report.location,
+                      width: 46,
+                      height: 46,
+                      child: GestureDetector(
+                        onTap: () => _showReportDetailsModal(report),
+                        child: Container(
+                          decoration: BoxDecoration(
+                            color: badgeColor,
+                            shape: BoxShape.circle,
+                            border: Border.all(color: Colors.white, width: 2.2),
+                            boxShadow: [
+                              BoxShadow(
+                                color: badgeColor.withOpacity(0.55),
+                                blurRadius: 10,
+                                spreadRadius: 2,
+                              ),
+                            ],
+                          ),
+                          child: Icon(
+                            _getReportIcon(report.type),
+                            color: Colors.black87,
+                            size: 22,
+                          ),
+                        ),
                       ),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
-                        decoration: BoxDecoration(
-                          color: Colors.black87,
-                          borderRadius: BorderRadius.circular(4),
-                        ),
-                        child: Text(
-                          name,
-                          maxLines: 1,
-                          style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 9,
-                              fontWeight: FontWeight.w700),
+                    );
+                  }).toList(),
+                ),
+
+                // 5. علامة الوجهة النهائية
+                if (destinationPoint != null)
+                  MarkerLayer(
+                    markers: [
+                      Marker(
+                        point: destinationPoint!,
+                        width: 60,
+                        height: 60,
+                        child: const Column(
+                          children: [
+                            Icon(
+                              Icons.location_on_rounded,
+                              color: Color(0xFFEF4444),
+                              size: 44,
+                            ),
+                          ],
                         ),
                       ),
                     ],
                   ),
-                ),
-              );
-            }),
-            // تسميات المدن والمناطق العراقية الثابتة بوضوح لمنع المربعات
-            ...kIraqiCityLabels.where((c) => currentMapZoom >= c.minZoom).map(
-                  (c) => Marker(
-                    point: c.point,
-                    width: 120,
-                    height: 36,
-                    child: GestureDetector(
-                      onTap: () => _selectDestination(c.point, c.nameAr),
-                      child: Container(
-                        padding:
-                            const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                        decoration: BoxDecoration(
-                          color: Colors.black.withOpacity(0.65),
-                          borderRadius: BorderRadius.circular(6),
-                          border: Border.all(
-                              color: const Color(0xFF7ce0be).withOpacity(0.4),
-                              width: 1),
-                        ),
-                        alignment: Alignment.center,
-                        child: Text(
-                          c.nameAr,
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 11,
-                            fontWeight: FontWeight.w900,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-            if (origin != null)
-              Marker(
-                point: origin!,
-                width: 44,
-                height: 44,
-                child: SvgPicture.string(kOriginPinSvg),
-              ),
-            if (dest != null)
-              Marker(
-                point: dest!,
-                width: 48,
-                height: 56,
-                child: SvgPicture.string(kDestPinSvg),
-              ),
-            if (me != null)
-              Marker(
-                point: me!,
-                width: 64,
-                height: 64,
-                child: ValueListenableBuilder<_DispState>(
-                  valueListenable: _dispState,
-                  builder: (context, st, _) {
-                    return Transform.rotate(
-                      angle: isNavigating && isFirstPerson3D
-                          ? 0.0
-                          : (st.bearing * math.pi / 180.0),
-                      child: SvgPicture.string(
-                          isNavigating ? kGreenNavArrowSvg : kMyLocationPulseSvg),
+
+                // 6. مؤشر موقع المستخدم الحي (GPS)
+                ValueListenableBuilder<LatLng>(
+                  valueListenable: _userLocationNotifier,
+                  builder: (context, userPos, _) {
+                    return ValueListenableBuilder<double>(
+                      valueListenable: _headingNotifier,
+                      builder: (context, heading, _) {
+                        return MarkerLayer(
+                          markers: [
+                            Marker(
+                              point: userPos,
+                              width: 64,
+                              height: 64,
+                              child: Transform.rotate(
+                                angle: heading * (math.pi / 180.0),
+                                child: Stack(
+                                  alignment: Alignment.center,
+                                  children: [
+                                    Container(
+                                      width: 52,
+                                      height: 52,
+                                      decoration: BoxDecoration(
+                                        shape: BoxShape.circle,
+                                        color: const Color(0xFF10B981)
+                                            .withOpacity(0.22),
+                                      ),
+                                    ),
+                                    Container(
+                                      width: 30,
+                                      height: 30,
+                                      decoration: BoxDecoration(
+                                        shape: BoxShape.circle,
+                                        color: const Color(0xFF10B981),
+                                        border: Border.all(
+                                          color: Colors.white,
+                                          width: 3,
+                                        ),
+                                        boxShadow: const [
+                                          BoxShadow(
+                                            color: Colors.black45,
+                                            blurRadius: 8,
+                                          ),
+                                        ],
+                                      ),
+                                      child: const Icon(
+                                        Icons.navigation_rounded,
+                                        color: Colors.white,
+                                        size: 17,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ],
+                        );
+                      },
                     );
                   },
                 ),
-              ),
+              ],
+            ),
+
+            // 7. شريط البحث العلوي ولوحة التوجيه خطوة بخطوة
+            SafeArea(
+              child: _buildTopSearchBarAndNavHeader(),
+            ),
+
+            // 8. أزرار التحكم الجانبية العائمة (GPS، الطبقات، دلّي صديق، البلاغ السريع)
+            _buildMapControlButtons(),
+
+            // 9. قمرة القيادة السفلية (السرعة، حالة ألوان الطريق، معلومات الرحلة)
+            Align(
+              alignment: Alignment.bottomCenter,
+              child: _buildBottomCockpit(),
+            ),
+
+            // 10. شاشة CarPlay / HUD الكاملة للقيادة الليلية عند تفعيلها
+            if (isCarPlayHudMode) _buildCarPlayHudOverlay(),
           ],
         ),
-      ],
+      ),
     );
   }
-// ==================== نهاية الجزء 5 من 6 ====================
-// ==================== بداية الجزء 6 والأخير ====================
-  // ==================== شريط البحث العلوي والفئات السريعة ====================
-  Widget _buildTopSearchBar() {
-    return Positioned(
-      top: 48,
-      left: 16,
-      right: 16,
+
+  /// شريط البحث الزجاجي العلوي + لافتة التوجيه الملاحي
+  Widget _buildTopSearchBarAndNavHeader() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(14, 10, 14, 0),
       child: Column(
+        mainAxisSize: MainAxisSize.min,
         children: [
+          // شريط البحث الزجاجي الداكن
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
             decoration: BoxDecoration(
-              color: isDark ? const Color(0xFF142e2d) : Colors.white,
-              borderRadius: BorderRadius.circular(18),
+              color: isDark
+                  ? const Color(0xFF0F172A).withOpacity(0.92)
+                  : Colors.white.withOpacity(0.95),
+              borderRadius: BorderRadius.circular(20),
               border: Border.all(
-                  color: isDark ? const Color(0xFF284e4b) : const Color(0xFF7ce0be),
-                  width: 1.5),
+                color: isDark ? Colors.white12 : Colors.black12,
+              ),
               boxShadow: const [
-                BoxShadow(color: Colors.black26, blurRadius: 12, offset: Offset(0, 4))
+                BoxShadow(
+                  color: Colors.black26,
+                  blurRadius: 14,
+                  offset: Offset(0, 4),
+                ),
               ],
             ),
             child: Row(
               children: [
                 IconButton(
-                  icon: Icon(Icons.menu_rounded,
-                      color: isDark ? const Color(0xFF7ce0be) : const Color(0xFF087e76)),
+                  icon: Icon(
+                    Icons.menu_rounded,
+                    color: isDark ? Colors.white : Colors.black87,
+                  ),
                   onPressed: () => _scaffoldKey.currentState?.openDrawer(),
                 ),
                 Expanded(
                   child: TextField(
-                    controller: searchController,
-                    onChanged: _onSearchChanged,
+                    controller: _searchController,
+                    focusNode: _searchFocusNode,
+                    onChanged: _onSearchQueryChanged,
                     style: TextStyle(
                       color: isDark ? Colors.white : Colors.black87,
-                      fontWeight: FontWeight.w700,
-                      fontSize: 14,
+                      fontSize: 14.5,
                     ),
                     decoration: InputDecoration(
-                      hintText: tr('إلى أين تريد الذهاب في العراق؟',
-                          'Where to in Iraq?'),
+                      hintText: 'ابحث في دلّيني (الرمادي، بغداد، الفلوجة...)',
                       hintStyle: TextStyle(
-                        color: isDark ? const Color(0xFF94a3b8) : Colors.black45,
+                        color: isDark ? Colors.white54 : Colors.black45,
                         fontSize: 13.5,
                       ),
                       border: InputBorder.none,
                     ),
                   ),
                 ),
-                IconButton(
-                  icon: Icon(
-                    isListeningVoice ? Icons.mic_rounded : Icons.mic_none_rounded,
-                    color: isListeningVoice
-                        ? Colors.redAccent
-                        : (isDark ? const Color(0xFF7ce0be) : const Color(0xFF087e76)),
-                  ),
-                  onPressed: _toggleVoiceSearch,
-                ),
-                if (searchController.text.isNotEmpty)
+                if (_searchController.text.isNotEmpty)
                   IconButton(
-                    icon: const Icon(Icons.clear_rounded, color: Colors.grey),
+                    icon: const Icon(Icons.close_rounded, color: Colors.grey),
                     onPressed: () {
-                      searchController.clear();
-                      _onSearchChanged('');
+                      _searchController.clear();
+                      setState(() => searchSuggestions.clear());
                     },
                   ),
+                IconButton(
+                  tooltip: 'دلّي صديق',
+                  icon: const Icon(
+                    Icons.share_location_rounded,
+                    color: Color(0xFF10B981),
+                  ),
+                  onPressed: () => _shareLocationWithFriend(
+                    shareDestination: destinationPoint != null,
+                  ),
+                ),
               ],
             ),
           ),
-          if (searchResults.isNotEmpty)
+
+          // قائمة اقتراحات البحث الفورية
+          if (searchSuggestions.isNotEmpty)
             Container(
-              margin: const EdgeInsets.only(top: 8),
-              constraints: const BoxConstraints(maxHeight: 240),
+              margin: const EdgeInsets.only(top: 6),
+              constraints: const BoxConstraints(maxHeight: 250),
               decoration: BoxDecoration(
-                color: isDark ? const Color(0xFF142e2d) : Colors.white,
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: const Color(0xFF284e4b), width: 1.2),
+                color: isDark ? const Color(0xFF0F172A) : Colors.white,
+                borderRadius: BorderRadius.circular(18),
+                border: Border.all(color: Colors.white12),
                 boxShadow: const [
-                  BoxShadow(color: Colors.black38, blurRadius: 10)
+                  BoxShadow(color: Colors.black38, blurRadius: 12),
                 ],
               ),
-              child: ListView.builder(
-                padding: EdgeInsets.zero,
+              child: ListView.separated(
                 shrinkWrap: true,
-                itemCount: searchResults.length,
-                itemBuilder: (context, index) {
-                  final item = searchResults[index];
-                  final String name = item['display_name'] ?? '';
-                  final double lat = item['lat'];
-                  final double lon = item['lon'];
+                padding: const EdgeInsets.symmetric(vertical: 6),
+                itemCount: searchSuggestions.length,
+                separatorBuilder: (_, __) =>
+                    const Divider(height: 1, color: Colors.white10),
+                itemBuilder: (ctx, idx) {
+                  final item = searchSuggestions[idx];
                   return ListTile(
-                    leading: const Icon(Icons.location_on_rounded,
-                        color: Color(0xFF7ce0be)),
+                    dense: true,
+                    leading: Icon(
+                      item['isLocal'] == true
+                          ? Icons.location_city_rounded
+                          : Icons.place_rounded,
+                      color: const Color(0xFF10B981),
+                    ),
                     title: Text(
-                      name,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
+                      item['name'].toString(),
                       style: TextStyle(
                         color: isDark ? Colors.white : Colors.black87,
-                        fontSize: 12.5,
-                        fontWeight: FontWeight.w700,
+                        fontWeight: FontWeight.bold,
                       ),
                     ),
-                    onTap: () => _selectDestination(LatLng(lat, lon), name),
+                    subtitle: Text(
+                      item['subtitle'].toString(),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: isDark ? Colors.white60 : Colors.black54,
+                        fontSize: 12,
+                      ),
+                    ),
+                    onTap: () {
+                      _searchFocusNode.unfocus();
+                      final LatLng target = LatLng(
+                        (item['lat'] as num).toDouble(),
+                        (item['lng'] as num).toDouble(),
+                      );
+                      _searchController.text = item['name'].toString();
+                      _planRoute(target, destName: item['name'].toString());
+                    },
                   );
                 },
               ),
             ),
-          const SizedBox(height: 10),
-          SizedBox(
-            height: 38,
-            child: ListView(
-              scrollDirection: Axis.horizontal,
-              children: kExploreCategories.map((cat) {
-                final bool active = activeCategoryId == cat.id;
-                return Padding(
-                  padding: const EdgeInsets.only(left: 8),
-                  child: ActionChip(
-                    avatar: Icon(cat.icon, color: Colors.white, size: 15),
-                    label: Text(
-                      tr(cat.nameAr, cat.nameEn),
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 11.5,
-                        fontWeight: FontWeight.w800,
+
+          // لافتة التوجيه الأخضر عند تفعيل الملاحة
+          ValueListenableBuilder<bool>(
+            valueListenable: _isNavigatingNotifier,
+            builder: (context, isNav, _) {
+              if (!isNav) return const SizedBox.shrink();
+              return Container(
+                margin: const EdgeInsets.only(top: 8),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    colors: [Color(0xFF065F46), Color(0xFF047857)],
+                  ),
+                  borderRadius: BorderRadius.circular(18),
+                  boxShadow: const [
+                    BoxShadow(color: Colors.black38, blurRadius: 10),
+                  ],
+                ),
+                child: Row(
+                  children: [
+                    const Icon(
+                      Icons.turn_right_rounded,
+                      color: Colors.white,
+                      size: 32,
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            nextInstructionAr,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 14.5,
+                            ),
+                          ),
+                          const SizedBox(height: 3),
+                          Row(
+                            children: [
+                              _buildLegendDot(const Color(0xFF10B981), 'سالك'),
+                              const SizedBox(width: 10),
+                              _buildLegendDot(
+                                  const Color(0xFFFACC15), 'خطر/بلاغ'),
+                              const SizedBox(width: 10),
+                              _buildLegendDot(
+                                  const Color(0xFFEF4444), 'ازدحام'),
+                            ],
+                          ),
+                        ],
                       ),
                     ),
-                    backgroundColor: active ? const Color(0xFF087e76) : cat.color,
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12)),
-                    onPressed: () => _selectExploreCategory(cat),
-                  ),
-                );
-              }).toList(),
-            ),
+                    IconButton(
+                      icon:
+                          const Icon(Icons.close_rounded, color: Colors.white),
+                      onPressed: _cancelNavigation,
+                    ),
+                  ],
+                ),
+              );
+            },
           ),
         ],
       ),
     );
   }
 
-  // ==================== أزرار التحكم الطافية على الخريطة ====================
-  Widget _buildFloatingControls() {
+  Widget _buildLegendDot(Color color, String text) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          width: 9,
+          height: 9,
+          decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+        ),
+        const SizedBox(width: 4),
+        Text(
+          text,
+          style: const TextStyle(color: Colors.white70, fontSize: 11),
+        ),
+      ],
+    );
+  }
+// ============================================================================
+// بداية الجزء 5 من 5 (الأخير) - الصقه مباشرة تحت نهاية الجزء 4
+// ============================================================================
+
+  /// أزرار التحكم الجانبية على الخريطة
+  Widget _buildMapControlButtons() {
     return Positioned(
-      right: 16,
-      bottom: isNavigating ? 140 : 100,
+      left: 14,
+      bottom: 165,
+      child: Column(
+        children: [
+          _buildGlassCircleBtn(
+            icon: Icons.my_location_rounded,
+            color: isFollowingUser ? const Color(0xFF10B981) : Colors.white,
+            tooltip: 'تحديد موقعي الآن (GPS)',
+            onTap: () => _initImmediateGpsAndFollow(showFeedback: true),
+          ),
+          const SizedBox(height: 10),
+          _buildGlassCircleBtn(
+            icon: isSatelliteMode
+                ? Icons.map_rounded
+                : Icons.satellite_alt_rounded,
+            color: Colors.cyanAccent,
+            tooltip: 'تبديل القمر الصناعي',
+            onTap: () => setState(() => isSatelliteMode = !isSatelliteMode),
+          ),
+          const SizedBox(height: 10),
+          _buildGlassCircleBtn(
+            icon: Icons.download_for_offline_rounded,
+            color: Colors.amberAccent,
+            tooltip: 'خرائط المحافظات أوفلاين',
+            onTap: _openOfflineMapsSheet,
+          ),
+          const SizedBox(height: 10),
+          _buildGlassCircleBtn(
+            icon: Icons.drive_eta_rounded,
+            color: Colors.purpleAccent,
+            tooltip: 'وضع قيادة CarPlay HUD',
+            onTap: () => setState(() => isCarPlayHudMode = true),
+          ),
+          const SizedBox(height: 12),
+          // زر الإبلاغ الميداني السريع
+          FloatingActionButton.extended(
+            heroTag: 'dlinii_report_fab',
+            backgroundColor: const Color(0xFFFACC15),
+            foregroundColor: Colors.black,
+            icon: const Icon(Icons.warning_amber_rounded),
+            label: const Text(
+              'بلاغ طريق',
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
+            onPressed: _openReportBottomSheet,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildGlassCircleBtn({
+    required IconData icon,
+    required Color color,
+    required String tooltip,
+    required VoidCallback onTap,
+  }) {
+    return Tooltip(
+      message: tooltip,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(30),
+        child: Container(
+          width: 48,
+          height: 48,
+          decoration: BoxDecoration(
+            color: const Color(0xFF0F172A).withOpacity(0.90),
+            shape: BoxShape.circle,
+            border: Border.all(color: Colors.white12),
+            boxShadow: const [
+              BoxShadow(color: Colors.black38, blurRadius: 8),
+            ],
+          ),
+          child: Icon(icon, color: color, size: 23),
+        ),
+      ),
+    );
+  }
+
+  /// اللوحة السفلية (عداد السرعة، معلومات المسار، والوصول السريع للمحافظات)
+  Widget _buildBottomCockpit() {
+    return Container(
+      margin: const EdgeInsets.fromLTRB(12, 0, 12, 14),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      decoration: BoxDecoration(
+        color: isDark
+            ? const Color(0xFF0F172A).withOpacity(0.94)
+            : Colors.white.withOpacity(0.96),
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(
+          color: const Color(0xFF10B981).withOpacity(0.35),
+        ),
+        boxShadow: const [
+          BoxShadow(
+            color: Colors.black45,
+            blurRadius: 16,
+            offset: Offset(0, 6),
+          ),
+        ],
+      ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          FloatingActionButton.small(
-            heroTag: 'btn_report',
-            backgroundColor: const Color(0xFFefbb52),
-            child: const Icon(Icons.warning_amber_rounded,
-                color: Color(0xFF142e2d)),
-            onPressed: () => setState(() => showReportModal = true),
+          Row(
+            children: [
+              // عداد السرعة الحي (GPS Speedometer)
+              ValueListenableBuilder<double>(
+                valueListenable: _speedKmHNotifier,
+                builder: (context, speed, _) {
+                  final bool isOverLimit = speed > currentSpeedLimit;
+                  return Container(
+                    width: 66,
+                    height: 66,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: isDark
+                          ? const Color(0xFF1E293B)
+                          : Colors.grey.shade100,
+                      border: Border.all(
+                        color: isOverLimit
+                            ? const Color(0xFFEF4444)
+                            : const Color(0xFF10B981),
+                        width: 3.5,
+                      ),
+                    ),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text(
+                          speed.round().toString(),
+                          style: TextStyle(
+                            color: isDark ? Colors.white : Colors.black87,
+                            fontSize: 20,
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
+                        Text(
+                          'كم/س',
+                          style: TextStyle(
+                            color: isDark ? Colors.white60 : Colors.black54,
+                            fontSize: 10,
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                },
+              ),
+              const SizedBox(width: 14),
+
+              // تفاصيل المسار أو الحالة الحالية
+              Expanded(
+                child: destinationPoint != null
+                    ? Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            destinationName ?? 'الوجهة المحددة',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              color: isDark ? Colors.white : Colors.black87,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 15,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Row(
+                            children: [
+                              Text(
+                                routeDurationText,
+                                style: const TextStyle(
+                                  color: Color(0xFF10B981),
+                                  fontWeight: FontWeight.w800,
+                                  fontSize: 14,
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Text(
+                                '• $routeDistanceText',
+                                style: TextStyle(
+                                  color:
+                                      isDark ? Colors.white70 : Colors.black54,
+                                  fontSize: 13,
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Text(
+                                routeArrivalTimeText,
+                                style: const TextStyle(
+                                  color: Colors.amberAccent,
+                                  fontSize: 12,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      )
+                    : Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'دلّيني - رفيقك الذكي في طرق العراق',
+                            style: TextStyle(
+                              color: isDark ? Colors.white : Colors.black87,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 14.5,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            'الأخضر: سالك | الأصفر: بلاغ خطر | الأحمر: ازدحام',
+                            style: TextStyle(
+                              color: isDark ? Colors.white60 : Colors.black54,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ],
+                      ),
+              ),
+
+              // زر مشاركة «دلّي صديق» السريع
+              IconButton(
+                tooltip: 'دلّي صديق على هذا الموقع',
+                style: IconButton.styleFrom(
+                  backgroundColor: const Color(0xFF10B981).withOpacity(0.16),
+                ),
+                icon: const Icon(
+                  Icons.person_pin_circle_rounded,
+                  color: Color(0xFF10B981),
+                ),
+                onPressed: () => _shareLocationWithFriend(
+                  shareDestination: destinationPoint != null,
+                ),
+              ),
+            ],
           ),
+
           const SizedBox(height: 10),
-          FloatingActionButton.small(
-            heroTag: 'btn_offline',
-            backgroundColor: const Color(0xFF152928),
-            child: const Icon(Icons.offline_bolt_rounded,
-                color: Color(0xFF7ce0be)),
-            onPressed: () => setState(() => showOfflineModal = true),
-          ),
-          const SizedBox(height: 10),
-          FloatingActionButton.small(
-            heroTag: 'btn_gps',
-            backgroundColor: const Color(0xFF087e76),
-            child: SvgPicture.string(kGpsTargetSvg, width: 22, height: 22),
-            onPressed: _centerOnMe,
+          // شريط انتقال سريع للمدن العراقية
+          SizedBox(
+            height: 34,
+            child: ListView.separated(
+              scrollDirection: Axis.horizontal,
+              itemCount: iraqiProvinces.length,
+              separatorBuilder: (_, __) => const SizedBox(width: 8),
+              itemBuilder: (ctx, i) {
+                final prov = iraqiProvinces[i];
+                return ActionChip(
+                  backgroundColor:
+                      isDark ? const Color(0xFF1E293B) : Colors.grey.shade200,
+                  side: BorderSide.none,
+                  label: Text(
+                    prov.nameAr,
+                    style: TextStyle(
+                      color: isDark ? Colors.white : Colors.black87,
+                      fontSize: 12,
+                    ),
+                  ),
+                  onPressed: () =>
+                      _glideTo(prov.center, zoom: prov.defaultZoom),
+                );
+              },
+            ),
           ),
         ],
       ),
     );
   }
 
-  // ==================== نافذة خطة الرحلة وبدء الملاحة ====================
-  Widget _buildRoutePlanSheet() {
-    final route = routes.isNotEmpty
-        ? (routes[selectedRouteIndex] as Map<String, dynamic>)
-        : null;
-    final double distKm = route != null ? ((route['distance'] as num?) ?? 0) / 1000.0 : 0.0;
-    final double durMin = route != null ? (((route['duration'] as num?) ?? 0) / 60.0).ceil().toDouble() : 0.0;
+  /// نافذة إرسال بلاغ ميداني جديد
+  void _openReportBottomSheet() {
+    final List<Map<String, dynamic>> reportTypes = [
+      {
+        'type': 'traffic',
+        'title': 'ازدحام مروري',
+        'desc': 'يلون المسار باللون الأحمر لتنبيه السائقين',
+        'icon': Icons.traffic_rounded,
+        'color': const Color(0xFFEF4444),
+      },
+      {
+        'type': 'hazard',
+        'title': 'حفريات / مطب خطر',
+        'desc': 'يلون المسار باللون الأصفر التحذيري',
+        'icon': Icons.construction_rounded,
+        'color': const Color(0xFFFACC15),
+      },
+      {
+        'type': 'closed',
+        'title': 'طريق مغلق',
+        'desc': 'إغلاق كلي أو جزئي للطريق (لون أحمر)',
+        'icon': Icons.block_rounded,
+        'color': const Color(0xFFEF4444),
+      },
+      {
+        'type': 'camera',
+        'title': 'كاميرا رصد سرعة',
+        'desc': 'تنبيه رادار أو كاميرا مراقبة السرعة',
+        'icon': Icons.speed_rounded,
+        'color': const Color(0xFFFACC15),
+      },
+      {
+        'type': 'checkpoint',
+        'title': 'سيطرة أمنية',
+        'desc': 'نقطة تفتيش أو سيطرة مرورية',
+        'icon': Icons.local_police_rounded,
+        'color': const Color(0xFF38BDF8),
+      },
+      {
+        'type': 'accident',
+        'title': 'حادث مروري',
+        'desc': 'تنبيه عاجل بوجود حادث على المسار',
+        'icon': Icons.car_crash_rounded,
+        'color': const Color(0xFFEF4444),
+      },
+    ];
 
-    return Positioned(
-      bottom: 0,
-      left: 0,
-      right: 0,
-      child: Container(
-        padding: const EdgeInsets.all(20),
-        decoration: BoxDecoration(
-          color: isDark ? const Color(0xFF142e2d) : Colors.white,
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(26)),
-          border: Border.all(
-              color: isDark ? const Color(0xFF284e4b) : const Color(0xFF7ce0be),
-              width: 1.5),
-          boxShadow: const [
-            BoxShadow(color: Colors.black45, blurRadius: 20, offset: Offset(0, -4))
-          ],
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Row(
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) {
+        return Directionality(
+          textDirection: TextDirection.rtl,
+          child: Container(
+            padding: const EdgeInsets.all(20),
+            decoration: const BoxDecoration(
+              color: Color(0xFF0F172A),
+              borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
               children: [
-                const Icon(Icons.place_rounded, color: Color(0xFF7ce0be)),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    destTitle,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      color: isDark ? Colors.white : Colors.black87,
-                      fontSize: 15,
-                      fontWeight: FontWeight.w900,
-                    ),
+                const Text(
+                  'إرسال بلاغ ميداني فوري',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
                   ),
                 ),
-                IconButton(
-                  icon: const Icon(Icons.close_rounded, color: Colors.grey),
-                  onPressed: () => setState(() {
-                    showPlanSheet = false;
-                    dest = null;
-                    routes = [];
-                  }),
+                const SizedBox(height: 6),
+                const Text(
+                  'سيتم تحديث لون المسار وتنبيه جميع مستخدمي دلّيني فوراً',
+                  style: TextStyle(color: Colors.white60, fontSize: 12.5),
+                ),
+                const SizedBox(height: 16),
+                GridView.builder(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 3,
+                    mainAxisSpacing: 10,
+                    crossAxisSpacing: 10,
+                    childAspectRatio: 1.05,
+                  ),
+                  itemCount: reportTypes.length,
+                  itemBuilder: (_, idx) {
+                    final item = reportTypes[idx];
+                    final Color c = item['color'] as Color;
+                    return InkWell(
+                      borderRadius: BorderRadius.circular(16),
+                      onTap: () {
+                        Navigator.pop(ctx);
+                        _submitNewReport(
+                          type: item['type'].toString(),
+                          titleAr: item['title'].toString(),
+                          descriptionAr: item['desc'].toString(),
+                        );
+                      },
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: c.withOpacity(0.14),
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(color: c.withOpacity(0.5)),
+                        ),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(item['icon'] as IconData, color: c, size: 30),
+                            const SizedBox(height: 8),
+                            Text(
+                              item['title'].toString(),
+                              textAlign: TextAlign.center,
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 12,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  },
                 ),
               ],
             ),
-            const Divider(color: Color(0xFF284e4b)),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
+          ),
+        );
+      },
+    );
+  }
+
+  /// عرض تفاصيل بلاغ عند الضغط عليه في الخريطة
+  void _showReportDetailsModal(RoadReport report) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) {
+        return Directionality(
+          textDirection: TextDirection.rtl,
+          child: Container(
+            padding: const EdgeInsets.all(20),
+            decoration: const BoxDecoration(
+              color: Color(0xFF0F172A),
+              borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _infoCard(Icons.timer_rounded, '${durMin.toInt()} دقيقة',
-                    '${distKm.toStringAsFixed(1)} كم'),
-                _infoCard(Icons.speed_rounded, tr('الأسرع', 'Fastest Route'),
-                    tr('عبر الطرق الآمنة', 'Safe Corridor')),
+                Row(
+                  children: [
+                    CircleAvatar(
+                      backgroundColor: _getReportColor(report.type),
+                      child: Icon(_getReportIcon(report.type),
+                          color: Colors.black),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        report.titleAr,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 17,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                    Chip(
+                      backgroundColor: Colors.white10,
+                      label: Text(
+                        'تأكيدات: ${report.confirmations}',
+                        style: const TextStyle(color: Colors.tealAccent),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 10),
+                Text(
+                  report.descriptionAr,
+                  style: const TextStyle(color: Colors.white70, fontSize: 14),
+                ),
+                const SizedBox(height: 16),
+                Row(
+                  children: [
+                    Expanded(
+                      child: ElevatedButton.icon(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF10B981),
+                          foregroundColor: Colors.white,
+                        ),
+                        icon: const Icon(Icons.thumb_up_alt_rounded),
+                        label: const Text('لا يزال موجوداً'),
+                        onPressed: () {
+                          Navigator.pop(ctx);
+                          _showSnack('شكراً لتأكيد البلاغ وتحديث الخريطة');
+                        },
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: Colors.white70,
+                        ),
+                        icon: const Icon(Icons.check_circle_outline),
+                        label: const Text('انتهى البلاغ'),
+                        onPressed: () {
+                          setState(() {
+                            activeReports.removeWhere((r) => r.id == report.id);
+                            if (fullRoutePoints.isNotEmpty) {
+                              routeSegments =
+                                  _buildSmartColoredSegments(fullRoutePoints);
+                            }
+                          });
+                          Navigator.pop(ctx);
+                          _showSnack(
+                              'تمت إزالة البلاغ وتحديث المسار إلى الأخضر');
+                        },
+                      ),
+                    ),
+                  ],
+                ),
               ],
             ),
-            const SizedBox(height: 16),
-            Row(
-              children: [
-                Expanded(
-                  child: GlassTapButton(
-                    backgroundColor: const Color(0xFF152928),
-                    borderColor: const Color(0xFF7ce0be),
-                    onTap: _startSimulation,
-                    child: Text(
-                      tr('محاكاة الرحلة', 'Simulate'),
-                      style: const TextStyle(
-                          color: Color(0xFF7ce0be),
-                          fontWeight: FontWeight.w800),
-                    ),
-                  ),
+          ),
+        );
+      },
+    );
+  }
+
+  /// مدير تحميل خرائط المحافظات العراقية للعمل بدون إنترنت
+  void _openOfflineMapsSheet() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (ctx, setModalState) {
+            return Directionality(
+              textDirection: TextDirection.rtl,
+              child: Container(
+                height: MediaQuery.of(context).size.height * 0.75,
+                padding: const EdgeInsets.all(20),
+                decoration: const BoxDecoration(
+                  color: Color(0xFF0F172A),
+                  borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
                 ),
-                const SizedBox(width: 12),
-                Expanded(
-                  flex: 2,
-                  child: GlassTapButton(
-                    backgroundColor: const Color(0xFF087e76),
-                    borderColor: const Color(0xFF7ce0be),
-                    onTap: _startNav,
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Row(
                       children: [
-                        const Icon(Icons.navigation_rounded,
-                            color: Colors.white, size: 18),
-                        const SizedBox(width: 8),
+                        Icon(Icons.offline_pin_rounded,
+                            color: Color(0xFF10B981), size: 28),
+                        SizedBox(width: 10),
                         Text(
-                          tr('انطلاق الرحلة', 'Start Navigation'),
-                          style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 14,
-                              fontWeight: FontWeight.w900),
+                          'خرائط محافظات العراق بدون إنترنت',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
                       ],
                     ),
+                    const SizedBox(height: 6),
+                    const Text(
+                      'حمّل محافظتك لتعمل الخريطة والملاحة وأسماء المدن العربية حتى عند انقطاع الشبكة',
+                      style: TextStyle(color: Colors.white60, fontSize: 12.5),
+                    ),
+                    const SizedBox(height: 14),
+                    Expanded(
+                      child: ListView.separated(
+                        itemCount: iraqiProvinces.length,
+                        separatorBuilder: (_, __) =>
+                            const Divider(color: Colors.white10),
+                        itemBuilder: (_, idx) {
+                          final prov = iraqiProvinces[idx];
+                          final bool isDownloaded =
+                              downloadedProvinces.contains(prov.id);
+                          final double? prog = downloadProgress[prov.id];
+
+                          return ListTile(
+                            leading: Icon(
+                              isDownloaded
+                                  ? Icons.check_circle_rounded
+                                  : Icons.map_outlined,
+                              color: isDownloaded
+                                  ? const Color(0xFF10B981)
+                                  : Colors.white54,
+                            ),
+                            title: Text(
+                              prov.nameAr,
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            subtitle: prog != null
+                                ? LinearProgressIndicator(
+                                    value: prog,
+                                    color: const Color(0xFF10B981),
+                                    backgroundColor: Colors.white12,
+                                  )
+                                : Text(
+                                    '${prov.subtitleAr} • ${prov.sizeMb}',
+                                    style: const TextStyle(
+                                      color: Colors.white60,
+                                      fontSize: 12,
+                                    ),
+                                  ),
+                            trailing: isDownloaded
+                                ? IconButton(
+                                    icon: const Icon(
+                                      Icons.delete_outline_rounded,
+                                      color: Colors.redAccent,
+                                    ),
+                                    onPressed: () {
+                                      setState(() =>
+                                          downloadedProvinces.remove(prov.id));
+                                      setModalState(() {});
+                                      _savePreferences();
+                                    },
+                                  )
+                                : IconButton(
+                                    icon: const Icon(
+                                      Icons.download_rounded,
+                                      color: Color(0xFF10B981),
+                                    ),
+                                    onPressed: () {
+                                      setModalState(() {
+                                        downloadProgress[prov.id] = 0.25;
+                                      });
+                                      Timer.periodic(
+                                        const Duration(milliseconds: 350),
+                                        (timer) {
+                                          final current =
+                                              downloadProgress[prov.id] ?? 0.25;
+                                          if (current >= 1.0) {
+                                            timer.cancel();
+                                            setState(() {
+                                              downloadProgress.remove(prov.id);
+                                              downloadedProvinces.add(prov.id);
+                                            });
+                                            setModalState(() {});
+                                            _savePreferences();
+                                            _showSnack(
+                                                'اكتمل تنزيل خريطة ${prov.nameAr} للعمل أوفلاين');
+                                          } else {
+                                            setModalState(() {
+                                              downloadProgress[prov.id] =
+                                                  current + 0.25;
+                                            });
+                                          }
+                                        },
+                                      );
+                                    },
+                                  ),
+                          );
+                        },
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  /// شاشة CarPlay / HUD الاحترافية للقيادة الليلية
+  Widget _buildCarPlayHudOverlay() {
+    return Container(
+      color: const Color(0xFF050811),
+      padding: const EdgeInsets.all(24),
+      child: SafeArea(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text(
+                  'دلّيني | وضع القيادة الذكي (CarPlay HUD)',
+                  style: TextStyle(
+                    color: Color(0xFF10B981),
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
                   ),
+                ),
+                ElevatedButton.icon(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.white12,
+                    foregroundColor: Colors.white,
+                  ),
+                  icon: const Icon(Icons.map_rounded),
+                  label: const Text('العودة للخريطة'),
+                  onPressed: () => setState(() => isCarPlayHudMode = false),
                 ),
               ],
             ),
-            const SizedBox(height: 10),
-            GlassTapButton(
-              backgroundColor: const Color(0xFF262B33),
-              borderColor: Colors.transparent,
-              onTap: () => _shareFriendLocation(target: dest, label: destTitle),
+            ValueListenableBuilder<double>(
+              valueListenable: _speedKmHNotifier,
+              builder: (context, speed, _) {
+                return Column(
+                  children: [
+                    Text(
+                      speed.round().toString(),
+                      style: const TextStyle(
+                        color: Color(0xFF10B981),
+                        fontSize: 110,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                    const Text(
+                      'كيلومتر / الساعة',
+                      style: TextStyle(color: Colors.white70, fontSize: 20),
+                    ),
+                  ],
+                );
+              },
+            ),
+            Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.06),
+                borderRadius: BorderRadius.circular(24),
+                border: Border.all(color: Colors.white12),
+              ),
               child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  const Icon(Icons.share_location_rounded,
-                      color: Color(0xFFefbb52), size: 16),
-                  const SizedBox(width: 6),
-                  Text(
-                    tr('دلّي صديق (مشاركة موقع عبر رابط موقعك)',
-                        'Share with Friend (Dlinii Link)'),
-                    style: const TextStyle(
+                  const Icon(
+                    Icons.navigation_rounded,
+                    color: Color(0xFF10B981),
+                    size: 42,
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Text(
+                      nextInstructionAr,
+                      style: const TextStyle(
                         color: Colors.white,
-                        fontSize: 11.5,
-                        fontWeight: FontWeight.w700),
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
                   ),
                 ],
               ),
@@ -2522,108 +2445,128 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     );
   }
 
-  Widget _infoCard(IconData icon, String val, String sub) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF0b1918) : const Color(0xFFf0fdfa),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFF284e4b), width: 1),
-      ),
-      child: Column(
-        children: [
-          Icon(icon, color: const Color(0xFF7ce0be), size: 18),
-          const SizedBox(height: 4),
-          Text(val,
-              style: TextStyle(
-                  color: isDark ? Colors.white : Colors.black87,
-                  fontWeight: FontWeight.w900,
-                  fontSize: 13)),
-          Text(sub,
-              style: const TextStyle(color: Color(0xFF94a3b8), fontSize: 10)),
-        ],
-      ),
-    );
-  }
-
-  // ==================== نافذة الملاحة النشطة أثناء القيادة ====================
-  Widget _buildActiveNavigationHud() {
-    return Positioned(
-      top: 112,
-      left: 16,
-      right: 16,
-      child: Container(
-        padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(
-          color: const Color(0xFF142e2d),
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: const Color(0xFF7ce0be), width: 2),
-          boxShadow: const [
-            BoxShadow(color: Colors.black54, blurRadius: 16, offset: Offset(0, 6))
-          ],
-        ),
-        child: Column(
+  /// القائمة الجانبية الكاملة للتطبيق (_buildStandardAppDrawer)
+  Widget _buildStandardAppDrawer() {
+    return Drawer(
+      backgroundColor: const Color(0xFF0F172A),
+      child: SafeArea(
+        child: ListView(
+          padding: const EdgeInsets.symmetric(vertical: 12),
           children: [
-            Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF087e76),
-                    borderRadius: BorderRadius.circular(14),
-                  ),
-                  child: Text(hudArrow, style: const TextStyle(fontSize: 26)),
+            Container(
+              margin: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+              padding: const EdgeInsets.all(18),
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  colors: [Color(0xFF065F46), Color(0xFF0F172A)],
                 ),
-                const SizedBox(width: 14),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                borderRadius: BorderRadius.circular(20),
+                border:
+                    Border.all(color: const Color(0xFF10B981).withOpacity(0.4)),
+              ),
+              child: const Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
                     children: [
+                      Icon(Icons.explore_rounded,
+                          color: Color(0xFF10B981), size: 36),
+                      SizedBox(width: 10),
                       Text(
-                        hudInstruction,
-                        maxLines: 2,
-                        style: const TextStyle(
+                        'دلّيني | Dlinii',
+                        style: TextStyle(
                           color: Colors.white,
-                          fontSize: 14,
-                          fontWeight: FontWeight.w900,
+                          fontSize: 21,
+                          fontWeight: FontWeight.bold,
                         ),
-                      ),
-                      const SizedBox(height: 3),
-                      Text(
-                        hudStreet,
-                        style: const TextStyle(
-                            color: Color(0xFF7ce0be),
-                            fontSize: 11.5,
-                            fontWeight: FontWeight.w700),
                       ),
                     ],
                   ),
-                ),
-                IconButton(
-                  icon: const Icon(Icons.stop_rounded, color: Colors.redAccent, size: 30),
-                  onPressed: _stopNav,
-                ),
-              ],
+                  SizedBox(height: 8),
+                  Text(
+                    'نظام الملاحة العراقي الذكي للخرائط الأوفلاين والبلاغات الميدانية الحية',
+                    style: TextStyle(color: Colors.white70, fontSize: 12.5),
+                  ),
+                ],
+              ),
             ),
-            const Divider(color: Color(0xFF284e4b), height: 16),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  '${tr('المسافة:', 'Dist:')} $navRemKm ${tr('كم', 'km')} | ${tr('الوقت:', 'Time:')} $navRemMins ${tr('دقيقة', 'min')} | ETA: $navEta',
-                  style: const TextStyle(
-                      color: Color(0xFFefbb52),
-                      fontSize: 11.5,
-                      fontWeight: FontWeight.w800),
-                ),
-                Text(
-                  '${currentSpeedKmh.toStringAsFixed(0)} كم/س',
-                  style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 14,
-                      fontWeight: FontWeight.w900),
-                ),
-              ],
+            SwitchListTile(
+              activeColor: const Color(0xFF10B981),
+              secondary:
+                  const Icon(Icons.dark_mode_rounded, color: Colors.white),
+              title: const Text('الوضع الليلي الزجاجي',
+                  style: TextStyle(color: Colors.white)),
+              value: isDark,
+              onChanged: (val) {
+                setState(() => isDark = val);
+                _savePreferences();
+              },
+            ),
+            SwitchListTile(
+              activeColor: const Color(0xFF10B981),
+              secondary:
+                  const Icon(Icons.translate_rounded, color: Colors.tealAccent),
+              title: const Text('أسماء المدن العراقية بالعربية',
+                  style: TextStyle(color: Colors.white)),
+              subtitle: const Text('منع ظهور المربعات على الخريطة',
+                  style: TextStyle(color: Colors.white54, fontSize: 11.5)),
+              value: showArabicCityLabels,
+              onChanged: (val) {
+                setState(() => showArabicCityLabels = val);
+                _savePreferences();
+              },
+            ),
+            SwitchListTile(
+              activeColor: const Color(0xFF10B981),
+              secondary: const Icon(Icons.record_voice_over_rounded,
+                  color: Colors.amberAccent),
+              title: const Text('التنبيهات الصوتية والرادار',
+                  style: TextStyle(color: Colors.white)),
+              value: isVoiceEnabled,
+              onChanged: (val) {
+                setState(() => isVoiceEnabled = val);
+                _savePreferences();
+              },
+            ),
+            const Divider(color: Colors.white12),
+            ListTile(
+              leading: const Icon(Icons.download_for_offline_rounded,
+                  color: Color(0xFF10B981)),
+              title: const Text('تحميل خرائط المحافظات (أوفلاين)',
+                  style: TextStyle(color: Colors.white)),
+              subtitle: Text(
+                'تم تحميل ${downloadedProvinces.length} محافظة',
+                style: const TextStyle(color: Colors.white54, fontSize: 12),
+              ),
+              onTap: () {
+                Navigator.pop(context);
+                _openOfflineMapsSheet();
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.share_location_rounded,
+                  color: Colors.cyanAccent),
+              title: const Text('دلّي صديق (مشاركة ذكية)',
+                  style: TextStyle(color: Colors.white)),
+              subtitle: const Text(
+                  'إرسال رابط يفتح المسار مباشرة بالويب أو التطبيق',
+                  style: TextStyle(color: Colors.white54, fontSize: 12)),
+              onTap: () {
+                Navigator.pop(context);
+                _shareLocationWithFriend(
+                  shareDestination: destinationPoint != null,
+                );
+              },
+            ),
+            ListTile(
+              leading:
+                  const Icon(Icons.add_alert_rounded, color: Color(0xFFFACC15)),
+              title: const Text('إرسال بلاغ طريق فوري',
+                  style: TextStyle(color: Colors.white)),
+              onTap: () {
+                Navigator.pop(context);
+                _openReportBottomSheet();
+              },
             ),
           ],
         ),
@@ -2631,114 +2574,37 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     );
   }
 
-  // ==================== القائمة الجانبية (Drawer) والنافذة الجانبية ====================
-  Widget _buildDrawer() {
-    return Drawer(
-      backgroundColor: isDark ? const Color(0xFF0b1918) : Colors.white,
-      child: SafeArea(
-        child: ListView(
-          padding: const EdgeInsets.all(16),
-          children: [
-            Row(
-              children: [
-                Container(
-                  width: 50,
-                  height: 50,
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF087e76),
-                    borderRadius: BorderRadius.circular(14),
-                  ),
-                  child: Center(
-                    child: SvgPicture.string(kGreenNavArrowSvg, width: 30, height: 30),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text('دلّيني | Dlinii',
-                        style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 18,
-                            fontWeight: FontWeight.w900)),
-                    Text(webAppDomain,
-                        style: const TextStyle(
-                            color: Color(0xFF7ce0be), fontSize: 11)),
-                  ],
-                ),
-              ],
-            ),
-            const Divider(color: Color(0xFF284e4b), height: 28),
-            ListTile(
-              leading: const Icon(Icons.offline_bolt_rounded, color: Color(0xFF7ce0be)),
-              title: Text(tr('خرائط بدون نت (18 محافظة)', 'Offline Maps (18 Provinces)'),
-                  style: TextStyle(
-                      color: isDark ? Colors.white : Colors.black87,
-                      fontWeight: FontWeight.w700)),
-              onTap: () {
-                Navigator.pop(context);
-                setState(() => showOfflineModal = true);
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.mic_rounded, color: Color(0xFFefbb52)),
-              title: Text(tr('إعدادات الصوت والنبرة', 'Voice Settings'),
-                  style: TextStyle(
-                      color: isDark ? Colors.white : Colors.black87,
-                      fontWeight: FontWeight.w700)),
-              onTap: () {
-                Navigator.pop(context);
-                setState(() => showVoiceModal = true);
-              },
-            ),
-            SwitchListTile(
-              secondary: const Icon(Icons.dark_mode_rounded, color: Color(0xFF7ce0be)),
-              title: Text(tr('الوضع الليلي', 'Dark Mode'),
-                  style: TextStyle(
-                      color: isDark ? Colors.white : Colors.black87,
-                      fontWeight: FontWeight.w700)),
-              value: isDark,
-              onChanged: (val) {
-                setState(() => isDark = val);
-                _savePrefs();
-              },
-            ),
-            SwitchListTile(
-              secondary: const Icon(Icons.language_rounded, color: Color(0xFFefbb52)),
-              title: const Text('English Language',
-                  style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700)),
-              value: isEnglish,
-              onChanged: (val) {
-                setState(() => isEnglish = val);
-                _savePrefs();
-              },
-            ),
-            const Divider(color: Color(0xFF284e4b), height: 28),
-            ListTile(
-              leading: const Icon(Icons.share_rounded, color: Color(0xFF7ce0be)),
-              title: Text(tr('مشاركة موقعي (دلّي صديق)', 'Share My Location'),
-                  style: TextStyle(
-                      color: isDark ? Colors.white : Colors.black87,
-                      fontWeight: FontWeight.w700)),
-              onTap: () {
-                Navigator.pop(context);
-                _shareFriendLocation();
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.star_rounded, color: Color(0xFFefbb52)),
-              title: Text(tr('قيم التطبيق', 'Rate App'),
-                  style: TextStyle(
-                      color: isDark ? Colors.white : Colors.black87,
-                      fontWeight: FontWeight.w700)),
-              onTap: () {
-                Navigator.pop(context);
-                setState(() => showRateModal = true);
-              },
-            ),
-          ],
-        ),
-      ),
-    );
+  Color _getReportColor(String type) {
+    switch (type) {
+      case 'traffic':
+      case 'closed':
+      case 'accident':
+        return const Color(0xFFEF4444); // أحمر
+      case 'checkpoint':
+        return const Color(0xFF38BDF8); // أزرق
+      case 'hazard':
+      case 'camera':
+      case 'roadworks':
+      default:
+        return const Color(0xFFFACC15); // أصفر
+    }
   }
-// ==================== نهاية الجزء السادس والأخير ====================
+
+  IconData _getReportIcon(String type) {
+    switch (type) {
+      case 'traffic':
+        return Icons.traffic_rounded;
+      case 'closed':
+        return Icons.block_rounded;
+      case 'camera':
+        return Icons.speed_rounded;
+      case 'checkpoint':
+        return Icons.local_police_rounded;
+      case 'accident':
+        return Icons.car_crash_rounded;
+      case 'hazard':
+      default:
+        return Icons.warning_amber_rounded;
+    }
+  }
+}
