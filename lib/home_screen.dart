@@ -1820,9 +1820,17 @@ class _HomeScreenState extends State<HomeScreen>
     final prefs = await SharedPreferences.getInstance();
     await prefs.setInt('dlini_voice_speed_lvl', level);
     await _applyVoiceProfile();
-    _say(isEnglish
-        ? 'Speech speed updated.'
-        : 'تَمَّ ضَبْطُ سُرْعَةِ الصَّوْتِ بِنَجَاحٍ.');
+    _say(isEnglish ? 'Speech speed updated.' : 'تَمَّ ضَبْطُ سُرْعَةِ الصَّوْتِ بِنَجَاحٍ.');
+  }
+
+  bool _isEngineVoiceFemale(Map<String, String> v) {
+    final name = (v['name'] ?? '').toLowerCase();
+    return name.contains('female') || name.contains('zariyah') || name.contains('salma') || name.contains('hoda') || name.contains('aria') || name.contains('jenny') || name.contains('zira');
+  }
+
+  bool _isEngineVoiceMale(Map<String, String> v) {
+    final name = (v['name'] ?? '').toLowerCase();
+    return name.contains('male') || name.contains('shakir') || name.contains('hamed') || name.contains('maged') || name.contains('guy') || name.contains('david') || name.contains('mark');
   }
 
   Future<void> _applyVoiceProfile() async {
@@ -1837,28 +1845,13 @@ class _HomeScreenState extends State<HomeScreen>
 
       await flutterTts.stop();
 
-      final List<Map<String, String>> langVoices = _availableVoices.where((v) {
-        final loc = _normVoice(v['locale'] ?? '');
-        final name = _normVoice(v['name'] ?? '');
+      final List> langVoices = _availableVoices.where((v) {
+        final loc = (v['locale'] ?? '').toLowerCase();
+        final name = (v['name'] ?? '').toLowerCase();
         if (vp.langType == 'ar') {
-          return loc.startsWith('ar') ||
-              name.contains('arabic') ||
-              name.contains('salma') ||
-              name.contains('shakir') ||
-              name.contains('zariyah') ||
-              name.contains('hamed') ||
-              name.contains('naayf') ||
-              name.contains('hoda') ||
-              name.contains('maged');
+          return loc.startsWith('ar') || name.contains('arabic');
         } else {
-          return loc.startsWith('en') ||
-              name.contains('english') ||
-              name.contains('aria') ||
-              name.contains('jenny') ||
-              name.contains('zira') ||
-              name.contains('guy') ||
-              name.contains('david') ||
-              name.contains('mark');
+          return loc.startsWith('en') || name.contains('english');
         }
       }).toList();
 
@@ -1871,28 +1864,15 @@ class _HomeScreenState extends State<HomeScreen>
         }).toList();
 
         if (genderMatches.isNotEmpty) {
-          final naturalMatch = genderMatches.where((v) {
-            final n = _normVoice(v['name'] ?? '');
-            return n.contains('natural') ||
-                n.contains('online') ||
-                n.contains('wavenet');
-          }).toList();
-
-          matchedVoice = naturalMatch.isNotEmpty
-              ? naturalMatch.first
-              : genderMatches.first;
+          matchedVoice = genderMatches.first;
           foundRealGenderVoice = true;
-        } else if (langVoices.length >= 2) {
-          matchedVoice = wantFemale ? langVoices.first : langVoices.last;
         } else {
           matchedVoice = langVoices.first;
         }
       }
 
       if (matchedVoice != null && (matchedVoice['name'] ?? '').isNotEmpty) {
-        final String vLoc = (matchedVoice['locale'] ?? '').isNotEmpty
-            ? matchedVoice['locale']!
-            : vp.locale;
+        final String vLoc = (matchedVoice['locale'] ?? '').isNotEmpty ? matchedVoice['locale']! : vp.locale;
         await flutterTts.setLanguage(vLoc);
         try {
           await flutterTts.setVoice({
@@ -1904,8 +1884,8 @@ class _HomeScreenState extends State<HomeScreen>
         await flutterTts.setLanguage(vp.locale);
       }
 
-      final double targetPitch =
-          foundRealGenderVoice ? 1.0 : (wantFemale ? 1.65 : 0.50);
+      // ضبط نبرة الصوت بدقة: فتاة بنبرة عالية قليلاً، ورجل بنبرة خشنة ومنخفضة
+      final double targetPitch = foundRealGenderVoice ? 1.0 : (wantFemale ? 1.45 : 0.45);
 
       await flutterTts.setVolume(1.0);
       await flutterTts.setPitch(targetPitch);
@@ -1922,15 +1902,13 @@ class _HomeScreenState extends State<HomeScreen>
 
     final vp = currentVoice;
     final int slot = _pinnedSlot[vp.id] ?? (_voiceSlot[vp.id] ?? 0);
-    final String voiceTypeLabel =
-        slot == 0 ? tr('صوت فتاة', 'Female') : tr('صوت رجل', 'Male');
+    final String voiceTypeLabel = slot == 0 ? tr('صوت فتاة', 'Female') : tr('صوت رجل', 'Male');
 
     final String sample = vp.langType == 'en'
         ? 'Hello, welcome to Dlinii navigation system. I am ready to guide you.'
-        : 'مَرْحَبَاً بِكَ فِي تَطْبِيقِ دَلِّينِي، أَنَا مُسَاعِدُكَ الصَّوْتِيُّ لِتَوْجِيهِكَ عَلَى الطَّرِيقِ بِكُلِّ وُضُوحٍ.';
+        : 'مَرْحَبَاً بِكَ فِي تَطْبِيقِ دَلِّينِي، أَنَا مُسَاعِدُكَ الصَّوْتِيُّ لِتَوْجِيهِكَ عَلَى الطَّرِيقِ.';
     _say(sample);
-    _toast(tr('تم اختيار: ${vp.nameAr} ($voiceTypeLabel)',
-        'Selected: ${vp.nameEn} ($voiceTypeLabel)'));
+    _toast(tr('تم اختيار: ${vp.nameAr} ($voiceTypeLabel)', 'Selected: ${vp.nameEn} ($voiceTypeLabel)'));
   }
 
   Future<void> _onTapSwitchVoiceButton() async {
@@ -1952,17 +1930,15 @@ class _HomeScreenState extends State<HomeScreen>
         : tr('الصوت الثاني: رجل واضح ونقي', 'Voice 2: Clear Male');
 
     final String sample = vp.langType == 'en'
-        ? (nextSlot == 0
-            ? 'Hello, this is the female voice assistant on Dlinii.'
-            : 'Hello, this is the male voice assistant on Dlinii.')
+        ? (nextSlot == 0 ? 'Hello, this is the female voice assistant.' : 'Hello, this is the male voice assistant.')
         : (nextSlot == 0
-            ? 'مَرْحَبَاً بِكَ فِي تَطْبِيقِ دَلِّينِي، هَذَا الصَّوْتُ الأَوَّلُ بِصَوْتِ فَتَاةٍ وَاضِحٍ وَنَقِيٍّ.'
-            : 'مَرْحَبَاً بِكَ فِي تَطْبِيقِ دَلِّينِي، هَذَا الصَّوْتُ الثَّانِي بِصَوْتِ رَجُلٍ وَاضِحٍ وَنَقِيٍّ.');
+            ? 'مَرْحَبَاً بِكَ، هَذَا صَوْتُ الْفَتَاةِ الْوَاضِحُ.'
+            : 'مَرْحَبَاً بِكَ، هَذَا صَوْتُ الرَّجُلِ الْخَشِينُ وَالْوَاضِحُ.');
 
     _say(sample);
     _toast(voiceTypeLabel);
   }
-
+  
   Future<void> _togglePinCurrentVoice() async {
     final vp = currentVoice;
     final prefs = await SharedPreferences.getInstance();
@@ -4008,11 +3984,17 @@ class _HomeScreenState extends State<HomeScreen>
                       : const ColorFilter.mode(
                           Colors.transparent, BlendMode.dst),
                   child: TileLayer(
-                    urlTemplate:
-                        'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png',
+                    urlTemplate: isSatelliteMode
+                        ? 'https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}&hl=ar'
+                        : (isDark
+                            ? 'https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}&hl=ar'
+                            : 'https://mt1.google.com/vt/lyrs=r&x={x}&y={y}&z={z}&hl=ar'),
                     subdomains: const ['a', 'b', 'c', 'd'],
-                    maxZoom: 20,
-                    userAgentPackageName: 'com.dlinii.app',
+                    maxZoom: 18,
+                    maxNativeZoom: 18,
+                    keepBuffer: 1,
+                    panBuffer: 0,
+                    userAgentPackageName: 'com.binkhalid.dlinii',
                     tileProvider: _offlineTileProvider,
                   ),
                 ),
