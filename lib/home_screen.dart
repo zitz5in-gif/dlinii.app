@@ -1,9 +1,8 @@
-﻿import 'dart:async';
+import 'dart:async';
 import 'dart:convert';
 import 'dart:math' as math;
 import 'dart:ui' as ui;
-import 'dart:io' show Directory, File;
-import 'package:path_provider/path_provider.dart';
+import 'offline_tile_platform.dart';
 import 'package:speech_to_text/speech_to_text.dart' as stt;
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
@@ -54,6 +53,12 @@ const Map<String, String> kReportTypeSvgs = {
       '<svg viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="4" y="4" width="40" height="40" rx="14" fill="#efbb52" fill-opacity="0.18"/><rect x="17" y="8" width="14" height="32" rx="7" fill="#142e2d" stroke="#087e76" stroke-width="2"/><circle cx="24" cy="15" r="3.2" fill="#E5484D"/><circle cx="24" cy="24" r="3.2" fill="#efbb52"/><circle cx="24" cy="33" r="3.2" fill="#16a34a"/></svg>',
   'police':
       '<svg viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="4" y="4" width="40" height="40" rx="14" fill="#087e76" fill-opacity="0.16"/><path d="M24 9L36 14V24C36 32 24 39 24 39C24 39 12 32 12 24V14L24 9Z" fill="#087e76" stroke="#9cdbc0" stroke-width="2"/><circle cx="24" cy="23" r="4.5" fill="#efbb52"/></svg>',
+  'roadworks':
+      '<svg viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg"><path d="M24 5L45 42H3Z" fill="#efbb52"/><path d="M13 32L23 23L32 32M23 23V15" fill="none" stroke="#142e2d" stroke-width="4"/></svg>',
+  'closed':
+      '<svg viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg"><circle cx="24" cy="24" r="21" fill="#E5484D"/><path d="M11 24H37" stroke="white" stroke-width="7"/></svg>',
+  'camera':
+      '<svg viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg"><rect x="4" y="13" width="40" height="29" rx="8" fill="#087e76"/><path d="M15 13L19 6H29L33 13" fill="#087e76"/><circle cx="24" cy="27" r="9" fill="#efbb52"/></svg>',
   'hazard':
       '<svg viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="4" y="4" width="40" height="40" rx="14" fill="#efbb52" fill-opacity="0.2"/><path d="M24 10L39 36H9L24 10Z" fill="#efbb52" stroke="#142e2d" stroke-width="2.5" stroke-linejoin="round"/><path d="M24 20V27" stroke="#142e2d" stroke-width="3" stroke-linecap="round"/><circle cx="24" cy="32" r="2" fill="#142e2d"/></svg>',
 };
@@ -466,20 +471,14 @@ class _TileRange {
 
 /// تخزين بلاطات الخرائط محلياً على الجهاز (للعمل بدون إنترنت)
 class _OfflineTiles {
-  static Directory? dir;
+  static String? dir;
   static const List<int> zooms = [10, 11, 12, 13, 14];
 
   static Future<void> init() async {
-    if (kIsWeb) return;
-    try {
-      final base = await getApplicationDocumentsDirectory();
-      final d = Directory('${base.path}/offline_tiles');
-      if (!d.existsSync()) d.createSync(recursive: true);
-      dir = d;
-    } catch (_) {}
+    dir = await OfflineTilePlatform.createDirectory();
   }
 
-  static File file(int z, int x, int y) => File('${dir!.path}/$z/$x/$y.png');
+  static String file(int z, int x, int y) => '$dir/$z/$x/$y.png';
 
   static int _tx(double lon, int z) => ((lon + 180) / 360 * (1 << z)).floor();
   static int _ty(double lat, int z) {
@@ -517,9 +516,7 @@ class _OfflineTiles {
           'User-Agent': 'com.dlinii.app'
         }).timeout(const Duration(seconds: 15));
         if (r.statusCode == 200 && r.bodyBytes.isNotEmpty) {
-          final f = file(z, x, y);
-          await f.parent.create(recursive: true);
-          await f.writeAsBytes(r.bodyBytes);
+          await OfflineTilePlatform.writeBytes(file(z, x, y), r.bodyBytes);
           return true;
         }
       } catch (_) {}
@@ -538,7 +535,8 @@ class _OfflineTiles {
       final r = _range(p, z);
       for (int x = r.x0; x <= r.x1; x++) {
         for (int y = r.y0; y <= r.y1; y++) {
-          if (!file(z, x, y).existsSync()) jobs.add([z, x, y]);
+          if (!OfflineTilePlatform.existsSync(file(z, x, y)))
+            jobs.add([z, x, y]);
         }
       }
     }
@@ -565,7 +563,7 @@ class _OfflineTiles {
     } finally {
       client.close();
     }
-    return failed <= total * 0.03;
+    return failed == 0;
   }
 
   /// يحذف بلاطات المحافظة ويُبقي المشتركة مع محافظات أخرى محمّلة
@@ -583,9 +581,9 @@ class _OfflineTiles {
         for (int y = r.y0; y <= r.y1; y++) {
           if (otherRanges.any((o) => o.covers(x, y))) continue;
           final f = file(z, x, y);
-          if (f.existsSync()) {
+          if (OfflineTilePlatform.existsSync(f)) {
             try {
-              f.deleteSync();
+              OfflineTilePlatform.deleteSync(f);
             } catch (_) {}
           }
         }
@@ -602,7 +600,10 @@ class _OfflineTileProvider extends TileProvider {
   ImageProvider getImage(TileCoordinates coordinates, TileLayer options) {
     if (_OfflineTiles.dir != null) {
       final f = _OfflineTiles.file(coordinates.z, coordinates.x, coordinates.y);
-      if (f.existsSync()) return FileImage(f);
+      if (OfflineTilePlatform.existsSync(f)) {
+        final image = OfflineTilePlatform.imageProvider(f);
+        if (image != null) return image;
+      }
     }
     return NetworkImage(getTileUrl(coordinates, options), headers: headers);
   }
@@ -958,6 +959,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     _checkClipboardForSharedLocation();
     _initOfflineTiles();
     _startConnectivityProbe();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _initLocationTracking(userInitiated: true);
+    });
 
     Future.delayed(const Duration(milliseconds: 2700), () async {
       if (!mounted) return;
@@ -982,6 +986,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
   @override
   void dispose() {
+    _deepLinkSubscription?.cancel();
     splashCarController.dispose();
     splashRoadController.dispose();
     splashPulseController.dispose();
@@ -1004,10 +1009,17 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     super.dispose();
   }
 
+  StreamSubscription<Uri>? _deepLinkSubscription;
+
   void _initDeepLinksListener() {
     try {
       final appLinks = AppLinks();
-      appLinks.uriLinkStream.listen((uri) {
+      if (kIsWeb) _handleIncomingUri(Uri.base);
+      appLinks.getInitialLink().then((uri) {
+        if (mounted && uri != null) _handleIncomingUri(uri);
+      }).catchError((Object _) {});
+      _deepLinkSubscription = appLinks.uriLinkStream.listen((uri) {
+        if (!mounted) return;
         _handleIncomingUri(uri);
       }, onError: (_) {});
     } catch (_) {}
@@ -1520,8 +1532,12 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         }
       }).toList();
 
+      langVoices.sort((a, b) => '${a['locale']}/${a['name']}'
+          .compareTo('${b['locale']}/${b['name']}'));
+      final prefs = await SharedPreferences.getInstance();
+      final identityKey = 'dlinii_engine_${vp.id}_$activeSlot';
+      final savedIdentity = prefs.getString(identityKey);
       Map<String, String>? matchedVoice;
-      bool foundRealGenderVoice = false;
 
       if (langVoices.isNotEmpty) {
         // أولوية قصوى للأصوات الطبيعية النقية (Online Natural) في Edge ثم بقية الأصوات المطابقة للجنس
@@ -1540,7 +1556,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           matchedVoice = naturalMatch.isNotEmpty
               ? naturalMatch.first
               : genderMatches.first;
-          foundRealGenderVoice = true;
         } else if (langVoices.length >= 2) {
           matchedVoice = wantFemale ? langVoices.first : langVoices.last;
         } else {
@@ -1548,6 +1563,15 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         }
       }
 
+      if (savedIdentity != null) {
+        final saved = langVoices
+            .where((v) => '${v['locale']}/${v['name']}' == savedIdentity);
+        if (saved.isNotEmpty) matchedVoice = saved.first;
+      }
+      if (matchedVoice != null) {
+        await prefs.setString(
+            identityKey, '${matchedVoice['locale']}/${matchedVoice['name']}');
+      }
       if (matchedVoice != null && (matchedVoice['name'] ?? '').isNotEmpty) {
         final String vLoc = (matchedVoice['locale'] ?? '').isNotEmpty
             ? matchedVoice['locale']!
@@ -1563,9 +1587,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         await flutterTts.setLanguage(vp.locale);
       }
 
-      // إذا وجد صوت الرجل الحقيقي أو الفتاة الحقيقية نخلي النبرة طبيعية 1.0، وإذا لم يجد يغير التردد بقوة (1.65 فتاة / 0.50 رجل)
-      final double targetPitch =
-          foundRealGenderVoice ? 1.0 : (wantFemale ? 1.65 : 0.50);
+      final double targetPitch = 1.0;
 
       await flutterTts.setVolume(1.0);
       await flutterTts.setPitch(targetPitch);
@@ -2083,11 +2105,26 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         return tr('حادث', 'Crash');
       case 'traffic':
         return tr('ازدحام', 'Traffic Jam');
+      case 'roadworks':
+        return tr('حفريات 🚜', 'Roadworks');
+      case 'closed':
+        return tr('طريق مغلق ⛔', 'Road closed');
+      case 'camera':
+        return tr('كاميرا مراقبة 📸', 'Traffic camera');
       case 'police':
         return tr('نقطة مرور', 'Police / Patrol');
       default:
         return tr('خطر آخر', 'Road Hazard');
     }
+  }
+
+  bool _reportIsVisible(Map<String, dynamic> data) {
+    final lat = data['lat'], lng = data['lng'];
+    if (lat is! num || lng is! num) return false;
+    final point = LatLng(lat.toDouble(), lng.toDouble());
+    if (_hasRealFix && me != null && _distanceMeters(me!, point) <= 300)
+      return true;
+    return isNavigating && _snapToRoute(point) != null;
   }
 
   double _distanceMeters(LatLng a, LatLng b) {
@@ -2133,7 +2170,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         }
         return;
       }
-      final lastKnown = await Geolocator.getLastKnownPosition();
+      final lastKnown = kIsWeb ? null : await Geolocator.getLastKnownPosition();
       if (lastKnown != null && mounted) {
         _onPositionUpdate(LatLng(lastKnown.latitude, lastKnown.longitude),
             lastKnown.speed, lastKnown.heading,
@@ -2209,6 +2246,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     }
     if (!isNavigating) return;
     _updateNavigationState();
+    _syncCarHud();
     _checkNearbyReports(nextMe);
   }
 
@@ -2749,13 +2787,19 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     final bool enMode = isEnglish || currentVoice.langType == 'en';
     for (var doc in cloudReports) {
       final data = doc.data() as Map<String, dynamic>;
+      if (!_reportIsVisible(data)) continue;
       final LatLng repPos = LatLng(
           (data['lat'] as num).toDouble(), (data['lng'] as num).toDouble());
       final double dist = _distanceMeters(currentPos, repPos);
       final String repId = doc.id,
           type = data['type'] ?? '',
           label = _getReportLabel(type, data['label']?.toString());
-      double alertDist = 150;
+      if (_snapToRoute(repPos) == null) continue;
+      final bearingToReport = _getBearing(currentPos, repPos);
+      if (dist > 25 &&
+          ((bearingToReport - currentBearing + 540) % 360 - 180).abs() > 100)
+        continue;
+      double alertDist = 300;
       String msg =
           enMode ? 'Caution, $label ahead' : 'اِحْذَرْ، أَمَامَكَ $label';
 
@@ -2793,6 +2837,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   void _endNav({bool arrived = false}) {
     simTimer?.cancel();
     simTimer = null;
+    if (!kIsWeb) {
+      _carHudChannel.invokeMethod<void>('clearHud').catchError((Object _) {});
+    }
     flutterTts.stop();
     setState(() {
       isNavigating = false;
@@ -3366,27 +3413,21 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   }
 
   Widget _buildMain(BuildContext context) {
-    // تبديل ليلي/نهاري فوري: إذا الستايل الليلي لم يجهز بعد نستخدم النهاري مع فلتر ليلي مؤقت
-    vt.Style? activeVtStyle = isDark ? _vtDark : _vtLight;
-    bool tempDarkFilter = false;
-    if (isDark && _vtDark == null && _vtLight != null) {
-      activeVtStyle = _vtLight;
-      tempDarkFilter = true;
-    }
-    final Widget? ofmLayerRaw = (activeVtStyle == null || _forceOffline)
+    final activeVtStyle = _vtLight;
+    final Widget? ofmLayer = (activeVtStyle == null || _forceOffline)
         ? null
-        : vt.VectorTileLayer(
-            key: ValueKey<String>(tempDarkFilter
-                ? 'vt_dark_filtered'
-                : (isDark ? 'vt_dark_pure' : 'vt_light_pure')),
-            theme: activeVtStyle.theme,
-            tileProviders: activeVtStyle.providers,
-            rasterSources: activeVtStyle.rasterSources,
-            sprites: activeVtStyle.sprites,
+        : ColorFiltered(
+            colorFilter: isDark
+                ? kInstantDarkFilter
+                : const ColorFilter.mode(Colors.transparent, BlendMode.dst),
+            child: vt.VectorTileLayer(
+              key: const ValueKey('dlinii_vector_map'),
+              theme: activeVtStyle.theme,
+              tileProviders: activeVtStyle.providers,
+              rasterSources: activeVtStyle.rasterSources,
+              sprites: activeVtStyle.sprites,
+            ),
           );
-    final Widget? ofmLayer = (ofmLayerRaw != null && tempDarkFilter)
-        ? ColorFiltered(colorFilter: kInstantDarkFilter, child: ofmLayerRaw)
-        : ofmLayerRaw;
 
     final Matrix4 perspectiveMatrix = isFirstPerson3D
         ? (Matrix4.identity()
@@ -3458,8 +3499,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                   ofmLayer
                 else
                   ColorFiltered(
-                    key: ValueKey<String>(
-                        isDark ? 'raster_dark' : 'raster_light'),
+                    key: const ValueKey<String>('dlinii_raster_map'),
                     colorFilter: isDark
                         ? kInstantDarkFilter
                         : const ColorFilter.mode(
@@ -3557,7 +3597,10 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                           width: 42,
                           height: 48,
                           child: SvgPicture.string(kDestPinSvg)),
-                    ...cloudReports.map((doc) {
+                    ...cloudReports
+                        .where((doc) => _reportIsVisible(
+                            doc.data() as Map<String, dynamic>))
+                        .map((doc) {
                       final data = doc.data() as Map<String, dynamic>;
                       final LatLng pt = LatLng(
                           ((data['lat'] ?? 33.4258) as num).toDouble(),
@@ -5421,6 +5464,12 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                             _buildRepGridBtn(
                                 'police', tr('نقطة مرور', 'Police')),
                             _buildRepGridBtn('hazard', tr('خطر آخر', 'Hazard')),
+                            _buildRepGridBtn(
+                                'roadworks', tr('حفريات 🚜', 'Roadworks')),
+                            _buildRepGridBtn(
+                                'closed', tr('طريق مغلق ⛔', 'Road closed')),
+                            _buildRepGridBtn(
+                                'camera', tr('كاميرا 📸', 'Camera')),
                           ],
                         ),
                       ],

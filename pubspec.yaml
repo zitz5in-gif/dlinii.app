@@ -62,6 +62,6 @@ flutter:
 
 # إعدادات الأيقونات يجب أن تكون هنا في أقصى اليسار وخارج قسم flutter تماماً
 flutter_launcher_icons:
-  image_path: "assets/logo.png"
+  image_path: "assets/images/dlinii_icon.png"
   android: true
   ios: true 
