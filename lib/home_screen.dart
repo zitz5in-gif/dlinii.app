@@ -226,7 +226,7 @@ class _CarPlayAndroidAutoBridge {
 
 class _OfflineTiles {
   static Directory? dir;
-  static final Map<String, Uint8List<dynamic> memoryTiles = {};
+  static final Map<String, Uint8List memoryTiles = {};
   static const List<int> zooms = [10, 11, 12, 13];
 
   static Future<void> init() async {
@@ -2038,4 +2038,5 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     );
   }
 }
+
 
