@@ -4,7 +4,7 @@
   <base href="/">
   <meta charset="UTF-8">
   <meta content="IE=Edge" http-equiv="X-UA-Compatible">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
   
   <!-- عنوان التطبيق وهويته -->
   <title>دلّيني | Dlinii</title>
@@ -15,8 +15,16 @@
   
   <!-- إعدادات مظهر الويب (PWA Manifest) -->
   <link rel="manifest" href="manifest.json">
-</head>
+<meta name="theme-color" content="#087e76">
+<style>
+#dlinii-boot{position:fixed;inset:0;display:grid;place-items:center;background:#f1f7f6;color:#09272e;font-family:Tahoma,Arial,sans-serif;z-index:9999}#dlinii-boot .card{width:min(340px,88vw);padding:32px;text-align:center;background:white;border:1px solid #d9e8e6;border-radius:30px 14px 30px 14px;box-shadow:0 20px 60px #09272e10}#dlinii-boot img{width:82px;height:82px}#dlinii-boot h1{font-size:29px;margin:12px 0 6px}#dlinii-boot p{font-size:13px;color:#57767b;line-height:1.8}#dlinii-boot svg{height:44px;width:44px;margin:12px}#dlinii-boot .road{stroke-dasharray:50 100;animation:dlinii-road 1.4s linear infinite}#dlinii-boot button{padding:12px 24px;background:#087e76;color:white;border:0;border-radius:14px;font:inherit}#dlinii-boot button[hidden]{display:none}@keyframes dlinii-road{to{stroke-dashoffset:-150}}@media(prefers-reduced-motion:reduce){#dlinii-boot .road{animation:none}}
+</style></head>
 <body>
+<div id="dlinii-boot" role="status"><div class="card"><img src="dlinii_icon.png" alt="شعار دلّيني"><h1>دلّيني</h1><p>رفيقك على طريقك</p><svg viewBox="0 0 32 32" fill="none" aria-hidden="true"><path d="M6 27V11Q6 8 9 8H18M24 4C16 15 25 14 25 21S18 27 11 29M20 5L24 2 27 7" stroke="#d4e7e2" stroke-width="3" stroke-linecap="round"/><path class="road" d="M6 27V11Q6 8 9 8H18M24 4C16 15 25 14 25 21S18 27 11 29M20 5L24 2 27 7" stroke="#087e76" stroke-width="3" stroke-linecap="round"/></svg><p id="dlinii-boot-message">نجهّز لك الطريق…</p><button id="dlinii-retry" hidden onclick="location.reload()">إعادة المحاولة</button></div></div>
+<script>
+const bootTimeout=setTimeout(()=>{const message=document.getElementById('dlinii-boot-message');if(message){message.textContent='التحميل أخذ وقتاً أطول. تحقق من اتصالك وحاول مجدداً.';document.getElementById('dlinii-retry').hidden=false;}},20000);
+window.addEventListener('flutter-first-frame',()=>{clearTimeout(bootTimeout);document.getElementById('dlinii-boot')?.remove();},{once:true});
+</script>
   <script src="flutter_bootstrap.js" async></script>
 </body>
 </html>

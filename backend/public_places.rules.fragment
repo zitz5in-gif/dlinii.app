@@ -1,0 +1,32 @@
+// Merge this match block INSIDE /databases/{database}/documents in your existing
+// rules. Remove any broad allow-write rule overlapping this collection.
+// Firebase rules combine allows with OR: this block cannot override an allow-all.
+match /public_places/{placeId} {
+  function signedIn() { return request.auth != null; }
+  function owner() { return signedIn() && resource.data.ownerUid == request.auth.uid; }
+  function optionalText(d, key, length) {
+    return !(key in d) || (d[key] is string && d[key].size() <= length);
+  }
+  function valid(d) {
+    return d.keys().hasOnly(['ownerUid','name','category','lat','lng','address',
+      'phone','website','about','hours','hoursMode','aliases','createdAt','updatedAt'])
+      && d.keys().hasAll(['ownerUid','name','category','lat','lng','createdAt','updatedAt'])
+      && d.ownerUid is string && d.name is string && d.name.size() > 0 && d.name.size() <= 160
+      && d.category is string && d.category.size() > 0 && d.category.size() <= 64
+      && d.lat is number && d.lat >= -90 && d.lat <= 90
+      && d.lng is number && d.lng >= -180 && d.lng <= 180
+      && optionalText(d,'address',500) && optionalText(d,'phone',40)
+      && optionalText(d,'website',500) && optionalText(d,'about',3000)
+      && optionalText(d,'hours',500) && optionalText(d,'hoursMode',30)
+      && optionalText(d,'aliases',500)
+      && d.updatedAt == request.time;
+  }
+  allow read: if true;
+  allow create: if signedIn() && valid(request.resource.data)
+    && request.resource.data.ownerUid == request.auth.uid
+    && request.resource.data.createdAt == request.time;
+  allow update: if owner() && valid(request.resource.data)
+    && request.resource.data.ownerUid == resource.data.ownerUid
+    && request.resource.data.createdAt == resource.data.createdAt;
+  allow delete: if owner();
+}

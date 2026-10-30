@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="ar" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#087e76"><title>دلّيني | مكان منك، والطريق علينا</title><link rel="icon" href="dlinii_icon.png"><style>
+*{box-sizing:border-box}body{margin:0;min-height:100dvh;display:grid;place-items:center;padding:24px;background:#eff5f3;color:#09272e;font-family:Tahoma,Arial,sans-serif}main{width:min(900px,100%);display:grid;grid-template-columns:1fr 1.1fr;background:#fff;border:1px solid #d9e8e5;border-radius:32px 16px 32px 16px;overflow:hidden;box-shadow:0 24px 80px #09272e15}.story{position:relative;isolation:isolate;padding:38px 30px;background:#09272e;color:#fff;overflow:hidden}.brand{display:flex;align-items:center;gap:12px;font-size:27px;font-weight:800}.brand img{width:62px;height:62px;background:white;border-radius:20px;padding:4px}.story h2{font-size:36px;line-height:1.55;max-width:220px;margin:40px 0 14px}.story p{color:#b6deda;line-height:1.9;font-size:13px}.route{position:absolute;inset:80px -60px -80px 0;width:100%;height:100%;z-index:-1;opacity:.3}.actions{padding:38px 32px}.eyebrow{font-size:11px;color:#087e76;letter-spacing:1px}h1{font-size:26px;line-height:1.5;margin:16px 0 10px}p{font-size:13px;color:#57767b;line-height:1.9}#coordinates{display:inline-block;direction:ltr;border:1px dashed #b8d3ce;background:#f3f9f7;border-radius:10px;padding:9px 12px;font-size:12px;color:#087e76}a,.unavailable{display:flex;min-height:56px;align-items:center;justify-content:center;margin-top:12px;padding:14px;border-radius:18px 10px 18px 10px;font-size:14px;font-weight:bold;text-decoration:none}#app{color:#fff;background:#087e76;box-shadow:0 8px 20px #087e7620}#web{border:1px solid #c5dcd6;color:#12434a;background:white}.unavailable{font-size:11px;color:#78928d;background:#f3f7f5}.note{font-size:11px}.footer{margin-top:30px;color:#84bdb5;font-size:11px}a:focus-visible{outline:3px solid #e9aa57;outline-offset:4px}a[aria-disabled=true]{pointer-events:none;opacity:.4}@media(max-width:620px){body{padding:16px}.story{padding:24px}.story h2{font-size:25px;max-width:none;margin:20px 0 6px}.story p{margin:0}.brand img{width:48px;height:48px}.actions{padding:24px}main{grid-template-columns:1fr}.footer{display:none}.route{inset:0 -80px 0 0}}
+</style></head><body><main><section class="story"><div class="brand"><img src="dlinii_icon.png" alt="شعار دلّيني الأصلي"><span>دلّيني</span></div><svg class="route" viewBox="0 0 300 460" fill="none" aria-hidden="true"><path d="M280 460C-50 300 380 260 190 20" stroke="#58d8cc" stroke-width="62"/><path d="M280 460C-50 300 380 260 190 20" stroke="white" stroke-width="2" stroke-dasharray="12 14"/></svg><h2>مكان منك.<br>والطريق علينا.</h2><p>رابط واحد يجمعك بوجهتك، بهوية دلّيني.</p><div class="footer">دلّيني · رفيقك على طريقك</div></section><section class="actions"><span class="eyebrow">مشاركة موقع / DLINII</span><h1 id="title">وجهة تنتظرك</h1><p id="message">وصلك مكان من صديق. اختر كيف تريد فتحه.</p><p id="coordinates"></p><a id="app">افتحه بتطبيق دلّيني</a><a id="web">كمّل من المتصفح</a><div class="unavailable">Google Play — قريباً</div><p class="note">إذا لم يكن التطبيق مثبتاً، استخدم المتصفح للوصول إلى الموقع.</p></section></main><script>
+  const query = new URLSearchParams(location.search);
+  const lat = Number(query.get('lat')), lng = Number(query.get('lng'));
+  const valid = query.has('lat') && query.has('lng') && query.get('lat').trim() !== '' && query.get('lng').trim() !== '' && Number.isFinite(lat) && Number.isFinite(lng) && Math.abs(lat) <= 90 && Math.abs(lng) <= 180;
+  if (valid) {
+    const name = (query.get('name') || '').slice(0, 160);
+    const params = new URLSearchParams({lat: String(lat), lng: String(lng), mode: query.get('mode') === 'myloc' ? 'myloc' : 'guide', name});
+    const web = 'https://dlinii.vercel.app/?' + params;
+    if (name) document.getElementById('title').textContent = name;
+    document.getElementById('coordinates').textContent = lat.toFixed(5) + ', ' + lng.toFixed(5);
+    document.getElementById('web').href = web;
+    // Must match android/app/build.gradle.kts until the final application ID is chosen.
+    document.getElementById('app').href = /android/i.test(navigator.userAgent)
+      ? 'intent://s?' + params + '#Intent;scheme=dlinii;package=com.example.dlinii_app;S.browser_fallback_url=' + encodeURIComponent(web) + ';end'
+      : 'dlinii://s?' + params;
+  } else {
+    document.getElementById('title').textContent = 'الرابط غير مكتمل';
+    document.getElementById('message').textContent = 'اطلب من صديقك مشاركة الموقع مجدداً. الإحداثيات مفقودة أو غير صالحة.';
+    document.getElementById('app').setAttribute('aria-disabled', 'true');
+    document.getElementById('web').href = 'https://dlinii.vercel.app';
+    document.getElementById('web').textContent = 'فتح خريطة دلّيني';
+  }
+</script></body></html>

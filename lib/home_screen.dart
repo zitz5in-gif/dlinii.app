@@ -1,8 +1,12 @@
+import 'delete_account_dialog.dart';
+
 import 'dart:async';
 import 'dart:convert';
 import 'dart:math' as math;
 import 'dart:ui' as ui;
+
 import 'offline_tile_platform.dart';
+
 import 'package:speech_to_text/speech_to_text.dart' as stt;
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
@@ -19,7 +23,19 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:flutter_tts/flutter_tts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:app_links/app_links.dart';
+
 import 'permissions_helper.dart';
+import 'map_link_parser.dart';
+import 'place_design.dart';
+import 'place_editor.dart';
+import 'dlinii_motion.dart';
+import 'dlinii_brand.dart';
+import 'dlinii_sheet.dart';
+import 'public_places.dart';
+import 'account_sheet.dart';
+import 'voice_selection.dart';
+
+import 'package:firebase_auth/firebase_auth.dart';
 
 // ==================== أيقونات الفيكتور الهندسية الاحترافية الخاصة بتطبيق دلّيني ====================
 
@@ -39,31 +55,133 @@ const String kReportShieldSvg =
     '<svg viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M18 4L32 29H4L18 4Z" fill="#efbb52" stroke="#142e2d" stroke-width="2.2" stroke-linejoin="round"/><path d="M18 13V20" stroke="#142e2d" stroke-width="3" stroke-linecap="round"/><circle cx="18" cy="25" r="1.8" fill="#142e2d"/></svg>';
 const String kScenePinSvg =
     '<svg viewBox="0 0 36 44" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M18 2C9 2 3 8 3 17c0 10 15 24 15 24s15-14 15-24C33 8 27 2 18 2Z" fill="#efbb52"/><circle cx="18" cy="17" r="6" fill="#173c37"/></svg>';
-const String kCarSvg =
-    '<svg viewBox="0 0 280 120" fill="none" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="carBody" x1="30" y1="30" x2="240" y2="95" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#8cf0d2"/><stop offset="55%" stop-color="#4ec4a5"/><stop offset="100%" stop-color="#2c8f78"/></linearGradient><linearGradient id="carRoof" x1="70" y1="18" x2="195" y2="55" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#b4faea"/><stop offset="100%" stop-color="#5cd1b3"/></linearGradient><linearGradient id="headBeam" x1="235" y1="68" x2="280" y2="75" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#fff3b0" stop-opacity="0.75"/><stop offset="100%" stop-color="#fff3b0" stop-opacity="0"/></linearGradient></defs><g stroke="#64998e" stroke-width="2.5" stroke-linecap="round"><line x1="6" y1="58" x2="28" y2="58"/><line x1="0" y1="70" x2="22" y2="70"/><line x1="10" y1="80" x2="26" y2="80"/></g><polygon points="236,62 280,50 280,84 236,74" fill="url(#headBeam)"/><ellipse cx="140" cy="98" rx="96" ry="7" fill="#0a1c1b" opacity="0.65"/><path d="M72 52 C86 24, 102 18, 146 18 C178 18, 192 28, 208 52 Z" fill="url(#carRoof)"/><path d="M82 50 C93 29, 105 24, 136 24 L136 50 Z" fill="#183f3c"/><path d="M142 24 C170 24, 182 31, 197 50 L142 50 Z" fill="#183f3c"/><polygon points="98,48 112,26 120,26 106,48" fill="#7ce0be" opacity="0.22"/><polygon points="154,48 168,26 175,26 161,48" fill="#7ce0be" opacity="0.22"/><path d="M38 66 C38 55, 48 50, 66 50 L206 50 C226 51, 242 58, 244 72 C245 81, 240 88, 230 88 L48 88 C40 88, 38 80, 38 66 Z" fill="url(#carBody)"/><path d="M46 82 L234 82 C232 86, 227 88, 220 88 L54 88 C48 88, 46 85, 46 82 Z" fill="#1f6e5c"/><line x1="139" y1="22" x2="139" y2="82" stroke="#1f6e5c" stroke-width="2"/><rect x="116" y="57" width="12" height="3.5" rx="1.75" fill="#184942"/><rect x="150" y="57" width="12" height="3.5" rx="1.75" fill="#184942"/><path d="M196 47 C202 45, 207 48, 205 53 L195 53 Z" fill="#3bb395"/><circle cx="152" cy="70" r="8.5" fill="#fff8e0" stroke="#efbb52" stroke-width="2.5"/><path d="M152 65 C149.5 65, 148 66.8, 148 69 C148 71.8, 152 75.5, 152 75.5 C152 75.5, 156 71.8, 156 69 C156 66.8, 154.5 65, 152 65 Z" fill="#d99b26"/><path d="M38 60 C42 60, 44 63, 44 68 C44 72, 41 74,38 74 Z" fill="#ff5a5f"/><path d="M236 62 C241 62, 244 65, 244 70 C244 73, 240 75, 235 73 Z" fill="#fff7c2"/><path d="M62 88 A24 24 0 0 1 110 88 Z" fill="#0d2422"/><path d="M174 88 A24 24 0 0 1 222 88 Z" fill="#0d2422"/><g transform="translate(86, 88)"><circle r="19" fill="#122927" stroke="#0a1817" stroke-width="3"/><circle r="11.5" fill="#d4efe7"/><circle r="4" fill="#087e76"/></g><g transform="translate(198, 88)"><circle r="19" fill="#122927" stroke="#0a1817" stroke-width="3"/><circle r="11.5" fill="#d4efe7"/><circle r="4" fill="#087e76"/></g></svg>';
-
 const Map<String, String> kReportTypeSvgs = {
-  'bump':
-      '<svg viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="4" y="4" width="40" height="40" rx="14" fill="#efbb52" fill-opacity="0.18"/><path d="M8 32H13C15.5 23 20.5 23 24 28C27.5 23 32.5 23 35 32H40" stroke="#d99b26" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/><line x1="8" y1="36" x2="40" y2="36" stroke="#142e2d" stroke-width="3" stroke-linecap="round"/></svg>',
-  'pothole':
-      '<svg viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="4" y="4" width="40" height="40" rx="14" fill="#087e76" fill-opacity="0.15"/><ellipse cx="24" cy="30" rx="14" ry="6" fill="#142e2d"/><path d="M13 28L18 32L24 27L30 32L35 28" stroke="#9cdbc0" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M24 12V21M24 21L20 17M24 21L28 17" stroke="#E5484D" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>',
-  'crash':
-      '<svg viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="4" y="4" width="40" height="40" rx="14" fill="#E5484D" fill-opacity="0.16"/><path d="M24 8L28 17L38 14L32 23L40 30L30 31L29 40L22 33L13 38L16 28L8 23L18 19L24 8Z" fill="#E5484D" stroke="#ffffff" stroke-width="1.5" stroke-linejoin="round"/><circle cx="24" cy="25" r="5" fill="#efbb52"/></svg>',
-  'traffic':
-      '<svg viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="4" y="4" width="40" height="40" rx="14" fill="#efbb52" fill-opacity="0.18"/><rect x="17" y="8" width="14" height="32" rx="7" fill="#142e2d" stroke="#087e76" stroke-width="2"/><circle cx="24" cy="15" r="3.2" fill="#E5484D"/><circle cx="24" cy="24" r="3.2" fill="#efbb52"/><circle cx="24" cy="33" r="3.2" fill="#16a34a"/></svg>',
-  'police':
-      '<svg viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="4" y="4" width="40" height="40" rx="14" fill="#087e76" fill-opacity="0.16"/><path d="M24 9L36 14V24C36 32 24 39 24 39C24 39 12 32 12 24V14L24 9Z" fill="#087e76" stroke="#9cdbc0" stroke-width="2"/><circle cx="24" cy="23" r="4.5" fill="#efbb52"/></svg>',
-  'roadworks':
-      '<svg viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg"><path d="M24 5L45 42H3Z" fill="#efbb52"/><path d="M13 32L23 23L32 32M23 23V15" fill="none" stroke="#142e2d" stroke-width="4"/></svg>',
-  'closed':
-      '<svg viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg"><circle cx="24" cy="24" r="21" fill="#E5484D"/><path d="M11 24H37" stroke="white" stroke-width="7"/></svg>',
-  'camera':
-      '<svg viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg"><rect x="4" y="13" width="40" height="29" rx="8" fill="#087e76"/><path d="M15 13L19 6H29L33 13" fill="#087e76"/><circle cx="24" cy="27" r="9" fill="#efbb52"/></svg>',
-  'hazard':
-      '<svg viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="4" y="4" width="40" height="40" rx="14" fill="#efbb52" fill-opacity="0.2"/><path d="M24 10L39 36H9L24 10Z" fill="#efbb52" stroke="#142e2d" stroke-width="2.5" stroke-linejoin="round"/><path d="M24 20V27" stroke="#142e2d" stroke-width="3" stroke-linecap="round"/><circle cx="24" cy="32" r="2" fill="#142e2d"/></svg>',
+  'bump': '<svg viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="4" y="4" width="40" height="40" rx="14" fill="#efbb52" fill-opacity="0.18"/><path d="M8 32H13C15.5 23 20.5 23 24 28C27.5 23 32.5 23 35 32H40" stroke="#d99b26" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/><line x1="8" y1="36" x2="40" y2="36" stroke="#142e2d" stroke-width="3" stroke-linecap="round"/></svg>',
+  'pothole': '<svg viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="4" y="4" width="40" height="40" rx="14" fill="#087e76" fill-opacity="0.15"/><ellipse cx="24" cy="30" rx="14" ry="6" fill="#142e2d"/><path d="M13 28L18 32L24 27L30 32L35 28" stroke="#9cdbc0" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M24 12V21M24 21L20 17M24 21L28 17" stroke="#E5484D" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+  'crash': '<svg viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="4" y="4" width="40" height="40" rx="14" fill="#E5484D" fill-opacity="0.16"/><path d="M24 8L28 17L38 14L32 23L40 30L30 31L29 40L22 33L13 38L16 28L8 23L18 19L24 8Z" fill="#E5484D" stroke="#ffffff" stroke-width="1.5" stroke-linejoin="round"/><circle cx="24" cy="25" r="5" fill="#efbb52"/></svg>',
+  'traffic': '<svg viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="4" y="4" width="40" height="40" rx="14" fill="#efbb52" fill-opacity="0.18"/><rect x="17" y="8" width="14" height="32" rx="7" fill="#142e2d" stroke="#087e76" stroke-width="2"/><circle cx="24" cy="15" r="3.2" fill="#E5484D"/><circle cx="24" cy="24" r="3.2" fill="#efbb52"/><circle cx="24" cy="33" r="3.2" fill="#16a34a"/></svg>',
+  'police': '<svg viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="4" y="4" width="40" height="40" rx="14" fill="#087e76" fill-opacity="0.16"/><path d="M24 9L36 14V24C36 32 24 39 24 39C24 39 12 32 12 24V14L24 9Z" fill="#087e76" stroke="#9cdbc0" stroke-width="2"/><circle cx="24" cy="23" r="4.5" fill="#efbb52"/></svg>',
+  'roadworks': '<svg viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg"><path d="M24 5L45 42H3Z" fill="#efbb52"/><path d="M13 32L23 23L32 32M23 23V15" fill="none" stroke="#142e2d" stroke-width="4"/></svg>',
+  'closed': '<svg viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg"><circle cx="24" cy="24" r="21" fill="#E5484D"/><path d="M11 24H37" stroke="white" stroke-width="7"/></svg>',
+  'camera': '<svg viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg"><rect x="4" y="13" width="40" height="29" rx="8" fill="#087e76"/><path d="M15 13L19 6H29L33 13" fill="#087e76"/><circle cx="24" cy="27" r="9" fill="#efbb52"/></svg>',
+  'hazard': '<svg viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="4" y="4" width="40" height="40" rx="14" fill="#efbb52" fill-opacity="0.2"/><path d="M24 10L39 36H9L24 10Z" fill="#efbb52" stroke="#142e2d" stroke-width="2.5" stroke-linejoin="round"/><path d="M24 20V27" stroke="#142e2d" stroke-width="3" stroke-linecap="round"/><circle cx="24" cy="32" r="2" fill="#142e2d"/></svg>',
 };
 
 // زر زجاجي بنعومة واستجابة لمسية مطابقة لأزرار الآيفون (iOS Spring Physics)
+class DliniiAppIcon extends StatelessWidget {
+  final IconData? icon;
+  final Color? color;
+  final double? size;
+  const DliniiAppIcon(this.icon, {super.key, this.color, this.size});
+  @override
+  Widget build(BuildContext context) {
+    final paths = <IconData, String>{
+      Icons.layers_rounded:
+          'm12 2 10 6-10 6L2 8zm-10 10 10 6 10-6M2 17l10 6 10-6',
+      Icons.home_rounded: 'm2 11 10-9 10 9M5 9v12h5v-7h4v7h5V9',
+      Icons.work_rounded: 'M8 6V3h8v3M3 6h18v15H3zM3 12h18M10 11v3h4v-3',
+      Icons.tune_rounded:
+          'M3 6h4m4 0h10M3 12h10m4 0h4M3 18h4m4 0h10M7 3v6m6 0v6M7 15v6',
+      Icons.menu_rounded: 'M4 6h16M4 12h16M4 18h16',
+      Icons.close_rounded: 'm6 6 12 12M18 6 6 18',
+      Icons.add_rounded: 'M12 4v16M4 12h16',
+      Icons.remove_rounded: 'M4 12h16',
+      Icons.arrow_forward_ios_rounded: 'm9 5 7 7-7 7',
+      Icons.content_paste_go_rounded:
+          'M8 4H5v18h14V4h-3M8 2h8v5H8zM8 13h8M8 17h6',
+      Icons.route_rounded:
+          'M5 19V7a3 3 0 0 1 6 0v10a3 3 0 0 0 6 0V5M14 8l3-3 3 3',
+      Icons.navigation_rounded: 'm12 3 9 18-9-4-9 4z',
+      Icons.play_circle_fill_rounded:
+          'M9 7v10l8-5zM22 12a10 10 0 1 1-20 0 10 10 0 0 1 20 0',
+      Icons.share_rounded: 'M7 11l10-6M7 13l10 6M7 12a2 2 0 1 1-4 0 2 2 0 0 1 4 0M21 4a2 2 0 1 1-4 0 2 2 0 0 1 4 0M21 20a2 2 0 1 1-4 0 2 2 0 0 1 4 0',
+      Icons.share_location_rounded:
+          'M12 3v4M12 17v4M3 12h4M17 12h4M19 12a7 7 0 1 1-14 0 7 7 0 0 1 14 0',
+      Icons.my_location_rounded: 'M12 2v4M12 18v4M2 12h4M18 12h4M19 12a7 7 0 1 1-14 0 7 7 0 0 1 14 0M14 12a2 2 0 1 1-4 0 2 2 0 0 1 4 0',
+      Icons.location_off_rounded:
+          'm3 3 18 18M9 4a7 7 0 0 1 10 6c0 5-7 12-7 12S5 15 5 10',
+      Icons.cloud_download_rounded: 'M7 17H5a4 4 0 0 1 0-8 7 7 0 0 1 13-2 5 5 0 0 1 1 10h-2M12 11v11m-4-4 4 4 4-4',
+      Icons.download_rounded: 'M12 3v13m-5-5 5 5 5-5M4 17v4h16v-4',
+      Icons.wb_sunny_rounded: 'M12 2v2M12 20v2M2 12h2M20 12h2M5 5l2 2M17 17l2 2M5 19l2-2M17 7l2-2M17 12a5 5 0 1 1-10 0 5 5 0 0 1 10 0',
+      Icons.dark_mode_rounded: 'M21 14a9 9 0 0 1-11-11 9 9 0 1 0 11 11',
+      Icons.check_circle_rounded:
+          'm7 12 3 3 7-7M22 12a10 10 0 1 1-20 0 10 10 0 0 1 20 0',
+      Icons.swap_horiz_rounded: 'M3 8h18m-4-4 4 4-4 4M21 16H3m4-4-4 4 4 4',
+      Icons.send_rounded: 'm3 3 19 9-19 9 4-9zM7 12h15',
+      Icons.info_outline_rounded:
+          'M12 11v6M12 7v1M22 12a10 10 0 1 1-20 0 10 10 0 0 1 20 0',
+      Icons.map_rounded: 'm3 5 6-2 6 2 6-2v16l-6 2-6-2-6 2zM9 3v16M15 5v16',
+      Icons.pin_drop_rounded: 'M12 21s7-7 7-12a7 7 0 0 0-14 0c0 5 7 12 7 12M15 9a3 3 0 1 1-6 0 3 3 0 0 1 6 0',
+      Icons.push_pin_rounded: 'M8 3h8l-1 6 4 5H5l4-5zM12 14v8',
+      Icons.shield_rounded: 'm12 2 9 4v6c0 6-9 10-9 10S3 18 3 12V6z',
+      Icons.verified_user_rounded:
+          'm12 2 9 4v6c0 6-9 10-9 10S3 18 3 12V6zM7 12l3 3 7-7',
+      Icons.translate_rounded: 'M3 5h12M9 2v3M5 5c0 6 5 9 9 10M13 5c0 6-5 9-9 10M14 21l4-10 4 10M16 17h4',
+      Icons.record_voice_over_rounded: 'M12 7a4 4 0 1 1-8 0 4 4 0 0 1 8 0M2 22v-3a6 6 0 0 1 12 0v3M17 5a7 7 0 0 1 0 10M20 2a11 11 0 0 1 0 16',
+      Icons.notifications_active_rounded:
+          'M5 17h14l-2-4V8a5 5 0 0 0-10 0v5zM10 21h4M3 4 1 8M21 4l2 4',
+      Icons.star_rounded: 'm12 2 3 6 7 1-5 5 1 7-6-3-6 3 1-7-5-5 7-1z',
+      Icons.stars_rounded: 'm12 2 3 6 7 1-5 5 1 7-6-3-6 3 1-7-5-5 7-1z',
+    };
+    if (icon == Icons.face_3_rounded || icon == Icons.face_6_rounded) {
+      return Text(
+        icon == Icons.face_3_rounded ? '👩' : '👨',
+        style: TextStyle(fontSize: size ?? 24),
+      );
+    }
+    final path = paths[icon];
+    if (path == null) return Icon(icon, color: color, size: size);
+    final effectiveColor =
+        color ?? IconTheme.of(context).color ?? const Color(0xFF7CE0BE);
+    final hex = effectiveColor
+        .toARGB32()
+        .toRadixString(16)
+        .padLeft(8, '0')
+        .substring(2);
+    return SvgPicture.string(
+      '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#' +
+          hex +
+          '" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="' +
+          path +
+          '"/></svg>',
+      width: size ?? 24,
+      height: size ?? 24,
+    );
+  }
+}
+
+class DliniiControlIcon extends StatelessWidget {
+  final String kind;
+  final double size;
+  final Color color;
+  const DliniiControlIcon(
+    this.kind, {
+    super.key,
+    this.size = 24,
+    this.color = const Color(0xFF7CE0BE),
+  });
+  @override
+  Widget build(BuildContext context) {
+    const shapes = <String, String>{
+      'mic': '<rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11v1a7 7 0 0 0 14 0v-1M12 19v3M8 22h8"/>',
+      'down': '<path d="m5 9 7 7 7-7"/>',
+      'up': '<path d="m5 15 7-7 7 7"/>',
+      'menu': '<path d="M4 6h16M4 12h16M4 18h16"/>',
+      'paste': '<rect x="5" y="5" width="14" height="17" rx="3"/><rect x="8" y="2" width="8" height="6" rx="2"/><path d="M9 13h6M9 17h6"/>',
+      'sound': '<path d="M4 9h4l5-5v16l-5-5H4zM16 8a6 6 0 0 1 0 8M19 5a10 10 0 0 1 0 14"/>',
+      'mute': '<path d="M4 9h4l5-5v16l-5-5H4zM17 9l5 6M22 9l-5 6"/>',
+    };
+    final hex = color.toARGB32().toRadixString(16).padLeft(8, '0').substring(2);
+    return SvgPicture.string(
+      '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#$hex" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' +
+          (shapes[kind] ?? shapes['menu']!) +
+          '</svg>',
+      width: size,
+      height: size,
+    );
+  }
+}
+
 class GlassTapButton extends StatefulWidget {
   final VoidCallback onTap;
   final Widget child;
@@ -102,9 +220,13 @@ class _GlassTapButtonState extends State<GlassTapButton>
   void initState() {
     super.initState();
     _ctrl = AnimationController(
-        vsync: this, duration: const Duration(milliseconds: 90));
-    _scale = Tween<double>(begin: 1.0, end: 0.92)
-        .animate(CurvedAnimation(parent: _ctrl, curve: Curves.easeOutCubic));
+      vsync: this,
+      duration: const Duration(milliseconds: 90),
+    );
+    _scale = Tween<double>(
+      begin: 1.0,
+      end: 0.92,
+    ).animate(CurvedAnimation(parent: _ctrl, curve: Curves.easeOutCubic));
   }
 
   @override
@@ -133,7 +255,10 @@ class _GlassTapButtonState extends State<GlassTapButton>
   @override
   Widget build(BuildContext context) {
     final br = widget.borderRadius ?? BorderRadius.circular(14);
-    final bg = widget.backgroundColor ?? Colors.white.withValues(alpha: 0.86);
+    final bg = Color.alphaBlend(
+      widget.backgroundColor ?? Theme.of(context).colorScheme.surface,
+      Theme.of(context).colorScheme.surface,
+    );
     final borderCol =
         widget.borderColor ?? const Color(0xFF087e76).withOpacity(0.28);
 
@@ -147,10 +272,11 @@ class _GlassTapButtonState extends State<GlassTapButton>
         child: ClipRRect(
           borderRadius: widget.isCircle ? BorderRadius.circular(999) : br,
           child: BackdropFilter(
-            filter: ui.ImageFilter.blur(sigmaX: 14, sigmaY: 14),
+            filter: ui.ImageFilter.blur(sigmaX: 0, sigmaY: 0),
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 100),
               curve: Curves.easeOutCubic,
+              constraints: const BoxConstraints(minWidth: 44, minHeight: 44),
               width: widget.width,
               height: widget.height,
               padding: widget.padding,
@@ -167,9 +293,10 @@ class _GlassTapButtonState extends State<GlassTapButton>
                 ),
                 boxShadow: [
                   BoxShadow(
-                    color:
-                        Colors.black.withValues(alpha: _pressed ? 0.06 : 0.16),
-                    blurRadius: _pressed ? 6 : 14,
+                    color: Colors.black.withValues(
+                      alpha: _pressed ? 0.02 : 0.04,
+                    ),
+                    blurRadius: _pressed ? 2 : 4,
                     offset: Offset(0, _pressed ? 2 : 4),
                   ),
                 ],
@@ -284,113 +411,131 @@ class IraqProvince {
 
 const List<IraqProvince> kIraqProvinces = [
   IraqProvince(
-      id: 'anbar',
-      nameAr: '1. محافظة الأنبار (الرمادي والفلوجة والقائم)',
-      nameEn: '1. Al Anbar Governorate',
-      center: LatLng(33.4258, 43.2995),
-      sizeMb: '45 MB'),
+    id: 'anbar',
+    nameAr: '1. محافظة الأنبار (الرمادي والفلوجة والقائم)',
+    nameEn: '1. Al Anbar Governorate',
+    center: LatLng(33.4258, 43.2995),
+    sizeMb: '45 MB',
+  ),
   IraqProvince(
-      id: 'baghdad',
-      nameAr: '2. محافظة بغداد',
-      nameEn: '2. Baghdad Governorate',
-      center: LatLng(33.3152, 44.3661),
-      sizeMb: '68 MB'),
+    id: 'baghdad',
+    nameAr: '2. محافظة بغداد',
+    nameEn: '2. Baghdad Governorate',
+    center: LatLng(33.3152, 44.3661),
+    sizeMb: '68 MB',
+  ),
   IraqProvince(
-      id: 'basra',
-      nameAr: '3. محافظة البصرة',
-      nameEn: '3. Basra Governorate',
-      center: LatLng(30.5081, 47.7835),
-      sizeMb: '48 MB'),
+    id: 'basra',
+    nameAr: '3. محافظة البصرة',
+    nameEn: '3. Basra Governorate',
+    center: LatLng(30.5081, 47.7835),
+    sizeMb: '48 MB',
+  ),
   IraqProvince(
-      id: 'nineveh',
-      nameAr: '4. محافظة نينوى (الموصل)',
-      nameEn: '4. Nineveh Governorate',
-      center: LatLng(36.3489, 43.1577),
-      sizeMb: '54 MB'),
+    id: 'nineveh',
+    nameAr: '4. محافظة نينوى (الموصل)',
+    nameEn: '4. Nineveh Governorate',
+    center: LatLng(36.3489, 43.1577),
+    sizeMb: '54 MB',
+  ),
   IraqProvince(
-      id: 'erbil',
-      nameAr: '5. محافظة أربيل',
-      nameEn: '5. Erbil Governorate',
-      center: LatLng(36.1901, 44.0091),
-      sizeMb: '49 MB'),
+    id: 'erbil',
+    nameAr: '5. محافظة أربيل',
+    nameEn: '5. Erbil Governorate',
+    center: LatLng(36.1901, 44.0091),
+    sizeMb: '49 MB',
+  ),
   IraqProvince(
-      id: 'najaf',
-      nameAr: '6. محافظة النجف الأشرف',
-      nameEn: '6. Najaf Governorate',
-      center: LatLng(32.0000, 44.3333),
-      sizeMb: '38 MB'),
+    id: 'najaf',
+    nameAr: '6. محافظة النجف الأشرف',
+    nameEn: '6. Najaf Governorate',
+    center: LatLng(32.0000, 44.3333),
+    sizeMb: '38 MB',
+  ),
   IraqProvince(
-      id: 'karbala',
-      nameAr: '7. محافظة كربلاء المقدسة',
-      nameEn: '7. Karbala Governorate',
-      center: LatLng(32.6160, 44.0249),
-      sizeMb: '36 MB'),
+    id: 'karbala',
+    nameAr: '7. محافظة كربلاء المقدسة',
+    nameEn: '7. Karbala Governorate',
+    center: LatLng(32.6160, 44.0249),
+    sizeMb: '36 MB',
+  ),
   IraqProvince(
-      id: 'sulaymaniyah',
-      nameAr: '8. محافظة السليمانية',
-      nameEn: '8. Sulaymaniyah Governorate',
-      center: LatLng(35.5558, 45.4351),
-      sizeMb: '46 MB'),
+    id: 'sulaymaniyah',
+    nameAr: '8. محافظة السليمانية',
+    nameEn: '8. Sulaymaniyah Governorate',
+    center: LatLng(35.5558, 45.4351),
+    sizeMb: '46 MB',
+  ),
   IraqProvince(
-      id: 'duhok',
-      nameAr: '9. محافظة دهوك',
-      nameEn: '9. Duhok Governorate',
-      center: LatLng(36.8669, 42.9503),
-      sizeMb: '35 MB'),
+    id: 'duhok',
+    nameAr: '9. محافظة دهوك',
+    nameEn: '9. Duhok Governorate',
+    center: LatLng(36.8669, 42.9503),
+    sizeMb: '35 MB',
+  ),
   IraqProvince(
-      id: 'kirkuk',
-      nameAr: '10. محافظة كركوك',
-      nameEn: '10. Kirkuk Governorate',
-      center: LatLng(35.4681, 44.3922),
-      sizeMb: '40 MB'),
+    id: 'kirkuk',
+    nameAr: '10. محافظة كركوك',
+    nameEn: '10. Kirkuk Governorate',
+    center: LatLng(35.4681, 44.3922),
+    sizeMb: '40 MB',
+  ),
   IraqProvince(
-      id: 'salahaddin',
-      nameAr: '11. محافظة صلاح الدين (تكريت وسامراء)',
-      nameEn: '11. Saladin Governorate',
-      center: LatLng(34.6110, 43.6782),
-      sizeMb: '41 MB'),
+    id: 'salahaddin',
+    nameAr: '11. محافظة صلاح الدين (تكريت وسامراء)',
+    nameEn: '11. Saladin Governorate',
+    center: LatLng(34.6110, 43.6782),
+    sizeMb: '41 MB',
+  ),
   IraqProvince(
-      id: 'diyala',
-      nameAr: '12. محافظة ديالى (بعقوبة)',
-      nameEn: '12. Diyala Governorate',
-      center: LatLng(33.7485, 44.6436),
-      sizeMb: '39 MB'),
+    id: 'diyala',
+    nameAr: '12. محافظة ديالى (بعقوبة)',
+    nameEn: '12. Diyala Governorate',
+    center: LatLng(33.7485, 44.6436),
+    sizeMb: '39 MB',
+  ),
   IraqProvince(
-      id: 'babil',
-      nameAr: '13. محافظة بابل (الحلة)',
-      nameEn: '13. Babylon Governorate',
-      center: LatLng(32.4637, 44.4196),
-      sizeMb: '37 MB'),
+    id: 'babil',
+    nameAr: '13. محافظة بابل (الحلة)',
+    nameEn: '13. Babylon Governorate',
+    center: LatLng(32.4637, 44.4196),
+    sizeMb: '37 MB',
+  ),
   IraqProvince(
-      id: 'wasit',
-      nameAr: '14. محافظة واسط (الكوت)',
-      nameEn: '14. Wasit Governorate',
-      center: LatLng(32.5126, 45.8182),
-      sizeMb: '36 MB'),
+    id: 'wasit',
+    nameAr: '14. محافظة واسط (الكوت)',
+    nameEn: '14. Wasit Governorate',
+    center: LatLng(32.5126, 45.8182),
+    sizeMb: '36 MB',
+  ),
   IraqProvince(
-      id: 'dhiqar',
-      nameAr: '15. محافظة ذي قار (الناصرية)',
-      nameEn: '15. Dhi Qar Governorate',
-      center: LatLng(31.0439, 46.2573),
-      sizeMb: '38 MB'),
+    id: 'dhiqar',
+    nameAr: '15. محافظة ذي قار (الناصرية)',
+    nameEn: '15. Dhi Qar Governorate',
+    center: LatLng(31.0439, 46.2573),
+    sizeMb: '38 MB',
+  ),
   IraqProvince(
-      id: 'maysan',
-      nameAr: '16. محافظة ميسان (العمارة)',
-      nameEn: '16. Maysan Governorate',
-      center: LatLng(31.8359, 47.1448),
-      sizeMb: '34 MB'),
+    id: 'maysan',
+    nameAr: '16. محافظة ميسان (العمارة)',
+    nameEn: '16. Maysan Governorate',
+    center: LatLng(31.8359, 47.1448),
+    sizeMb: '34 MB',
+  ),
   IraqProvince(
-      id: 'qadisiyyah',
-      nameAr: '17. محافظة الديوانية (القادسية)',
-      nameEn: '17. Al-Qadisiyyah Governorate',
-      center: LatLng(31.9929, 44.9255),
-      sizeMb: '33 MB'),
+    id: 'qadisiyyah',
+    nameAr: '17. محافظة الديوانية (القادسية)',
+    nameEn: '17. Al-Qadisiyyah Governorate',
+    center: LatLng(31.9929, 44.9255),
+    sizeMb: '33 MB',
+  ),
   IraqProvince(
-      id: 'muthanna',
-      nameAr: '18. محافظة المثنى (السماوة)',
-      nameEn: '18. Al Muthanna Governorate',
-      center: LatLng(31.3320, 45.2940),
-      sizeMb: '32 MB'),
+    id: 'muthanna',
+    nameAr: '18. محافظة المثنى (السماوة)',
+    nameEn: '18. Al Muthanna Governorate',
+    center: LatLng(31.3320, 45.2940),
+    sizeMb: '32 MB',
+  ),
 ];
 
 class VoiceProfile {
@@ -437,25 +582,47 @@ const List<VoiceProfile> kVoiceProfiles = [
 // ==================== إعدادات وأدوات الميزات الجديدة ====================
 
 /// دومين روابط المشاركة (App Links). يجب أن يكون دومين تملكه وعليه ملف assetlinks.json
-const String kShareHost = 'dlinii.app';
+const String kShareHost = 'dlinii.vercel.app';
 
 /// فلتر ليلي فوري: يحوّل الخريطة الفاتحة إلى ليلية (أرض داكنة، طرق أغمق، نهر أزرق فاتح)
 const ColorFilter kInstantDarkFilter = ColorFilter.matrix(<double>[
-  -0.1176,
-  -1.4088,
-  -0.8736,
+  -0.14,
+  -0.28,
+  -0.08,
   0,
-  608.7,
-  -0.7176,
-  -1.4088,
-  -0.2736,
+  150,
+  -0.14,
+  -0.28,
+  -0.08,
   0,
-  619.5,
-  -1.3176,
-  -1.4088,
-  0.3264,
+  158,
+  -0.14,
+  -0.28,
+  -0.08,
   0,
-  630.3,
+  164,
+  0,
+  0,
+  0,
+  1,
+  0,
+]);
+const ColorFilter kSoftDayFilter = ColorFilter.matrix(<double>[
+  .2126,
+  .7152,
+  .0722,
+  0,
+  0,
+  .2126,
+  .7152,
+  .0722,
+  0,
+  2,
+  .2126,
+  .7152,
+  .0722,
+  0,
+  4,
   0,
   0,
   0,
@@ -509,12 +676,13 @@ class _OfflineTiles {
   static Future<bool> _fetch(http.Client c, int z, int x, int y) async {
     final String sub = const ['a', 'b', 'c', 'd'][(x + y) % 4];
     final Uri url = Uri.parse(
-        'https://$sub.basemaps.cartocdn.com/rastertiles/voyager/$z/$x/$y.png');
+      'https://$sub.basemaps.cartocdn.com/rastertiles/voyager/$z/$x/$y.png',
+    );
     for (int attempt = 0; attempt < 3; attempt++) {
       try {
-        final r = await c.get(url, headers: {
-          'User-Agent': 'com.dlinii.app'
-        }).timeout(const Duration(seconds: 15));
+        final r = await c
+            .get(url, headers: {'User-Agent': 'com.dlinii.app'})
+            .timeout(const Duration(seconds: 15));
         if (r.statusCode == 200 && r.bodyBytes.isNotEmpty) {
           await OfflineTilePlatform.writeBytes(file(z, x, y), r.bodyBytes);
           return true;
@@ -525,8 +693,10 @@ class _OfflineTiles {
   }
 
   /// ينزّل بلاطات المحافظة فعلياً على الجهاز. يرجع true عند النجاح.
-  static Future<bool> downloadProvince(IraqProvince p,
-      {required void Function(double) onProgress}) async {
+  static Future<bool> downloadProvince(
+    IraqProvince p, {
+    required void Function(double) onProgress,
+  }) async {
     if (dir == null) await init();
     if (dir == null) return false;
 
@@ -568,7 +738,9 @@ class _OfflineTiles {
 
   /// يحذف بلاطات المحافظة ويُبقي المشتركة مع محافظات أخرى محمّلة
   static Future<void> deleteProvince(
-      IraqProvince p, Set<String> otherDownloadedIds) async {
+    IraqProvince p,
+    Set<String> otherDownloadedIds,
+  ) async {
     if (dir == null) await init();
     if (dir == null) return;
     final others = kIraqProvinces
@@ -631,12 +803,10 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
 
   static const int endVotesThreshold = 3;
-  static const String playStoreUrl =
-      'https://play.google.com/store/apps/details?id=com.dlinii.app';
+  static const String playStoreUrl = 'https://dlinii.vercel.app';
   static const LatLng kDefaultCenter = LatLng(33.4258, 43.2995);
 
-  bool showSplash = true,
-      isDark = true,
+  bool isDark = true,
       isEnglish = false,
       isFirstPerson3D = false,
       isPlannerCollapsed = false;
@@ -687,8 +857,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   vt.Style? _vtDark;
   bool _hasRealFix = false;
 
-  final ValueNotifier<_DispState> _dispState =
-      ValueNotifier<_DispState>(const _DispState(kDefaultCenter, 0));
+  final ValueNotifier<_DispState> _dispState = ValueNotifier<_DispState>(
+    const _DispState(kDefaultCenter, 0),
+  );
   AnimationController? _glideCtrl;
   LatLng _gStart = kDefaultCenter, _gEnd = kDefaultCenter;
   double _gStartB = 0, _gEndB = 0;
@@ -702,7 +873,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   LatLng _lookAhead(LatLng p, double bearingDeg, double meters) {
     final double br = bearingDeg * math.pi / 180;
     final double dLat = meters * math.cos(br) / 111320.0;
-    final double dLng = meters *
+    final double dLng =
+        meters *
         math.sin(br) /
         (111320.0 * math.max(0.2, math.cos(p.latitude * math.pi / 180)));
     return LatLng(p.latitude + dLat, p.longitude + dLng);
@@ -758,8 +930,10 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       final d = px * px + py * py;
       if (d < best) {
         best = d;
-        bp = LatLng(a.latitude + (b.latitude - a.latitude) * t,
-            a.longitude + (b.longitude - a.longitude) * t);
+        bp = LatLng(
+          a.latitude + (b.latitude - a.latitude) * t,
+          a.longitude + (b.longitude - a.longitude) * t,
+        );
         bb = _getBearing(a, b);
       }
     }
@@ -769,102 +943,88 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
   Future<void> _loadMapStyles() async {
     try {
-      final light = await const vt.StyleReader(uri: _ofmLightStyleUrl).read();
-      if (!mounted) {
-        light.dispose();
-        return;
-      }
-      setState(() => _vtLight = light);
-    } catch (_) {}
-
-    try {
-      final res = await http.get(Uri.parse(_ofmLightStyleUrl));
-      if (res.statusCode == 200) {
-        final Map<String, dynamic> styleJson = json.decode(res.body);
-        final List<dynamic> layers = styleJson['layers'] ?? [];
-
-        for (final layer in layers) {
-          if (layer is! Map<String, dynamic>) continue;
-          final String id = (layer['id'] ?? '').toString().toLowerCase();
-          final String type = (layer['type'] ?? '').toString().toLowerCase();
-          final Map<String, dynamic> paint =
-              (layer['paint'] as Map<String, dynamic>?) ?? {};
-
-          if (type == 'background') {
-            paint['background-color'] = '#0D1014';
-          } else if (id.contains('water') ||
-              id.contains('river') ||
-              id.contains('stream') ||
-              id.contains('canal')) {
-            if (type == 'fill') {
-              paint['fill-color'] = '#2578A6';
-            } else if (type == 'line') {
-              paint['line-color'] = '#2B8CBE';
+      final response = await http
+          .get(Uri.parse(_ofmLightStyleUrl))
+          .timeout(const Duration(seconds: 15));
+      if (response.statusCode != 200) return;
+      final original = json.decode(response.body) as Map<String, dynamic>;
+      final base = await const vt.StyleReader(uri: _ofmLightStyleUrl).read();
+      vt.Style themed(bool dark) {
+        final data = json.decode(json.encode(original)) as Map<String, dynamic>;
+        for (final layer in data['layers'] as List) {
+          final id = (layer['id'] ?? '').toString().toLowerCase();
+          final type = layer['type'];
+          final paint = Map<String, dynamic>.from(layer['paint'] ?? {});
+          if (type == 'background')
+            paint['background-color'] = dark ? '#10191D' : '#ffffff';
+          if (type == 'fill') {
+            if (id.contains('water')) {
+              paint['fill-color'] = dark ? '#244957' : '#aed6e4';
+            } else if (id.contains('park') ||
+                id.contains('landcover') ||
+                id.contains('landuse')) {
+              paint['fill-color'] = dark ? '#203930' : '#dce9df';
+            } else if (id.contains('building')) {
+              paint['fill-color'] = dark ? '#26363e' : '#dce3e7';
             }
-          } else if (id.contains('park') ||
-              id.contains('wood') ||
-              id.contains('grass') ||
-              id.contains('landcover') ||
-              id.contains('landuse')) {
-            if (type == 'fill') {
-              paint['fill-color'] = '#12171B';
+          }
+          if (type == 'line' &&
+              (id.contains('road') ||
+                  id.contains('transportation') ||
+                  id.contains('highway') ||
+                  id.contains('bridge') ||
+                  id.contains('tunnel'))) {
+            paint['line-color'] = id.contains('casing')
+                ? (dark ? '#273740' : '#c6d1d7')
+                : (dark ? '#70828d' : '#ffffff');
+          }
+          if (type == 'symbol') {
+            final layout = Map<String, dynamic>.from(layer['layout'] ?? {});
+            layout['text-font'] = ['Tajawal'];
+            final field = layout['text-field'];
+            if (field != null && (json.encode(field).contains('name'))) {
+              layout['text-field'] = [
+                'coalesce',
+                ['get', 'name:ar'],
+                ['get', 'name_ar'],
+                ['get', 'name'],
+                ['get', 'name:latin'],
+              ];
             }
-          } else if (id.contains('building')) {
-            if (type == 'fill') {
-              paint['fill-color'] = '#171B21';
-              paint['fill-outline-color'] = '#1F242C';
-            }
-          } else if (id.contains('road') ||
-              id.contains('highway') ||
-              id.contains('street') ||
-              id.contains('transportation') ||
-              id.contains('bridge') ||
-              id.contains('tunnel') ||
-              id.contains('motorway') ||
-              id.contains('trunk') ||
-              id.contains('primary') ||
-              id.contains('secondary') ||
-              id.contains('tertiary')) {
-            if (type == 'line') {
-              if (id.contains('casing') || id.contains('outline')) {
-                paint['line-color'] = '#14181E';
-              } else if (id.contains('motorway') ||
-                  id.contains('trunk') ||
-                  id.contains('primary')) {
-                paint['line-color'] = '#343C47';
-              } else {
-                paint['line-color'] = '#262C35';
-              }
-            }
-          } else if (id.contains('boundary') || id.contains('border')) {
-            if (type == 'line') {
-              paint['line-color'] = '#2D3540';
-            }
-          } else if (type == 'symbol') {
-            paint['text-color'] = '#CBD5E1';
-            paint['text-halo-color'] = '#0D1014';
-            paint['text-halo-width'] = 1.5;
+            layer['layout'] = layout;
+            paint['text-color'] = dark ? '#e4edf2' : '#344854';
+            paint['text-halo-color'] = dark ? '#172329' : '#f6f9fa';
+            paint['text-halo-width'] = 1.2;
           }
           layer['paint'] = paint;
         }
-
-        final darkTheme = vt.ThemeReader().read(styleJson);
-        final baseLight =
-            _vtLight ?? await vt.StyleReader(uri: _ofmLightStyleUrl).read();
-        final customDarkStyle = vt.Style(
-          theme: darkTheme,
-          providers: baseLight.providers,
-          sprites: baseLight.sprites,
-          rasterSources: baseLight.rasterSources,
-          name: 'dlinii_dark',
-          center: baseLight.center,
-          zoom: baseLight.zoom,
+        return vt.Style(
+          theme: vt.ThemeReader().read(
+            data,
+            id: dark ? 'dlinii_night_v3' : 'dlinii_day_v3',
+          ),
+          providers: base.providers,
+          attributions: base.attributions,
+          sprites: base.sprites,
+          rasterSources: base.rasterSources,
+          name: dark ? 'dlinii_night' : 'dlinii_day',
+          center: base.center,
+          zoom: base.zoom,
         );
-        if (mounted) {
-          setState(() => _vtDark = customDarkStyle);
-        }
       }
-    } catch (_) {}
+
+      final light = themed(false), dark = themed(true);
+      if (!mounted) {
+        base.dispose();
+        return;
+      }
+      setState(() {
+        _vtLight = light;
+        _vtDark = dark;
+      });
+    } catch (error) {
+      debugPrint('Map style: $error');
+    }
   }
 
   AnimationController? _flyController;
@@ -916,68 +1076,52 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   int lastReportTimeMs = 0;
   final Set<String> warnedReports = {};
 
-  late AnimationController splashCarController;
-  late AnimationController splashRoadController;
-  late AnimationController splashPulseController;
-
   String tr(String ar, String en) => isEnglish ? en : ar;
   VoiceProfile get currentVoice =>
       kVoiceProfiles[selectedVoiceIndex.clamp(0, kVoiceProfiles.length - 1)];
 
-  Color get panelColor => isDark ? const Color(0xFF14171C) : Colors.white;
+  Color get panelColor => DliniiBrand.surface(isDark);
   Color get glassColor => isDark
-      ? const Color(0xFF14171C).withOpacity(0.93)
+      ? const Color(0xFF102F36).withOpacity(0.93)
       : Colors.white.withOpacity(0.92);
   Color get textColor =>
       isDark ? const Color(0xFFF1F5F9) : const Color(0xFF142e2d);
   Color get subColor =>
       isDark ? const Color(0xFF94A3B8) : const Color(0xFF5B6B7B);
   Color get landColor =>
-      isDark ? const Color(0xFF0D1014) : const Color(0xFFedf5f2);
+      isDark ? const Color(0xFF0D161A) : const Color(0xFFF6F8FA);
   Color get lineColor =>
-      isDark ? const Color(0xFF262B33) : const Color(0xFFd5e6e0);
+      isDark ? const Color(0xFF26474E) : const Color(0xFFE0E9EE);
   Color get accentColor =>
-      isDark ? const Color(0xFF63cbb0) : const Color(0xFF087e76);
+      isDark ? const Color(0xFF58D8CC) : const Color(0xFF087e76);
 
   @override
   void initState() {
     super.initState();
     _loadMapStyles();
-    splashCarController = AnimationController(
-        vsync: this, duration: const Duration(milliseconds: 1400))
-      ..repeat(reverse: true);
-    splashRoadController = AnimationController(
-        vsync: this, duration: const Duration(milliseconds: 700))
-      ..repeat();
-    splashPulseController = AnimationController(
-        vsync: this, duration: const Duration(milliseconds: 2400))
-      ..forward();
 
     _loadSavedPrefs();
+    _loadPlaces();
+    _listenToPublicPlaces();
     _listenToCloudReports();
     _initDeepLinksListener();
     _checkClipboardForSharedLocation();
     _initOfflineTiles();
     _startConnectivityProbe();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) _initLocationTracking(userInitiated: true);
-    });
-
-    Future.delayed(const Duration(milliseconds: 2700), () async {
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      final permission = await Geolocator.checkPermission();
       if (!mounted) return;
-      setState(() {
-        showSplash = false;
-        showNotifPermissionModal = true;
-      });
-      _toast(tr('مرحباً بك في تطبيق دلّيني – رفيقك على طريقك',
-          'Welcome to Dlinii – Your smart road companion'));
-      _say(isEnglish
-          ? 'Welcome to Dlinii, your smart road companion.'
-          : 'مَرْحَبَاً بِكَ فِي تَطْبِيقِ دَلِّينِي، رَفِيقِكَ الذَّكِيِّ عَلَى الطَّرِيقِ.');
+      if (permission == LocationPermission.always ||
+          permission == LocationPermission.whileInUse) {
+        _initLocationTracking(userInitiated: true);
+      } else {
+        setState(() => showNotifPermissionModal = true);
+      }
     });
 
-    pulseAnimationTimer =
-        Timer.periodic(const Duration(milliseconds: 60), (timer) {
+    pulseAnimationTimer = Timer.periodic(const Duration(milliseconds: 60), (
+      timer,
+    ) {
       if (mounted && routes.isNotEmpty) {
         setState(() => pulseValue = (pulseValue + 0.06) % (2 * math.pi));
       }
@@ -987,9 +1131,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   @override
   void dispose() {
     _deepLinkSubscription?.cancel();
-    splashCarController.dispose();
-    splashRoadController.dispose();
-    splashPulseController.dispose();
     _flyController?.dispose();
     pulseAnimationTimer?.cancel();
     positionStream?.cancel();
@@ -999,10 +1140,11 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     originController.dispose();
     destController.dispose();
     _vtLight?.dispose();
-    _vtDark?.dispose();
+
     _glideCtrl?.dispose();
     _dispState.dispose();
     _connProbeTimer?.cancel();
+    _publicPlacesSubscription?.cancel();
     try {
       _speech.cancel();
     } catch (_) {}
@@ -1015,9 +1157,12 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     try {
       final appLinks = AppLinks();
       if (kIsWeb) _handleIncomingUri(Uri.base);
-      appLinks.getInitialLink().then((uri) {
-        if (mounted && uri != null) _handleIncomingUri(uri);
-      }).catchError((Object _) {});
+      appLinks
+          .getInitialLink()
+          .then((uri) {
+            if (mounted && uri != null) _handleIncomingUri(uri);
+          })
+          .catchError((Object _) {});
       _deepLinkSubscription = appLinks.uriLinkStream.listen((uri) {
         if (!mounted) return;
         _handleIncomingUri(uri);
@@ -1026,39 +1171,11 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   }
 
   bool _parseAndOpenSharedText(String text, {bool clearClipboard = false}) {
-    if (text.trim().isEmpty) return false;
-    final bool isMyLocOnly =
-        text.contains('DLINII_MYLOC:') || text.contains('mode=myloc');
-    double? lat, lng;
-    String? sharedName;
-    final mName = RegExp(r'[?&]name=([^&#\s]+)').firstMatch(text);
-    if (mName != null) {
-      try {
-        sharedName = Uri.decodeComponent(mName.group(1)!.replaceAll('+', ' '));
-      } catch (_) {}
-    }
-
-    final reg1 = RegExp(r'DLINII_(?:MYLOC|GUIDE|LOC):([-\d.]+),([-\d.]+)');
-    final m1 = reg1.firstMatch(text);
-    if (m1 != null) {
-      lat = double.tryParse(m1.group(1) ?? '');
-      lng = double.tryParse(m1.group(2) ?? '');
-    } else {
-      final regOfm = RegExp(r'#\d+(?:\.\d+)?/([-\d.]+)/([-\d.]+)');
-      final mOfm = regOfm.firstMatch(text);
-      if (mOfm != null) {
-        lat = double.tryParse(mOfm.group(1) ?? '');
-        lng = double.tryParse(mOfm.group(2) ?? '');
-      } else {
-        final reg2 = RegExp(
-            r'(?:q=|mlat=|lat=|geo:)([-\d.]+)[,&\s/]+(?:mlon=|lng=)?([-\d.]+)');
-        final m2 = reg2.firstMatch(text);
-        if (m2 != null) {
-          lat = double.tryParse(m2.group(1) ?? '');
-          lng = double.tryParse(m2.group(2) ?? '');
-        }
-      }
-    }
+    final parsed = parseMapLocation(text);
+    if (parsed == null) return false;
+    final double? lat = parsed.latitude, lng = parsed.longitude;
+    final sharedName = parsed.name;
+    final isMyLocOnly = parsed.locationOnly;
 
     if (lat != null && lng != null) {
       if (clearClipboard) {
@@ -1066,22 +1183,29 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       }
       final pt = LatLng(lat, lng);
       setState(() {
-        showSplash = false;
         dest = pt;
         destName = isMyLocOnly
             ? tr('موقع صديقك الحالي', 'Friend Current Location')
             : ((sharedName != null && sharedName.isNotEmpty)
-                ? sharedName
-                : tr('وجهة مرسلة عبر دلّي صديق', 'Guided Spot via Dlinii'));
+                  ? sharedName
+                  : tr('وجهة مرسلة عبر دلّي صديق', 'Guided Spot via Dlinii'));
         destController.text = destName;
       });
       if (isMyLocOnly) {
         _flyToMyLocation(pt, targetZoom: 16.5);
-        _toast(tr('تم فتح موقع صديقك الحالي على الخريطة 📍',
-            'Showing friend location on map 📍'));
+        _toast(
+          tr(
+            'تم فتح موقع صديقك الحالي على الخريطة 📍',
+            'Showing friend location on map 📍',
+          ),
+        );
       } else {
-        _toast(tr('تم التقاط وجهة «دلّي صديق»، جاري رسم المسار... 🧭',
-            'Guided destination detected, plotting route... 🧭'));
+        _toast(
+          tr(
+            'تم التقاط وجهة «دلّي صديق»، جاري رسم المسار... 🧭',
+            'Guided destination detected, plotting route... 🧭',
+          ),
+        );
         _planRoute();
       }
       return true;
@@ -1096,7 +1220,11 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       if (text.contains('DLINII_') ||
           text.contains('openfreemap.org') ||
           text.contains(kShareHost) ||
-          text.contains('geo:')) {
+          text.contains('geo:') ||
+          text.contains('maps.google') ||
+          text.contains('maps.app.goo.gl') ||
+          text.contains('waze.com') ||
+          text.contains('maps.apple.com')) {
         Future.delayed(const Duration(milliseconds: 1100), () {
           if (!mounted) return;
           _parseAndOpenSharedText(text, clearClipboard: true);
@@ -1105,42 +1233,71 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     } catch (_) {}
   }
 
+  String? _lastIncomingLink;
+  DateTime? _lastIncomingAt;
+  bool _mapReady = false;
+  Uri? _pendingMapLink;
   void _handleIncomingUri(Uri uri) {
-    final fullStr = uri.toString();
-    if (_parseAndOpenSharedText(fullStr)) return;
-
-    double? lat = double.tryParse(
-        uri.queryParameters['lat'] ?? uri.queryParameters['mlat'] ?? '');
-    double? lng = double.tryParse(
-        uri.queryParameters['lng'] ?? uri.queryParameters['mlon'] ?? '');
-    final String mode = uri.queryParameters['mode'] ?? 'guide';
-    final nameStr = uri.queryParameters['name'];
-
-    if (lat != null && lng != null) {
-      Future.delayed(const Duration(milliseconds: 700), () {
-        if (!mounted) return;
-        final pt = LatLng(lat, lng);
-        setState(() {
-          showSplash = false;
-          dest = pt;
-          destName = (nameStr != null && nameStr.isNotEmpty)
-              ? Uri.decodeComponent(nameStr)
-              : (mode == 'myloc'
-                  ? tr('موقع صديقك الحالي', 'Friend Current Location')
-                  : tr('وجهة مرسلة عبر دلّي صديق', 'Guided Spot via Dlinii'));
-          destController.text = destName;
-        });
-        if (mode == 'myloc') {
-          _flyToMyLocation(pt, targetZoom: 16.5);
-          _toast(tr('تم فتح موقع صديقك على الخريطة 📍',
-              'Friend location opened on map 📍'));
-        } else {
-          _toast(tr('تم استلام وجهة «دلّي صديق»، جاري رسم المسار... 🧭',
-              'Location received, plotting route... 🧭'));
-          _planRoute();
-        }
-      });
+    if (!mounted) return;
+    final text = uri.toString();
+    if (!_mapReady) {
+      _pendingMapLink = uri;
+      return;
     }
+    if (_lastIncomingLink == text &&
+        _lastIncomingAt != null &&
+        DateTime.now().difference(_lastIncomingAt!).inSeconds < 2)
+      return;
+    _lastIncomingLink = text;
+    _lastIncomingAt = DateTime.now();
+    if (!_parseAndOpenSharedText(text)) _resolveMapLink(uri);
+  }
+
+  Future<bool> _resolveMapLink(Uri uri) async {
+    final client = http.Client();
+    bool trusted(Uri value) =>
+        value.scheme == 'https' &&
+        (value.host == 'maps.app.goo.gl' ||
+            value.host == 'goo.gl' ||
+            value.host == 'maps.google.com' ||
+            value.host == 'www.google.com' ||
+            value.host == 'google.com' ||
+            value.host == 'waze.com' ||
+            value.host == 'www.waze.com' ||
+            value.host == 'maps.apple.com');
+    try {
+      var current = uri;
+      for (var attempt = 0; attempt < 5 && trusted(current); attempt++) {
+        if (!mounted) return false;
+        if (_parseAndOpenSharedText(current.toString())) return true;
+        final request = http.Request('GET', current)..followRedirects = false;
+        final response = await client
+            .send(request)
+            .timeout(const Duration(seconds: 8));
+        final redirect = response.headers['location'];
+        await response.stream.drain<void>().timeout(const Duration(seconds: 8));
+        if (redirect == null) break;
+        current = current.resolve(redirect);
+      }
+      if (mounted)
+        _toast(
+          tr(
+            'لم يمكن استخراج إحداثيات الرابط. شارك رابط الموقع الكامل أو الصق الإحداثيات.',
+            'Cannot read this link. Share the full location URL or paste coordinates.',
+          ),
+        );
+    } catch (_) {
+      if (mounted)
+        _toast(
+          tr(
+            'تعذّر فتح رابط الموقع. تحقق من الإنترنت أو استخدم رابطاً كاملاً.',
+            'Cannot open location link. Check your connection or use a full URL.',
+          ),
+        );
+    } finally {
+      client.close();
+    }
+    return false;
   }
 
   void _flyToMyLocation(LatLng target, {double targetZoom = 16.8}) {
@@ -1154,19 +1311,23 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     final double highPeakZoom = dist > 5000
         ? math.min(startZoom, 11.2)
         : (dist > 500
-            ? math.min(startZoom, 13.5)
-            : math.max(startZoom - 2.2, 12.8));
+              ? math.min(startZoom, 13.5)
+              : math.max(startZoom - 2.2, 12.8));
 
     final ctrl = AnimationController(
-        vsync: this, duration: const Duration(milliseconds: 1450));
+      vsync: this,
+      duration: const Duration(milliseconds: 1450),
+    );
     _flyController = ctrl;
 
     ctrl.addListener(() {
       final t = ctrl.value;
       final easePos = Curves.easeInOutCubic.transform(t);
-      final lat = startCenter.latitude +
+      final lat =
+          startCenter.latitude +
           (target.latitude - startCenter.latitude) * easePos;
-      final lng = startCenter.longitude +
+      final lng =
+          startCenter.longitude +
           (target.longitude - startCenter.longitude) * easePos;
 
       double z;
@@ -1190,7 +1351,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     LatLng pt = me ?? mapController.camera.center;
     try {
       final Position fresh = await Geolocator.getCurrentPosition(
-          timeLimit: const Duration(seconds: 8));
+        timeLimit: const Duration(seconds: 8),
+      );
       pt = LatLng(fresh.latitude, fresh.longitude);
       me = pt;
       _hasRealFix = true;
@@ -1216,13 +1378,13 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           '$ofmLink\n\n'
           '🧭 كود الفتح المباشر داخل دلّيني:\n'
           'DLINII_MYLOC:$lat,$lng\n\n'
-          '📲 تحميل تطبيق دلّيني:\n$playStoreUrl',
+          '🌐 افتح دلّيني:\n$playStoreUrl',
       '📍 My live location via Dlinii App:\n\n'
           '🔗 Tap link to open in "Dlinii" (or copy message & open Dlinii):\n'
           '$ofmLink\n\n'
           '🧭 Direct Dlinii Code:\n'
           'DLINII_MYLOC:$lat,$lng\n\n'
-          '📲 Download Dlinii:\n$playStoreUrl',
+          '🌐 Open Dlinii:\n$playStoreUrl',
     );
     Share.share(msg);
   }
@@ -1241,13 +1403,13 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           '$ofmLink\n\n'
           '🧭 كود رسم المسار التلقائي داخل دلّيني:\n'
           'DLINII_GUIDE:$lat,$lng\n\n'
-          '📲 تحميل تطبيق دلّيني:\n$playStoreUrl',
+          '🌐 افتح دلّيني:\n$playStoreUrl',
       '🧭 Guided spot "$cleanName" via Dlinii:\n\n'
           '🔗 Tap link to plot route in "Dlinii" (or copy message & open Dlinii):\n'
           '$ofmLink\n\n'
           '🧭 Direct Route Code:\n'
           'DLINII_GUIDE:$lat,$lng\n\n'
-          '📲 Download Dlinii:\n$playStoreUrl',
+          '🌐 Open Dlinii:\n$playStoreUrl',
     );
     Share.share(msg);
   }
@@ -1255,8 +1417,12 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   Future<void> _downloadProvinceOfflineMap(IraqProvince prov) async {
     if (downloadingProvinceId != null) return;
     if (kIsWeb) {
-      _toast(tr('تحميل الخرائط متاح في تطبيق الهاتف (أندرويد / آيفون)',
-          'Offline download is available in the mobile app'));
+      _toast(
+        tr(
+          'تحميل الخرائط متاح في تطبيق الهاتف (أندرويد / آيفون)',
+          'Offline download is available in the mobile app',
+        ),
+      );
       return;
     }
     setState(() {
@@ -1266,9 +1432,12 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
     bool ok = false;
     try {
-      ok = await _OfflineTiles.downloadProvince(prov, onProgress: (p) {
-        if (mounted) setState(() => downloadProgress = p);
-      });
+      ok = await _OfflineTiles.downloadProvince(
+        prov,
+        onProgress: (p) {
+          if (mounted) setState(() => downloadProgress = p);
+        },
+      );
     } catch (_) {}
     if (!mounted) return;
 
@@ -1277,7 +1446,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       try {
         final prefs = await SharedPreferences.getInstance();
         await prefs.setStringList(
-            'dlini_offline_provinces', downloadedProvinces.toList());
+          'dlini_offline_provinces',
+          downloadedProvinces.toList(),
+        );
       } catch (_) {}
       if (!mounted) return;
       setState(() {
@@ -1285,15 +1456,23 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         downloadProgress = 0.0;
       });
       _flyToMyLocation(prov.center, targetZoom: 13.5);
-      _toast(tr('تم تحميل خريطة «${prov.nameAr}» للعمل بدون إنترنت بنجاح ✅',
-          '${prov.nameEn} offline map downloaded ✅'));
+      _toast(
+        tr(
+          'تم تحميل خريطة «${prov.nameAr}» للعمل بدون إنترنت بنجاح ✅',
+          '${prov.nameEn} offline map downloaded ✅',
+        ),
+      );
     } else {
       setState(() {
         downloadingProvinceId = null;
         downloadProgress = 0.0;
       });
-      _toast(tr('فشل التحميل، تأكد من الإنترنت وحاول مرة ثانية',
-          'Download failed, check your connection and retry'));
+      _toast(
+        tr(
+          'فشل التحميل، تأكد من الإنترنت وحاول مرة ثانية',
+          'Download failed, check your connection and retry',
+        ),
+      );
     }
   }
 
@@ -1303,12 +1482,18 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       downloadedProvinces.remove(prov.id);
     });
     await prefs.setStringList(
-        'dlini_offline_provinces', downloadedProvinces.toList());
+      'dlini_offline_provinces',
+      downloadedProvinces.toList(),
+    );
     try {
       await _OfflineTiles.deleteProvince(prov, downloadedProvinces);
     } catch (_) {}
-    _toast(tr('تم حذف خريطة ${prov.nameAr} المحفوظة',
-        'Removed ${prov.nameEn} offline map'));
+    _toast(
+      tr(
+        'تم حذف خريطة ${prov.nameAr} المحفوظة',
+        'Removed ${prov.nameEn} offline map',
+      ),
+    );
   }
 
   Future<void> _loadSavedPrefs() async {
@@ -1365,113 +1550,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     } catch (_) {}
   }
 
-  String _normVoice(String s) => s.toLowerCase().replaceAll('_', '-');
-
-  // فحص دقيق جداً لتحديد ما إذا كان الصوت في المحرك أنثوياً (في جوجل، سامسونج، أبل، ومايكروسوفت)
-  bool _isEngineVoiceFemale(Map<String, String> v) {
-    final name = _normVoice(v['name'] ?? '');
-    final g = _normVoice(v['gender'] ?? '');
-    if (g == 'female' || g == 'f') return true;
-    if (g == 'male' || g == 'm') return false;
-    const femaleTokens = [
-      'female',
-      '#female',
-      'salma',
-      'zariyah',
-      'fatima',
-      'amany',
-      'rana',
-      'hoda',
-      'laila',
-      'mariam',
-      'noura',
-      'hala',
-      'lana',
-      'amal',
-      'zira',
-      'aria',
-      'jenny',
-      'michelle',
-      'ana',
-      'clara',
-      'sonia',
-      'samantha',
-      'victoria',
-      'karen',
-      'natasha',
-      'hazel',
-      'susan',
-      'wavenet-a',
-      'wavenet-d',
-      'standard-a',
-      'standard-d',
-      'ar-xa-x-arc',
-      'ar-xa-x-are',
-      '-tpf',
-      '-sfg',
-      '-enc',
-      '-ene',
-      '-enf'
-    ];
-    for (final t in femaleTokens) {
-      if (name.contains(t)) return true;
-    }
-    return false;
-  }
-
-  bool _isEngineVoiceMale(Map<String, String> v) {
-    final name = _normVoice(v['name'] ?? '');
-    final g = _normVoice(v['gender'] ?? '');
-    if (g == 'male' || g == 'm') return true;
-    if (g == 'female' || g == 'f') return false;
-    if (_isEngineVoiceFemale(v)) return false;
-    const maleTokens = [
-      '#male',
-      '-male',
-      ' male',
-      'shakir',
-      'hamed',
-      'naayf',
-      'maged',
-      'tarik',
-      'hamdan',
-      'omar',
-      'fahed',
-      'moaz',
-      'rami',
-      'bassel',
-      'david',
-      'microsoft mark',
-      'mark ',
-      'guy',
-      'christopher',
-      'eric',
-      'steffan',
-      'roger',
-      'george',
-      'daniel',
-      'alex',
-      'oliver',
-      'ryan',
-      'andrew',
-      'brian',
-      'wavenet-b',
-      'wavenet-c',
-      'standard-b',
-      'standard-c',
-      'ar-xa-x-ard',
-      'ar-xa-x-arb',
-      '-iol',
-      '-end',
-      '-enb',
-      '-iom'
-    ];
-    for (final t in maleTokens) {
-      if (name.contains(t)) return true;
-    }
-    return false;
-  }
-
   double _computeEffectiveSpeechRate() {
     if (kIsWeb) {
       if (voiceSpeedLevel == 0) return 0.92;
@@ -1489,12 +1567,16 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setInt('dlini_voice_speed_lvl', level);
     await _applyVoiceProfile();
-    _say(isEnglish
-        ? 'Speech speed updated.'
-        : 'تَمَّ ضَبْطُ سُرْعَةِ الصَّوْتِ بِنَجَاحٍ.');
+    _say(
+      isEnglish
+          ? 'Speech speed updated.'
+          : 'تَمَّ ضَبْطُ سُرْعَةِ الصَّوْتِ بِنَجَاحٍ.',
+    );
   }
 
+  bool _voiceAvailable = false;
   Future<void> _applyVoiceProfile() async {
+    _voiceAvailable = false;
     try {
       // إعادة فحص الأصوات لأن المتصفح يحمل الأصوات السحابية بعد ثانية من الفتح
       if (_availableVoices.length < 5) {
@@ -1503,75 +1585,28 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       }
       final vp = currentVoice;
       final int activeSlot = _pinnedSlot[vp.id] ?? (_voiceSlot[vp.id] ?? 0);
+      // Slot zero is female; slot one is male. Never infer gender from list order.
       final bool wantFemale = (activeSlot == 0);
 
       await flutterTts.stop();
 
-      final List<Map<String, String>> langVoices = _availableVoices.where((v) {
-        final loc = _normVoice(v['locale'] ?? '');
-        final name = _normVoice(v['name'] ?? '');
-        if (vp.langType == 'ar') {
-          return loc.startsWith('ar') ||
-              name.contains('arabic') ||
-              name.contains('salma') ||
-              name.contains('shakir') ||
-              name.contains('zariyah') ||
-              name.contains('hamed') ||
-              name.contains('naayf') ||
-              name.contains('hoda') ||
-              name.contains('maged');
-        } else {
-          return loc.startsWith('en') ||
-              name.contains('english') ||
-              name.contains('aria') ||
-              name.contains('jenny') ||
-              name.contains('zira') ||
-              name.contains('guy') ||
-              name.contains('david') ||
-              name.contains('mark');
-        }
-      }).toList();
-
-      langVoices.sort((a, b) => '${a['locale']}/${a['name']}'
-          .compareTo('${b['locale']}/${b['name']}'));
       final prefs = await SharedPreferences.getInstance();
-      final identityKey = 'dlinii_engine_${vp.id}_$activeSlot';
+      final identityKey = 'dlinii_engine_gender_v3_${vp.id}_$activeSlot';
       final savedIdentity = prefs.getString(identityKey);
-      Map<String, String>? matchedVoice;
+      final matchedVoice = selectDliniiVoice(
+        _availableVoices,
+        language: vp.langType,
+        female: wantFemale,
+        savedIdentity: savedIdentity,
+      );
 
-      if (langVoices.isNotEmpty) {
-        // أولوية قصوى للأصوات الطبيعية النقية (Online Natural) في Edge ثم بقية الأصوات المطابقة للجنس
-        final genderMatches = langVoices.where((v) {
-          return wantFemale ? _isEngineVoiceFemale(v) : _isEngineVoiceMale(v);
-        }).toList();
-
-        if (genderMatches.isNotEmpty) {
-          final naturalMatch = genderMatches.where((v) {
-            final n = _normVoice(v['name'] ?? '');
-            return n.contains('natural') ||
-                n.contains('online') ||
-                n.contains('wavenet');
-          }).toList();
-
-          matchedVoice = naturalMatch.isNotEmpty
-              ? naturalMatch.first
-              : genderMatches.first;
-        } else if (langVoices.length >= 2) {
-          matchedVoice = wantFemale ? langVoices.first : langVoices.last;
-        } else {
-          matchedVoice = langVoices.first;
-        }
-      }
-
-      if (savedIdentity != null) {
-        final saved = langVoices
-            .where((v) => '${v['locale']}/${v['name']}' == savedIdentity);
-        if (saved.isNotEmpty) matchedVoice = saved.first;
-      }
       if (matchedVoice != null) {
         await prefs.setString(
-            identityKey, '${matchedVoice['locale']}/${matchedVoice['name']}');
+          identityKey,
+          '${matchedVoice['locale']}/${matchedVoice['name']}',
+        );
       }
+
       if (matchedVoice != null && (matchedVoice['name'] ?? '').isNotEmpty) {
         final String vLoc = (matchedVoice['locale'] ?? '').isNotEmpty
             ? matchedVoice['locale']!
@@ -1582,7 +1617,10 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
             'name': matchedVoice['name']!,
             'locale': vLoc,
           });
-        } catch (_) {}
+          _voiceAvailable = true;
+        } catch (_) {
+          _voiceAvailable = false;
+        }
       } else {
         await flutterTts.setLanguage(vp.locale);
       }
@@ -1605,15 +1643,20 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
     final vp = currentVoice;
     final int slot = _pinnedSlot[vp.id] ?? (_voiceSlot[vp.id] ?? 0);
-    final String voiceTypeLabel =
-        slot == 0 ? tr('صوت فتاة', 'Female') : tr('صوت رجل', 'Male');
+    final String voiceTypeLabel = slot == 0
+        ? tr('صوت فتاة', 'Female')
+        : tr('صوت رجل', 'Male');
 
     final String sample = vp.langType == 'en'
         ? 'Hello, welcome to Dlinii navigation system. I am ready to guide you.'
         : 'مَرْحَبَاً بِكَ فِي تَطْبِيقِ دَلِّينِي، أَنَا مُسَاعِدُكَ الصَّوْتِيُّ لِتَوْجِيهِكَ عَلَى الطَّرِيقِ بِكُلِّ وُضُوحٍ.';
     _say(sample);
-    _toast(tr('تم اختيار: ${vp.nameAr} ($voiceTypeLabel)',
-        'Selected: ${vp.nameEn} ($voiceTypeLabel)'));
+    _toast(
+      tr(
+        'تم اختيار: ${vp.nameAr} ($voiceTypeLabel)',
+        'Selected: ${vp.nameEn} ($voiceTypeLabel)',
+      ),
+    );
   }
 
   // 2. الضغط على الزر الأخضر بالأسفل يبدل فوراً بين (صوت فتاة ⇄ صوت رجل) سواء كنت بالعربي أو الإنجليزي
@@ -1637,11 +1680,11 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
     final String sample = vp.langType == 'en'
         ? (nextSlot == 0
-            ? 'Hello, this is the female voice assistant on Dlinii.'
-            : 'Hello, this is the male voice assistant on Dlinii.')
+              ? 'Hello, this is the female voice assistant on Dlinii.'
+              : 'Hello, this is the male voice assistant on Dlinii.')
         : (nextSlot == 0
-            ? 'مَرْحَبَاً بِكَ فِي تَطْبِيقِ دَلِّينِي، هَذَا الصَّوْتُ الأَوَّلُ بِصَوْتِ فَتَاةٍ وَاضِحٍ وَنَقِيٍّ.'
-            : 'مَرْحَبَاً بِكَ فِي تَطْبِيقِ دَلِّينِي، هَذَا الصَّوْتُ الثَّانِي بِصَوْتِ رَجُلٍ وَاضِحٍ وَنَقِيٍّ.');
+              ? 'مَرْحَبَاً بِكَ فِي تَطْبِيقِ دَلِّينِي، هَذَا الصَّوْتُ الأَوَّلُ بِصَوْتِ فَتَاةٍ وَاضِحٍ وَنَقِيٍّ.'
+              : 'مَرْحَبَاً بِكَ فِي تَطْبِيقِ دَلِّينِي، هَذَا الصَّوْتُ الثَّانِي بِصَوْتِ رَجُلٍ وَاضِحٍ وَنَقِيٍّ.');
 
     _say(sample);
     _toast(voiceTypeLabel);
@@ -1658,8 +1701,12 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         _pinnedSlot.remove(vp.id);
       });
       await prefs.remove('dlini_pinned_slot_${vp.id}');
-      _toast(tr('تم إلغاء تثبيت الصوت، يمكنك الآن التبديل بحرية',
-          'Voice unpinned, you can switch freely'));
+      _toast(
+        tr(
+          'تم إلغاء تثبيت الصوت، يمكنك الآن التبديل بحرية',
+          'Voice unpinned, you can switch freely',
+        ),
+      );
     } else {
       final int slotToPin = _voiceSlot[vp.id] ?? 0;
       setState(() {
@@ -1669,11 +1716,15 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       await prefs.setInt('dlini_slot_${vp.id}', slotToPin);
       await prefs.setInt('dlini_pinned_slot_${vp.id}', slotToPin);
       HapticFeedback.mediumImpact();
-      final String label =
-          slotToPin == 0 ? tr('صوت فتاة', 'Female') : tr('صوت رجل', 'Male');
-      _toast(tr(
+      final String label = slotToPin == 0
+          ? tr('صوت فتاة', 'Female')
+          : tr('صوت رجل', 'Male');
+      _toast(
+        tr(
           'تم تثبيت ($label) بنجاح 📌 سيبقى ثابتاً دائماً حتى تغيره بنفسك',
-          'Pinned ($label) permanently 📌'));
+          'Pinned ($label) permanently 📌',
+        ),
+      );
     }
   }
 
@@ -1684,7 +1735,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     final String cacheKey =
         '${cat.id}_${isEnglish ? 'en' : 'ar'}_${center.latitude.toStringAsFixed(2)}_${center.longitude.toStringAsFixed(2)}';
     final List<Map<String, dynamic>>? cached = _exploreCache[cacheKey];
-    final bool fresh = cached != null &&
+    final bool fresh =
+        cached != null &&
         DateTime.now().millisecondsSinceEpoch -
                 (_exploreCacheTs[cacheKey] ?? 0) <
             5 * 60 * 1000;
@@ -1708,11 +1760,12 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       final String viewbox =
           '${center.longitude - delta},${center.latitude + delta},${center.longitude + delta},${center.latitude - delta}';
       final url = Uri.parse(
-          'https://nominatim.openstreetmap.org/search?format=jsonv2&q=${Uri.encodeComponent(cat.osmQuery)}&viewbox=$viewbox&bounded=1&accept-language=$lang&limit=20');
+        'https://nominatim.openstreetmap.org/search?format=jsonv2&q=${Uri.encodeComponent(cat.osmQuery)}&viewbox=$viewbox&bounded=1&accept-language=$lang&limit=20',
+      );
 
-      final res = await http.get(url, headers: {
-        'User-Agent': 'com.dlinii.global.app'
-      }).timeout(const Duration(seconds: 12));
+      final res = await http
+          .get(url, headers: {'User-Agent': 'com.dlinii.global.app'})
+          .timeout(const Duration(seconds: 12));
 
       // وصل ردّ متأخر لفئة قديمة: تجاهله
       if (reqId != _exploreReqId) return;
@@ -1730,8 +1783,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           final parts = display.split(',');
           final title =
               (raw['name'] != null && raw['name'].toString().trim().isNotEmpty)
-                  ? raw['name'].toString().trim()
-                  : parts.first.trim();
+              ? raw['name'].toString().trim()
+              : parts.first.trim();
           final sub = parts.length > 1
               ? parts.skip(1).take(2).join('، ').trim()
               : (isEnglish ? cat.nameEn : cat.nameAr);
@@ -1745,7 +1798,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           });
         }
         items.sort(
-            (a, b) => (a['distKm'] as double).compareTo(b['distKm'] as double));
+          (a, b) => (a['distKm'] as double).compareTo(b['distKm'] as double),
+        );
 
         _exploreCache[cacheKey] = items;
         _exploreCacheTs[cacheKey] = DateTime.now().millisecondsSinceEpoch;
@@ -1781,7 +1835,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     if (kIsWeb) return;
     _probeConnectivity();
     _connProbeTimer = Timer.periodic(
-        const Duration(seconds: 25), (_) => _probeConnectivity());
+      const Duration(seconds: 25),
+      (_) => _probeConnectivity(),
+    );
   }
 
   Future<void> _probeConnectivity() async {
@@ -1797,10 +1853,14 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     if (!mounted) return;
     if (_forceOffline == online) {
       setState(() => _forceOffline = !online);
-      _toast(online
-          ? tr('عاد الاتصال بالإنترنت ✅', 'Back online ✅')
-          : tr('لا يوجد إنترنت: تم التحويل للخرائط المحفوظة والمسارات المحلية',
-              'Offline: using saved maps & local routing'));
+      _toast(
+        online
+            ? tr('عاد الاتصال بالإنترنت ✅', 'Back online ✅')
+            : tr(
+                'لا يوجد إنترنت: تم التحويل للخرائط المحفوظة والمسارات المحلية',
+                'Offline: using saved maps & local routing',
+              ),
+      );
     }
   }
 
@@ -1844,8 +1904,12 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           onError: (_) {
             if (mounted) {
               setState(() => isListeningVoice = false);
-              _toast(tr('تعذر التعرف على الصوت، حاول مرة ثانية',
-                  'Could not recognize speech, try again'));
+              _toast(
+                tr(
+                  'تعذر التعرف على الصوت، حاول مرة ثانية',
+                  'Could not recognize speech, try again',
+                ),
+              );
             }
           },
         );
@@ -1854,8 +1918,12 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       }
     }
     if (!_speechReady) {
-      _toast(tr('المايكروفون غير متاح أو لم تسمح بإذن الصوت',
-          'Microphone unavailable or permission denied'));
+      _toast(
+        tr(
+          'المايكروفون غير متاح أو لم تسمح بإذن الصوت',
+          'Microphone unavailable or permission denied',
+        ),
+      );
       return;
     }
 
@@ -1871,20 +1939,22 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         return null;
       }
 
-      localeId = isEnglish
-          ? (pick((id) => id.startsWith('en_us')) ??
-              pick((id) => id.startsWith('en')))
-          : (pick((id) => id == 'ar_iq') ??
-              pick((id) => id.startsWith('ar_sa')) ??
-              pick((id) => id.startsWith('ar')));
+      localeId =
+          pick((id) => id == 'ar_iq') ??
+          pick((id) => id.startsWith('ar_sa')) ??
+          pick((id) => id.startsWith('ar'));
     } catch (_) {}
+    localeId ??= kIsWeb ? 'ar-IQ' : 'ar_IQ';
+    if (kIsWeb) localeId = localeId.replaceAll('_', '-');
+    if (!mounted) return;
 
     setState(() {
       isListeningVoice = true;
       activeSearchField = 'q';
     });
     _toast(
-        tr('تكلّم الآن... قل اسم المكان', 'Listening... say the place name'));
+      tr('تكلّم بالعربية… قل اسم المكان', 'Speak Arabic… say the place name'),
+    );
 
     try {
       await _speech.listen(
@@ -1907,8 +1977,10 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   }
 
   void _showCategoryResultsOnMap() {
-    final cat = kExploreCategories.firstWhere((c) => c.id == selectedCategoryId,
-        orElse: () => kExploreCategories.first);
+    final cat = kExploreCategories.firstWhere(
+      (c) => c.id == selectedCategoryId,
+      orElse: () => kExploreCategories.first,
+    );
     final List<Marker> mList = [];
 
     for (final place in nearbyCategoryPlaces) {
@@ -1933,10 +2005,13 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                 shape: BoxShape.circle,
                 border: Border.all(color: Colors.white, width: 2.0),
                 boxShadow: [
-                  BoxShadow(color: Colors.black.withOpacity(0.3), blurRadius: 8)
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.3),
+                    blurRadius: 8,
+                  ),
                 ],
               ),
-              child: Icon(cat.icon, color: Colors.white, size: 20),
+              child: DliniiAppIcon(cat.icon, color: Colors.white, size: 20),
             ),
           ),
         ),
@@ -1949,16 +2024,24 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     });
 
     if (nearbyCategoryPlaces.isNotEmpty) {
-      final firstPt = LatLng(nearbyCategoryPlaces.first['lat'] as double,
-          nearbyCategoryPlaces.first['lng'] as double);
+      final firstPt = LatLng(
+        nearbyCategoryPlaces.first['lat'] as double,
+        nearbyCategoryPlaces.first['lng'] as double,
+      );
       _flyToMyLocation(firstPt, targetZoom: 14.5);
-      _toast(tr('تم عرض ${nearbyCategoryPlaces.length} موقع على الخريطة',
-          'Showing ${nearbyCategoryPlaces.length} spots on map'));
+      _toast(
+        tr(
+          'تم عرض ${nearbyCategoryPlaces.length} موقع على الخريطة',
+          'Showing ${nearbyCategoryPlaces.length} spots on map',
+        ),
+      );
     }
   }
 
   List<Polyline> _buildRealTrafficAndHazardOverlays(
-      Map<String, dynamic> selectedRoute, List<LatLng> routePoints) {
+    Map<String, dynamic> selectedRoute,
+    List<LatLng> routePoints,
+  ) {
     final List<Polyline> overlays = [];
     if (routePoints.length < 2) return overlays;
 
@@ -1975,21 +2058,30 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
               final geom = st['geometry']?['coordinates'] as List?;
               if (geom != null && geom.length >= 2) {
                 final stepPts = geom
-                    .map((c) => LatLng(
-                        (c[1] as num).toDouble(), (c[0] as num).toDouble()))
+                    .map(
+                      (c) => LatLng(
+                        (c[1] as num).toDouble(),
+                        (c[0] as num).toDouble(),
+                      ),
+                    )
                     .toList();
+                if (stepPts.length < 2) continue;
                 if (speedKmh < 18.0) {
-                  overlays.add(Polyline(
-                    points: stepPts,
-                    color: const Color(0xFFE5484D),
-                    strokeWidth: 9.2,
-                  ));
+                  overlays.add(
+                    Polyline(
+                      points: stepPts,
+                      color: const Color(0xFFE5484D),
+                      strokeWidth: 9.2,
+                    ),
+                  );
                 } else if (speedKmh < 28.0) {
-                  overlays.add(Polyline(
-                    points: stepPts,
-                    color: const Color(0xFFefbb52),
-                    strokeWidth: 9.0,
-                  ));
+                  overlays.add(
+                    Polyline(
+                      points: stepPts,
+                      color: const Color(0xFFefbb52),
+                      strokeWidth: 9.0,
+                    ),
+                  );
                 }
               }
             }
@@ -2000,8 +2092,10 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
     for (final doc in cloudReports) {
       final data = doc.data() as Map<String, dynamic>;
-      final repPt = LatLng(((data['lat'] ?? 33.4258) as num).toDouble(),
-          ((data['lng'] ?? 43.2995) as num).toDouble());
+      final repPt = LatLng(
+        ((data['lat'] ?? 33.4258) as num).toDouble(),
+        ((data['lng'] ?? 43.2995) as num).toDouble(),
+      );
       final String type = data['type']?.toString() ?? 'hazard';
 
       final List<LatLng> affectedSegment = [];
@@ -2037,15 +2131,26 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     await prefs.setBool('dlini_is_en', isEnglish);
     await prefs.setInt('dlini_voice_idx_v5', selectedVoiceIndex);
     await _applyVoiceProfile();
-    _toast(isEnglish
-        ? 'Language switched to English'
-        : 'تم تحويل لغة التطبيق إلى العربية');
+    _toast(
+      isEnglish
+          ? 'Language switched to English'
+          : 'تم تحويل لغة التطبيق إلى العربية',
+    );
   }
 
   Future<void> _say(String text) async {
     if (!voiceEnabled) return;
     try {
       await _applyVoiceProfile();
+      if (!_voiceAvailable) {
+        _toast(
+          tr(
+            'الصوت المحدد غير متوفر على جهازك. اختر صوتاً متوفراً أو ثبّت أصوات النظام.',
+            'Selected voice is unavailable. Install a matching system voice.',
+          ),
+        );
+        return;
+      }
       await flutterTts.speak(text);
     } catch (_) {}
   }
@@ -2078,7 +2183,10 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     if (isFirstPerson3D) {
       if (me != null) {
         mapController.moveAndRotate(
-            me!, math.max(mapController.camera.zoom, 17.5), -currentBearing);
+          me!,
+          math.max(mapController.camera.zoom, 17.5),
+          -currentBearing,
+        );
       }
       _toast(tr('تم تفعيل منظور القيادة (3D)', '3D Driving View Enabled'));
     } else {
@@ -2087,12 +2195,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     }
   }
 
-  Widget _buildReportSvg(String? type, {double size = 28}) {
-    return SvgPicture.string(
-        kReportTypeSvgs[type] ?? kReportTypeSvgs['hazard']!,
-        width: size,
-        height: size);
-  }
+  Widget _buildReportSvg(String? type, {double size = 28}) =>
+      DliniiReportIcon(type ?? 'hazard', size: size);
 
   String _getReportLabel(String? type, String? fallback) {
     if (!isEnglish && fallback != null && fallback.isNotEmpty) return fallback;
@@ -2132,7 +2236,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     const double r = math.pi / 180;
     final double dLat = (b.latitude - a.latitude) * r;
     final double dLon = (b.longitude - a.longitude) * r;
-    final double x = math.pow(math.sin(dLat / 2), 2) +
+    final double x =
+        math.pow(math.sin(dLat / 2), 2) +
         math.cos(a.latitude * r) *
             math.cos(b.latitude * r) *
             math.pow(math.sin(dLon / 2), 2);
@@ -2147,7 +2252,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         lat2 = toRad(end.latitude),
         lon2 = toRad(end.longitude);
     final y = math.sin(lon2 - lon1) * math.cos(lat2);
-    final x = math.cos(lat1) * math.sin(lat2) -
+    final x =
+        math.cos(lat1) * math.sin(lat2) -
         math.sin(lat1) * math.cos(lat2) * math.cos(lon2 - lon1);
     return (toDeg(math.atan2(y, x)) + 360) % 360;
   }
@@ -2158,10 +2264,14 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       if (!mounted) return;
       if (res != LocPermResult.granted) {
         if (userInitiated) {
-          _toast(res == LocPermResult.serviceOff
-              ? tr('شغّل خدمة الموقع (GPS)', 'Turn on location (GPS)')
-              : tr('الموقع مرفوض، فعّله من إعدادات التطبيق',
-                  'Location denied, enable it in app settings'));
+          _toast(
+            res == LocPermResult.serviceOff
+                ? tr('شغّل خدمة الموقع (GPS)', 'Turn on location (GPS)')
+                : tr(
+                    'الموقع مرفوض، فعّله من إعدادات التطبيق',
+                    'Location denied, enable it in app settings',
+                  ),
+          );
           if (res == LocPermResult.serviceOff) {
             PermissionsHelper.openLocationSettings();
           } else if (res == LocPermResult.deniedForever) {
@@ -2172,41 +2282,89 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       }
       final lastKnown = kIsWeb ? null : await Geolocator.getLastKnownPosition();
       if (lastKnown != null && mounted) {
-        _onPositionUpdate(LatLng(lastKnown.latitude, lastKnown.longitude),
-            lastKnown.speed, lastKnown.heading,
-            isFirst: true);
+        _onPositionUpdate(
+          LatLng(lastKnown.latitude, lastKnown.longitude),
+          lastKnown.speed,
+          lastKnown.heading,
+          isFirst: true,
+        );
       }
 
       await positionStream?.cancel();
       bool gotFirst = _hasRealFix;
-      positionStream = Geolocator.getPositionStream(
-              locationSettings: const LocationSettings(
-                  accuracy: LocationAccuracy.high, distanceFilter: 2))
-          .listen((Position pos) {
-        if (simTimer != null) return;
-        _onPositionUpdate(
-            LatLng(pos.latitude, pos.longitude), pos.speed, pos.heading,
-            isFirst: !gotFirst);
-        gotFirst = true;
-      }, onError: (_) {});
+      positionStream =
+          Geolocator.getPositionStream(
+            locationSettings: const LocationSettings(
+              accuracy: LocationAccuracy.high,
+              distanceFilter: 2,
+            ),
+          ).listen((Position pos) {
+            if (simTimer != null) return;
+            _onPositionUpdate(
+              LatLng(pos.latitude, pos.longitude),
+              pos.speed,
+              pos.heading,
+              isFirst: !gotFirst,
+            );
+            gotFirst = true;
+          }, onError: (_) {});
 
       try {
         final Position pos = await Geolocator.getCurrentPosition(
-            timeLimit: const Duration(seconds: 12));
+          timeLimit: const Duration(seconds: 12),
+        );
         if (!gotFirst) {
           gotFirst = true;
           _onPositionUpdate(
-              LatLng(pos.latitude, pos.longitude), pos.speed, pos.heading,
-              isFirst: true);
+            LatLng(pos.latitude, pos.longitude),
+            pos.speed,
+            pos.heading,
+            isFirst: true,
+          );
         }
       } catch (_) {}
     } catch (_) {}
   }
 
-  void _onPositionUpdate(LatLng rawMe, double speedMps, double heading,
-      {bool isFirst = false}) {
+  void _checkOffRoute(LatLng rawPosition) {
+    if (!isNavigating ||
+        dest == null ||
+        navCoords.length < 2 ||
+        simTimer != null)
+      return;
+    if (_snapToRoute(rawPosition) != null) {
+      _offRouteFixes = 0;
+      return;
+    }
+    _offRouteFixes++;
+    if (_offRouteFixes < 3 ||
+        _rerouting ||
+        (_lastReroute != null &&
+            DateTime.now().difference(_lastReroute!).inSeconds < 12))
+      return;
+    _rerouting = true;
+    _lastReroute = DateTime.now();
+    _toast(
+      tr(
+        'جاري تحديث المسار من موقعك الحالي…',
+        'Updating route from your location…',
+      ),
+    );
+    _planRoute(
+      fromPoint: rawPosition,
+      rerouting: true,
+    ).whenComplete(() => _rerouting = false);
+  }
+
+  void _onPositionUpdate(
+    LatLng rawMe,
+    double speedMps,
+    double heading, {
+    bool isFirst = false,
+  }) {
     if (!mounted) return;
     _hasRealFix = true;
+    _checkOffRoute(rawMe);
 
     LatLng nextMe = rawMe;
     double? routeBearing;
@@ -2240,7 +2398,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     if (isFirst) {
       _glideCtrl?.stop();
       _dispState.value = _DispState(nextMe, newBearing);
-      if (!isNavigating) mapController.move(nextMe, 15.5);
+      if (!isNavigating && _mapReady) mapController.move(nextMe, 15.5);
     } else {
       _glideTo(nextMe, newBearing, (gap * 1.08).round());
     }
@@ -2251,29 +2409,25 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   }
 
   void _listenToCloudReports() {
+    if (!PublicPlaces.ready) return;
     try {
       FirebaseFirestore.instance
           .collection('reports')
           .orderBy('createdAt', descending: true)
           .snapshots()
           .listen((snapshot) {
-        if (!mounted) return;
-        final List<QueryDocumentSnapshot> validDocs = [];
-        for (var doc in snapshot.docs) {
-          final data = doc.data();
-          final int endVotes = ((data['endVotes'] ?? 0) as num).toInt();
-          if (endVotes >= endVotesThreshold) {
-            FirebaseFirestore.instance
-                .collection('reports')
-                .doc(doc.id)
-                .delete()
-                .catchError((_) {});
-            continue;
-          }
-          validDocs.add(doc);
-        }
-        setState(() => cloudReports = validDocs);
-      });
+            if (!mounted) return;
+            final List<QueryDocumentSnapshot> validDocs = [];
+            for (var doc in snapshot.docs) {
+              final data = doc.data();
+              final int endVotes = ((data['endVotes'] ?? 0) as num).toInt();
+              if (endVotes >= endVotesThreshold) {
+                continue;
+              }
+              validDocs.add(doc);
+            }
+            setState(() => cloudReports = validDocs);
+          });
     } catch (_) {}
   }
 
@@ -2293,7 +2447,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       return;
     }
     searchDebounce = Timer(
-        const Duration(milliseconds: 450), () => _searchPlaceGlobal(trimmed));
+      const Duration(milliseconds: 450),
+      () => _searchPlaceGlobal(trimmed),
+    );
   }
 
   Future<void> _searchPlaceGlobal(String query) async {
@@ -2306,10 +2462,11 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       final String viewbox =
           '${center.longitude - delta},${center.latitude + delta},${center.longitude + delta},${center.latitude - delta}';
       final url = Uri.parse(
-          'https://nominatim.openstreetmap.org/search?format=jsonv2&q=${Uri.encodeComponent(query)}&viewbox=$viewbox&bounded=0&accept-language=$lang&limit=10');
-      final res = await http.get(url, headers: {
-        'User-Agent': 'com.dlinii.global.app'
-      }).timeout(const Duration(seconds: 10));
+        'https://nominatim.openstreetmap.org/search?format=jsonv2&q=${Uri.encodeComponent(query)}&viewbox=$viewbox&bounded=0&accept-language=$lang&limit=10',
+      );
+      final res = await http
+          .get(url, headers: {'User-Agent': 'com.dlinii.global.app'})
+          .timeout(const Duration(seconds: 10));
       if (res.statusCode == 200 && reqId == _searchReqId) {
         final List<dynamic> data = json.decode(res.body);
         for (final r in data) {
@@ -2318,12 +2475,19 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           final lo = double.tryParse(r['lon']?.toString() ?? '');
           r['_distKm'] = (la != null && lo != null)
               ? Geolocator.distanceBetween(
-                      center.latitude, center.longitude, la, lo) /
-                  1000.0
+                      center.latitude,
+                      center.longitude,
+                      la,
+                      lo,
+                    ) /
+                    1000.0
               : 1e9;
         }
-        data.sort((a, b) => ((a['_distKm'] ?? 1e9) as num)
-            .compareTo((b['_distKm'] ?? 1e9) as num));
+        data.sort(
+          (a, b) => ((a['_distKm'] ?? 1e9) as num).compareTo(
+            (b['_distKm'] ?? 1e9) as num,
+          ),
+        );
         if (mounted) {
           setState(() {
             searchResults = data.take(8).toList();
@@ -2336,18 +2500,617 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
   static const String _kRouteCacheKey = 'dlini_route_cache_v1';
 
-  Future<void> _planRoute({LatLng? fromPoint}) async {
+  List<Map<String, dynamic>> _places = [];
+
+  Future<void> _loadPlaces() async {
+    final prefs = await SharedPreferences.getInstance();
+    try {
+      final data =
+          json.decode(prefs.getString('dlinii_places_v1') ?? '[]') as List;
+      final valid = data
+          .whereType<Map>()
+          .where(
+            (p) => p['lat'] is num && p['lng'] is num && p['name'] is String,
+          )
+          .map((p) => Map<String, dynamic>.from(p))
+          .toList();
+      if (mounted) setState(() => _places = valid);
+    } catch (_) {}
+  }
+
+  Future<void> _persistPlaces() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('dlinii_places_v1', json.encode(_places));
+  }
+
+  Future<void> _rememberPlace(
+    LatLng point,
+    String name, {
+    bool saved = false,
+    Map<String, dynamic>? details,
+  }) async {
+    final existing = _places.where((place) {
+      if (details?['id'] != null && place['id'] == details!['id']) return true;
+      return place['name'].toString().trim().toLowerCase() ==
+              name.trim().toLowerCase() &&
+          _distanceMeters(
+                point,
+                LatLng(
+                  (place['lat'] as num).toDouble(),
+                  (place['lng'] as num).toDouble(),
+                ),
+              ) <
+              25;
+    }).toList();
+    final pinned = saved || existing.any((p) => p['saved'] == true);
+    setState(() {
+      _places.removeWhere((p) => existing.contains(p));
+      _places.insert(0, {
+        if (existing.isNotEmpty) ...existing.first,
+        if (details != null) ...details,
+        'id':
+            details?['id'] ??
+            (existing.isNotEmpty ? existing.first['id'] : null) ??
+            DateTime.now().microsecondsSinceEpoch.toString(),
+        'name': name.isEmpty ? tr('مكان محفوظ', 'Saved place') : name,
+        'lat': point.latitude,
+        'lng': point.longitude,
+        'saved': pinned,
+        'visited': DateTime.now().toIso8601String(),
+      });
+    });
+    await _persistPlaces();
+  }
+
+  List<Map<String, dynamic>> _publicPlaces = [];
+  StreamSubscription<QuerySnapshot<Map<String, dynamic>>>?
+  _publicPlacesSubscription;
+  void _listenToPublicPlaces() {
+    if (!PublicPlaces.publishingEnabled) return;
+    _publicPlacesSubscription = PublicPlaces.collection
+        .orderBy('updatedAt', descending: true)
+        .limit(1000)
+        .snapshots()
+        .listen(
+          (snapshot) {
+            if (!mounted) return;
+            setState(
+              () => _publicPlaces = snapshot.docs
+                  .where(
+                    (d) =>
+                        d.data()['lat'] is num &&
+                        d.data()['lng'] is num &&
+                        d.data()['name'] is String,
+                  )
+                  .map((d) => <String, dynamic>{...d.data(), 'publicId': d.id})
+                  .toList(),
+            );
+          },
+          onError: (Object error) {
+            debugPrint('Public places unavailable: $error');
+          },
+        );
+  }
+
+  Future<bool> _requireAccount() async {
+    if (!PublicPlaces.ready) {
+      _toast(
+        tr(
+          'النشر العام يحتاج إكمال إعداد Firebase أولاً',
+          'Public publishing needs Firebase configuration first',
+        ),
+      );
+      return false;
+    }
+    if (PublicPlaces.uid != null) return true;
+    final signedIn = await showModalBottomSheet<bool>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      backgroundColor: panelColor,
+      builder: (_) => Theme(
+        data: _interfaceTheme,
+        child: DliniiAccountSheet(english: isEnglish),
+      ),
+    );
+    return signedIn == true && PublicPlaces.uid != null;
+  }
+
+  Future<void> _accountAction() async {
+    if (PublicPlaces.uid == null) {
+      await _requireAccount();
+      if (mounted) setState(() {});
+      return;
+    }
+    final action = await showDialog<String>(
+      context: context,
+      builder: (c) => AlertDialog(
+        title: Text(tr('حسابي', 'My account')),
+        content: Text(FirebaseAuth.instance.currentUser?.email ?? ''),
+        actions: [
+          TextButton(
+            style: TextButton.styleFrom(
+              foregroundColor: Theme.of(c).colorScheme.error,
+            ),
+            onPressed: () => Navigator.pop(c, 'delete'),
+            child: Text(tr('حذف الحساب', 'Delete account')),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(c, 'close'),
+            child: Text(tr('إغلاق', 'Close')),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(c, 'logout'),
+            child: Text(tr('تسجيل الخروج', 'Sign out')),
+          ),
+        ],
+      ),
+    );
+    if (action == 'delete' && mounted) {
+      final deleted = await showDialog<bool>(
+        context: context,
+        barrierDismissible: false,
+        builder: (_) => Theme(
+          data: _interfaceTheme,
+          child: DeleteAccountDialog(english: isEnglish),
+        ),
+      );
+      if (deleted == true && mounted) {
+        setState(() {});
+        _toast(
+          tr(
+            'حُذف حسابك؛ تتابع الآن كزائر',
+            'Account deleted. Continuing as guest',
+          ),
+        );
+      }
+    }
+    if (action == 'logout') {
+      await FirebaseAuth.instance.signOut();
+      if (mounted) setState(() {});
+    }
+  }
+
+  Map<String, dynamic>? _placeDraft;
+  Future<void> _namePlace(LatLng point, {Map<String, dynamic>? initial}) async {
+    if (PublicPlaces.publishingEnabled &&
+        (!await _requireAccount() || !mounted))
+      return;
+    final result = await showModalBottomSheet<Map<String, dynamic>>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      showDragHandle: true,
+      backgroundColor: panelColor,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+      ),
+      builder: (_) => DliniiPlaceEditor(
+        onSave: (data) async {
+          if (PublicPlaces.publishingEnabled) {
+            final publicId = await PublicPlaces.save(
+              data,
+              publicId:
+                  initial?['publicId'] as String? ??
+                  _placeDraft?['publicId'] as String?,
+            );
+            data['publicId'] = publicId;
+            data['ownerUid'] = PublicPlaces.uid;
+          }
+          await _rememberPlace(
+            LatLng(
+              (data['lat'] as num).toDouble(),
+              (data['lng'] as num).toDouble(),
+            ),
+            data['name'] as String,
+            saved: true,
+            details: data,
+          );
+        },
+        latitude: point.latitude,
+        longitude: point.longitude,
+        dark: isDark,
+        english: isEnglish,
+        draft: initial == null
+            ? _placeDraft
+            : {
+                ...initial,
+                'id':
+                    initial['id'] ??
+                    initial['lat'].toString() + ',' + initial['lng'].toString(),
+              },
+      ),
+    );
+    if (!mounted) return;
+    if (result == null) {
+      _placeDraft = null;
+      return;
+    }
+    if (result['_action'] == 'saved') {
+      _placeDraft = null;
+      _toast(
+        PublicPlaces.publishingEnabled
+            ? tr('تم نشر المكان وحفظه في أماكنك', 'Place published and saved')
+            : tr(
+                'محفوظ على هذا الجهاز فقط؛ النشر العام غير مفعّل بعد',
+                'Saved on this device only; public publishing is not enabled yet',
+              ),
+      );
+      return;
+    }
+    if (result['_action'] == 'pick') {
+      _placeDraft = Map<String, dynamic>.from(result)..remove('_action');
+      setState(() => pickMode = 'save_place');
+      _toast(
+        tr(
+          'المس نقطة المكان على الخريطة؛ ستبقى التفاصيل محفوظة',
+          'Tap the location on the map; your draft is kept',
+        ),
+      );
+      return;
+    }
+    final data = Map<String, dynamic>.from(result)..remove('_action');
+    _placeDraft = null;
+    final selectedPoint = LatLng(
+      (data['lat'] as num).toDouble(),
+      (data['lng'] as num).toDouble(),
+    );
+    await _rememberPlace(
+      selectedPoint,
+      data['name'] as String,
+      saved: true,
+      details: data,
+    );
+    _toast(
+      tr(
+        'تم حفظ المكان وتفاصيله في أماكني',
+        'Place details saved to My Places',
+      ),
+    );
+  }
+
+  void _showPlaceDetails(Map<String, dynamic> place) {
+    place['id'] ??= place['lat'].toString() + ',' + place['lng'].toString();
+    final category =
+        dliniiPlaceCategories[place['category']] ??
+        dliniiPlaceCategories['other']!;
+    final point = LatLng(
+      (place['lat'] as num).toDouble(),
+      (place['lng'] as num).toDouble(),
+    );
+    showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      isScrollControlled: true,
+      backgroundColor: panelColor,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+      ),
+      builder: (sheetContext) => SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                category[2] + '  ' + (place['name'] as String),
+                style: TextStyle(
+                  color: textColor,
+                  fontSize: 23,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                category[isEnglish ? 1 : 0],
+                style: TextStyle(
+                  color: accentColor,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 18),
+              for (final entry in <String, String>{
+                'address': tr('العنوان', 'Address'),
+                'about': tr('عن المكان', 'About'),
+                'phone': tr('التواصل', 'Contact'),
+                'website': tr('الرابط', 'Website'),
+                'hours': tr('ساعات العمل', 'Opening hours'),
+              }.entries)
+                if ((place[entry.key]?.toString() ?? '').isNotEmpty)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 14),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          entry.value,
+                          style: TextStyle(color: subColor, fontSize: 11),
+                        ),
+                        const SizedBox(height: 4),
+                        SelectableText(
+                          place[entry.key].toString(),
+                          style: TextStyle(
+                            color: textColor,
+                            fontSize: 14,
+                            height: 1.5,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+              SelectableText(
+                point.latitude.toStringAsFixed(6) +
+                    ', ' +
+                    point.longitude.toStringAsFixed(6),
+                textDirection: TextDirection.ltr,
+                style: TextStyle(color: subColor),
+              ),
+              const SizedBox(height: 20),
+              Row(
+                children: [
+                  Expanded(
+                    child: FilledButton(
+                      onPressed: () {
+                        Navigator.pop(sheetContext);
+                        setState(() {
+                          dest = point;
+                          destName = place['name'] as String;
+                          destController.text = destName;
+                        });
+                        _planRoute();
+                      },
+                      style: FilledButton.styleFrom(
+                        backgroundColor: accentColor,
+                        foregroundColor: isDark
+                            ? const Color(0xFF10242B)
+                            : Colors.white,
+                        minimumSize: const Size.fromHeight(48),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                      ),
+                      child: Text(tr('انطلق إلى المكان', 'Navigate')),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  if (place['publicId'] == null || PublicPlaces.owns(place))
+                    OutlinedButton(
+                      onPressed: () {
+                        Navigator.pop(sheetContext);
+                        _namePlace(point, initial: place);
+                      },
+                      child: Text(
+                        tr(
+                          place['publicId'] == null ? 'نشر' : 'تعديل',
+                          place['publicId'] == null ? 'Publish' : 'Edit',
+                        ),
+                      ),
+                    ),
+                  if (PublicPlaces.owns(place))
+                    IconButton(
+                      tooltip: tr(
+                        'حذف المكان المنشور',
+                        'Delete published place',
+                      ),
+                      onPressed: () async {
+                        final yes = await showDialog<bool>(
+                          context: context,
+                          builder: (c) => AlertDialog(
+                            title: Text(
+                              tr(
+                                'حذف المكان للجميع؟',
+                                'Delete this public place?',
+                              ),
+                            ),
+                            actions: [
+                              TextButton(
+                                onPressed: () => Navigator.pop(c, false),
+                                child: Text(tr('إلغاء', 'Cancel')),
+                              ),
+                              FilledButton(
+                                onPressed: () => Navigator.pop(c, true),
+                                child: Text(tr('حذف', 'Delete')),
+                              ),
+                            ],
+                          ),
+                        );
+                        if (yes != true) return;
+                        try {
+                          await PublicPlaces.delete(place);
+                          if (!mounted) return;
+                          setState(
+                            () => _places.removeWhere(
+                              (p) => p['publicId'] == place['publicId'],
+                            ),
+                          );
+                          await _persistPlaces();
+                          if (sheetContext.mounted) Navigator.pop(sheetContext);
+                        } catch (_) {
+                          if (mounted)
+                            _toast(
+                              tr(
+                                'تعذر الحذف؛ تحقق من الاتصال والصلاحيات',
+                                'Could not delete. Check connection and permissions',
+                              ),
+                            );
+                        }
+                      },
+                      icon: const Icon(Icons.delete_outline),
+                    ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _showPlaces() {
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: panelColor,
+      isScrollControlled: true,
+      showDragHandle: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+      ),
+      builder: (sheetContext) => StatefulBuilder(
+        builder: (context, updateSheet) => SafeArea(
+          child: SizedBox(
+            height: MediaQuery.sizeOf(context).height * .65,
+            child: Column(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          tr(
+                            'أماكني والوجهات السابقة',
+                            'My places & recent destinations',
+                          ),
+                          style: TextStyle(
+                            color: textColor,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 18,
+                          ),
+                        ),
+                      ),
+                      TextButton(
+                        onPressed: () {
+                          Navigator.pop(sheetContext);
+                          setState(() => pickMode = 'save_place');
+                          _toast(
+                            tr(
+                              'المس موقع المكان على الخريطة لحفظه',
+                              'Tap the map to save a place',
+                            ),
+                          );
+                        },
+                        child: Text(tr('+ مكان', '+ Place')),
+                      ),
+                    ],
+                  ),
+                ),
+                Expanded(
+                  child: _places.isEmpty
+                      ? Center(
+                          child: Text(
+                            tr(
+                              'ابدأ رحلة أو أضف مكاناً ليظهر هنا',
+                              'Start a trip or save a place',
+                            ),
+                            style: TextStyle(color: subColor),
+                          ),
+                        )
+                      : ListView.builder(
+                          itemCount: _places.length,
+                          itemBuilder: (context, index) {
+                            final place = _places[index];
+                            return ListTile(
+                              leading: IconButton(
+                                tooltip: tr('تفاصيل المكان', 'Place details'),
+                                onPressed: () => _showPlaceDetails(place),
+                                icon: Text(
+                                  (dliniiPlaceCategories[place['category']] ??
+                                      dliniiPlaceCategories['other']!)[2],
+                                  style: const TextStyle(fontSize: 25),
+                                ),
+                              ),
+                              title: Text(
+                                place['name'] as String,
+                                style: TextStyle(
+                                  color: textColor,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                              subtitle: Text(
+                                place['saved'] == true
+                                    ? tr('مكان محفوظ', 'Saved place')
+                                    : tr('وجهة سابقة', 'Recent destination'),
+                                style: TextStyle(color: subColor),
+                              ),
+                              trailing: TextButton(
+                                onPressed: () async {
+                                  setState(() => _places.remove(place));
+                                  updateSheet(() {});
+                                  await _persistPlaces();
+                                },
+                                child: Text(
+                                  tr('إزالة من سجلي', 'Remove from history'),
+                                  style: const TextStyle(
+                                    color: Color(0xFFFF767C),
+                                  ),
+                                ),
+                              ),
+                              onTap: () {
+                                Navigator.pop(sheetContext);
+                                setState(() {
+                                  dest = LatLng(
+                                    (place['lat'] as num).toDouble(),
+                                    (place['lng'] as num).toDouble(),
+                                  );
+                                  destName = place['name'] as String;
+                                  destController.text = destName;
+                                });
+                                _planRoute();
+                              },
+                            );
+                          },
+                        ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  int _routeRequest = 0;
+  bool _rerouting = false;
+  int _offRouteFixes = 0;
+  DateTime? _lastReroute;
+
+  int _pendingRouteLoads = 0;
+  Future<void> _planRoute({LatLng? fromPoint, bool rerouting = false}) async {
+    _pendingRouteLoads++;
+    if (mounted) setState(() => _routeBusy = true);
+    try {
+      await _calculateRoute(fromPoint: fromPoint, rerouting: rerouting);
+    } catch (_) {
+      if (mounted)
+        _toast(
+          tr(
+            'تعذر تجهيز المسار، حاول مجدداً',
+            'Could not prepare route. Try again.',
+          ),
+        );
+    } finally {
+      _pendingRouteLoads--;
+      if (mounted) setState(() => _routeBusy = _pendingRouteLoads > 0);
+    }
+  }
+
+  Future<void> _calculateRoute({
+    LatLng? fromPoint,
+    bool rerouting = false,
+  }) async {
+    final request = ++_routeRequest;
     final LatLng o = fromPoint ?? origin ?? me ?? mapController.camera.center;
     if (dest == null) return;
     final LatLng d = dest!;
     List<dynamic>? found;
-    String source = 'online';
 
     // 1) المحاولة الأونلاين (إذا لم ينقطع الإنترنت)
     if (!_forceOffline) {
       try {
         final url = Uri.parse(
-            'https://router.project-osrm.org/route/v1/driving/${o.longitude},${o.latitude};${d.longitude},${d.latitude}?overview=full&geometries=geojson&steps=true&alternatives=true');
+          'https://router.project-osrm.org/route/v1/driving/${o.longitude},${o.latitude};${d.longitude},${d.latitude}?overview=full&geometries=geojson&steps=true&alternatives=true',
+        );
         final res = await http.get(url).timeout(const Duration(seconds: 9));
         final data = json.decode(res.body);
         if (data['routes'] != null && (data['routes'] as List).isNotEmpty) {
@@ -2361,25 +3124,63 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     }
 
     // 2) بدون إنترنت: مسار محفوظ من رحلة سابقة، وإلا مسار احتياطي محلي
+    if (found == null && rerouting) {
+      _toast(
+        tr(
+          'تعذّر تحديث المسار، ستتم المحاولة مجدداً',
+          'Unable to reroute; retrying shortly',
+        ),
+      );
+      return;
+    }
     if (found == null) {
       final Map<String, dynamic>? cachedRoute = await _loadRouteFromCache(o, d);
       if (cachedRoute != null) {
         found = [cachedRoute];
-        source = 'cache';
       } else {
-        found = [_buildOfflineFallbackRoute(o, d)];
-        source = 'fallback';
+        _toast(
+          tr(
+            'لا يوجد اتصال ولا مسار محفوظ لهذه الرحلة. اتصل بالإنترنت لتجهيز طريق صالح.',
+            'No connection or saved route for this trip. Connect to prepare a road route.',
+          ),
+        );
+        return;
       }
-      _toast(source == 'cache'
-          ? tr('لا يوجد إنترنت: تم استخدام مسار محفوظ من رحلة سابقة 🗂️',
-              'Offline: using a saved route from a previous trip 🗂️')
-          : tr(
-              'لا يوجد إنترنت: مسار احتياطي تقريبي (المسافة والوقت تقديريان) 🧭',
-              'Offline: approximate fallback route (distance & time estimated) 🧭'));
+      _toast(
+        tr(
+          'لا يوجد اتصال: تم استخدام مسار محفوظ لهذه الرحلة',
+          'Offline: using a saved route for this trip',
+        ),
+      );
     }
     if (!mounted) return;
 
-    final List<dynamic> finalRoutes = found;
+    if (request != _routeRequest || dest != d) return;
+    final List<dynamic> finalRoutes = found.where((route) {
+      if (route is! Map || route['geometry'] is! Map) return false;
+      final coords = route['geometry']['coordinates'];
+      return coords is List &&
+          coords.length >= 2 &&
+          coords.every(
+            (c) =>
+                c is List &&
+                c.length >= 2 &&
+                c[0] is num &&
+                c[1] is num &&
+                (c[0] as num).isFinite &&
+                (c[1] as num).isFinite &&
+                (c[0] as num).abs() <= 180 &&
+                (c[1] as num).abs() <= 90,
+          ) &&
+          route['legs'] is List &&
+          (route['legs'] as List).isNotEmpty &&
+          route['legs'][0]['steps'] is List &&
+          (route['legs'][0]['steps'] as List).isNotEmpty;
+    }).toList();
+    if (finalRoutes.isEmpty) {
+      _toast(tr('تعذّر رسم مسار صالح لهذه الوجهة', 'No valid route geometry'));
+      return;
+    }
     setState(() {
       routes = finalRoutes;
       selectedRouteIndex = 0;
@@ -2387,21 +3188,55 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       if (!isNavigating) showPlanSheet = true;
     });
     final List<dynamic> coordsList = routes[0]['geometry']['coordinates'];
-    if (coordsList.isNotEmpty) {
+    if (isNavigating) {
+      navCoords = coordsList
+          .map(
+            (c) => LatLng((c[1] as num).toDouble(), (c[0] as num).toDouble()),
+          )
+          .toList();
+      navSteps = routes[0]['legs'][0]['steps'];
+      currentStepIndex = 0;
+      lastSpokenStep = -1;
+      _offRouteFixes = 0;
+      _updateNavigationState();
+      if (rerouting)
+        _say(
+          tr(
+            'تم تحديث المسار، تابع القيادة',
+            'Route updated. Continue driving.',
+          ),
+        );
+      return;
+    }
+    if (coordsList.length >= 2) {
       final points = coordsList
           .map(
-              (c) => LatLng((c[1] as num).toDouble(), (c[0] as num).toDouble()))
+            (c) => LatLng((c[1] as num).toDouble(), (c[0] as num).toDouble()),
+          )
           .toList();
       mapController.rotate(0);
-      mapController.fitCamera(CameraFit.bounds(
+      mapController.fitCamera(
+        CameraFit.bounds(
           bounds: LatLngBounds.fromPoints(points),
           padding: const EdgeInsets.only(
-              top: 80, bottom: 260, left: 40, right: 40)));
+            top: 80,
+            bottom: 260,
+            left: 40,
+            right: 40,
+          ),
+        ),
+      );
     }
   }
 
-  Map<String, dynamic> _mkStep(String type, String modifier, LatLng loc,
-      String name, double dist, double dur) {
+  Map<String, dynamic> _mkStep(
+    String type,
+    String modifier,
+    LatLng loc,
+    String name,
+    double dist,
+    double dur,
+  ) {
     return {
       'maneuver': {
         'type': type,
@@ -2435,20 +3270,29 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       }
       final prefs = await SharedPreferences.getInstance();
       final String? raw = prefs.getString(_kRouteCacheKey);
-      final List<dynamic> list =
-          raw != null ? (json.decode(raw) as List<dynamic>) : <dynamic>[];
-      list.removeWhere((e) =>
-          e is Map &&
-          _distanceMeters(
-                  LatLng((e['oLat'] as num).toDouble(),
-                      (e['oLng'] as num).toDouble()),
-                  o) <
-              150 &&
-          _distanceMeters(
-                  LatLng((e['dLat'] as num).toDouble(),
-                      (e['dLng'] as num).toDouble()),
-                  d) <
-              150);
+      final List<dynamic> list = raw != null
+          ? (json.decode(raw) as List<dynamic>)
+          : <dynamic>[];
+      list.removeWhere(
+        (e) =>
+            e is Map &&
+            _distanceMeters(
+                  LatLng(
+                    (e['oLat'] as num).toDouble(),
+                    (e['oLng'] as num).toDouble(),
+                  ),
+                  o,
+                ) <
+                150 &&
+            _distanceMeters(
+                  LatLng(
+                    (e['dLat'] as num).toDouble(),
+                    (e['dLng'] as num).toDouble(),
+                  ),
+                  d,
+                ) <
+                150,
+      );
       list.insert(0, {
         'oLat': o.latitude,
         'oLng': o.longitude,
@@ -2474,14 +3318,18 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       for (final e in list) {
         if (e is! Map) continue;
         final LatLng cd = LatLng(
-            (e['dLat'] as num).toDouble(), (e['dLng'] as num).toDouble());
-        if (_distanceMeters(cd, d) > 400) continue;
-        final Map<String, dynamic> route =
-            Map<String, dynamic>.from(e['route'] as Map);
+          (e['dLat'] as num).toDouble(),
+          (e['dLng'] as num).toDouble(),
+        );
+        if (_distanceMeters(cd, d) > 40) continue;
+        final Map<String, dynamic> route = Map<String, dynamic>.from(
+          e['route'] as Map,
+        );
         final List<dynamic> coords = route['geometry']['coordinates'] as List;
         final pts = coords
-            .map((c) =>
-                LatLng((c[1] as num).toDouble(), (c[0] as num).toDouble()))
+            .map(
+              (c) => LatLng((c[1] as num).toDouble(), (c[0] as num).toDouble()),
+            )
             .toList();
         int bi = 0;
         double bd = 1e18;
@@ -2492,7 +3340,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
             bi = i;
           }
         }
-        if (bd > 350) continue; // موقعك بعيد عن المسار المحفوظ
+        if (bd > 45) continue; // موقعك بعيد عن المسار المحفوظ
         return _trimRouteFrom(route, pts, bi, o);
       }
     } catch (_) {}
@@ -2500,7 +3348,11 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   }
 
   Map<String, dynamic> _trimRouteFrom(
-      Map<String, dynamic> route, List<LatLng> pts, int from, LatLng o) {
+    Map<String, dynamic> route,
+    List<LatLng> pts,
+    int from,
+    LatLng o,
+  ) {
     final List<LatLng> rest = [o, ...pts.sublist(from)];
     double remain = 0;
     for (int i = 0; i < rest.length - 1; i++) {
@@ -2512,8 +3364,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     }
     final double totalD = ((route['distance'] ?? 0) as num).toDouble();
     final double totalT = ((route['duration'] ?? 0) as num).toDouble();
-    final double ratio =
-        fullLen > 0 ? (remain / fullLen).clamp(0.0, 1.0).toDouble() : 1.0;
+    final double ratio = fullLen > 0
+        ? (remain / fullLen).clamp(0.0, 1.0).toDouble()
+        : 1.0;
 
     final List<dynamic> oldSteps = [];
     final legs = route['legs'];
@@ -2524,8 +3377,10 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     for (final st in oldSteps) {
       final loc = st['maneuver']?['location'];
       if (loc is! List || st['maneuver']['type'] == 'depart') continue;
-      final LatLng p =
-          LatLng((loc[1] as num).toDouble(), (loc[0] as num).toDouble());
+      final LatLng p = LatLng(
+        (loc[1] as num).toDouble(),
+        (loc[0] as num).toDouble(),
+      );
       int idx = from;
       double bd = 1e18;
       for (int i = from; i < pts.length; i++) {
@@ -2554,45 +3409,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           'steps': steps,
           'distance': totalD * ratio,
           'duration': totalT * ratio,
-        }
+        },
       ],
       'dlinii_source': 'cache',
-    };
-  }
-
-  /// مسار احتياطي محلي بالكامل: خط مستقيم بنقاط كثيفة + تقدير للمسافة والوقت
-  Map<String, dynamic> _buildOfflineFallbackRoute(LatLng o, LatLng d) {
-    final double straight = _distanceMeters(o, d);
-    final double roadMeters = straight * 1.3; // تقدير طول الطريق الفعلي
-    final double speedMps = (straight > 15000 ? 70.0 : 40.0) / 3.6;
-    final double durSec = roadMeters / speedMps;
-    final int n = math.max(2, (straight / 150).ceil());
-    final List<List<double>> coords = [];
-    for (int i = 0; i <= n; i++) {
-      final double t = i / n;
-      coords.add([
-        o.longitude + (d.longitude - o.longitude) * t,
-        o.latitude + (d.latitude - o.latitude) * t,
-      ]);
-    }
-    final List<dynamic> steps = [_mkStep('depart', 'straight', o, '', 0, 0)];
-    final int mids = (straight / 2500).floor();
-    for (int k = 1; k <= mids; k++) {
-      final double t = k / (mids + 1);
-      final LatLng p = LatLng(o.latitude + (d.latitude - o.latitude) * t,
-          o.longitude + (d.longitude - o.longitude) * t);
-      steps.add(_mkStep('continue', 'straight', p, '', roadMeters / (mids + 1),
-          durSec / (mids + 1)));
-    }
-    steps.add(_mkStep('arrive', 'straight', d, '', 0, 0));
-    return {
-      'distance': roadMeters,
-      'duration': durSec,
-      'geometry': {'type': 'LineString', 'coordinates': coords},
-      'legs': [
-        {'steps': steps, 'distance': roadMeters, 'duration': durSec}
-      ],
-      'dlinii_source': 'fallback',
     };
   }
 
@@ -2602,15 +3421,15 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     if (step == null || step['maneuver'] == null) {
       return [
         enMode ? 'Continue straight ahead' : 'تَابِعِ السَّيْرَ لِلْأَمَامِ',
-        '↑'
+        '↑',
       ];
     }
     final m = step['maneuver'];
     final String type = m['type'] ?? '', modifier = m['modifier'] ?? '';
     final String rawName =
         (step['name'] != null && step['name'].toString().isNotEmpty)
-            ? step['name'].toString()
-            : '';
+        ? step['name'].toString()
+        : '';
 
     if (enMode) {
       final String onto = rawName.isNotEmpty ? ' onto $rawName' : '';
@@ -2667,7 +3486,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     if (type == 'roundabout' || type == 'rotary') {
       return [
         'اُدْخُلِ الدَّوَّارَ وَخُذِ الْمَخْرَجَ رَقْمَ ${m['exit'] ?? ''}',
-        '⟳'
+        '⟳',
       ];
     }
     if (type == 'turn' || type == 'end of road') {
@@ -2678,12 +3497,14 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
   void _startNav() {
     if (routes.isEmpty) return;
+    if (dest != null) _rememberPlace(dest!, destName);
     final r = routes[selectedRouteIndex];
     final List<dynamic> rawCoords = r['geometry']['coordinates'];
     navCoords = rawCoords
         .map((c) => LatLng((c[1] as num).toDouble(), (c[0] as num).toDouble()))
         .toList();
-    me ??= origin ??
+    me ??=
+        origin ??
         (navCoords.isNotEmpty ? navCoords.first : mapController.camera.center);
     navSteps = r['legs'][0]['steps'];
     currentStepIndex = 0;
@@ -2701,7 +3522,10 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     _glideCtrl?.stop();
     _dispState.value = _DispState(me!, currentBearing);
     mapController.moveAndRotate(
-        _lookAhead(me!, currentBearing, 28), 17.8, -currentBearing);
+      _lookAhead(me!, currentBearing, 28),
+      17.8,
+      -currentBearing,
+    );
     final initialStep = navSteps.length > 1 ? navSteps[1] : navSteps[0];
     final info = _getManeuverText(initialStep);
     final startPrefix = (isEnglish || currentVoice.langType == 'en')
@@ -2730,9 +3554,10 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     final double totalDist = (r['distance'] as num).toDouble(),
         totalDur = (r['duration'] as num).toDouble();
     final int mins = math.max(
-        1,
-        ((totalDur * (remainingMeters / (totalDist > 0 ? totalDist : 1))) / 60)
-            .round());
+      1,
+      ((totalDur * (remainingMeters / (totalDist > 0 ? totalDist : 1))) / 60)
+          .round(),
+    );
     final DateTime etaTime = DateTime.now().add(Duration(minutes: mins));
     final String etaStr =
         '${etaTime.hour.toString().padLeft(2, '0')}:${etaTime.minute.toString().padLeft(2, '0')}';
@@ -2742,8 +3567,10 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         : navSteps[currentStepIndex];
     if (nx == null) return;
     final List<dynamic> locArr = nx['maneuver']['location'];
-    final LatLng stepLoc =
-        LatLng((locArr[1] as num).toDouble(), (locArr[0] as num).toDouble());
+    final LatLng stepLoc = LatLng(
+      (locArr[1] as num).toDouble(),
+      (locArr[0] as num).toDouble(),
+    );
     final double distToStep = _distanceMeters(me!, stepLoc);
     final info = _getManeuverText(nx);
 
@@ -2766,8 +3593,10 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       navRemMins = mins.toString();
       navEta = etaStr;
       hudArrow = info[1];
-      hudInstruction =
-          tr('بعد $distFormatted: ${info[0]}', 'In $distFormatted: ${info[0]}');
+      hudInstruction = tr(
+        'بعد $distFormatted: ${info[0]}',
+        'In $distFormatted: ${info[0]}',
+      );
       hudStreet = (nx['name'] != null && nx['name'].toString().isNotEmpty)
           ? nx['name']
           : tr('الطريق الرئيسي', 'Main Road');
@@ -2776,9 +3605,35 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     if (distToStep < 200 && lastSpokenStep != currentStepIndex) {
       lastSpokenStep = currentStepIndex;
       final roundedM = math.max(10, (distToStep / 50).round() * 50);
-      _say(enMode
-          ? 'In $roundedM meters, ${info[0]}'
-          : 'بَعْدَ $roundedM مِتْرَاً، ${info[0]}');
+      _say(
+        enMode
+            ? 'In $roundedM meters, ${info[0]}'
+            : 'بَعْدَ $roundedM مِتْرَاً، ${info[0]}',
+      );
+    }
+  }
+
+  static const MethodChannel _carHudChannel = MethodChannel(
+    'com.dlinii.app/car_hud',
+  );
+
+  Future<void> _syncCarHud() async {
+    if (kIsWeb) return;
+    try {
+      await _carHudChannel.invokeMethod<void>('updateHud', {
+        'instruction': hudInstruction,
+        'arrow': hudArrow,
+        'street': hudStreet,
+        'remainingKm': navRemKm,
+        'remainingMinutes': navRemMins,
+        'speedKmh': currentSpeedKmh,
+        'eta': navEta,
+        'isNavigating': isNavigating,
+      });
+    } on MissingPluginException {
+      // No car integration is registered on this platform.
+    } on PlatformException catch (error) {
+      debugPrint('Car HUD: ${error.code}');
     }
   }
 
@@ -2789,7 +3644,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       final data = doc.data() as Map<String, dynamic>;
       if (!_reportIsVisible(data)) continue;
       final LatLng repPos = LatLng(
-          (data['lat'] as num).toDouble(), (data['lng'] as num).toDouble());
+        (data['lat'] as num).toDouble(),
+        (data['lng'] as num).toDouble(),
+      );
       final double dist = _distanceMeters(currentPos, repPos);
       final String repId = doc.id,
           type = data['type'] ?? '',
@@ -2800,8 +3657,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           ((bearingToReport - currentBearing + 540) % 360 - 180).abs() > 100)
         continue;
       double alertDist = 300;
-      String msg =
-          enMode ? 'Caution, $label ahead' : 'اِحْذَرْ، أَمَامَكَ $label';
+      String msg = enMode
+          ? 'Caution, $label ahead'
+          : 'اِحْذَرْ، أَمَامَكَ $label';
 
       if (type == 'bump') {
         alertDist = 100;
@@ -2810,9 +3668,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
             : 'اِنْتَبِهْ، أَمَامَكَ مَطَبٌّ بَعْدَ مِائَةِ مِتْرٍ';
       } else if (type == 'pothole') {
         alertDist = 150;
-        msg = enMode
-            ? 'Pothole 150 meters ahead'
-            : 'اِنْتَبِهْ، حُفْرَةٌ فِي الطَّرِيقِ بَعْدَ مِائَةٍ وَخَمْسِينَ مِتْرَاً';
+        msg = enMode ? 'Pothole 150 meters ahead' : 'اِنْتَبِهْ، حُفْرَةٌ فِي الطَّرِيقِ بَعْدَ مِائَةٍ وَخَمْسِينَ مِتْرَاً';
       } else if (type == 'crash') {
         alertDist = 200;
         msg = enMode
@@ -2820,9 +3676,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
             : 'تَحْذِيرٌ، حَادِثٌ أَمَامَكَ عَلَى بُعْدِ مِائَتَيْ مِتْرٍ';
       } else if (type == 'police') {
         alertDist = 250;
-        msg = enMode
-            ? 'Traffic checkpoint 250 meters ahead'
-            : 'اِنْتَبِهْ، نُقْطَةُ مُرُورٍ أَمَامَكَ بَعْدَ مِائَتَيْنِ وَخَمْسِينَ مِتْرَاً';
+        msg = enMode ? 'Traffic checkpoint 250 meters ahead' : 'اِنْتَبِهْ، نُقْطَةُ مُرُورٍ أَمَامَكَ بَعْدَ مِائَتَيْنِ وَخَمْسِينَ مِتْرَاً';
       }
 
       if (dist <= alertDist && !warnedReports.contains(repId)) {
@@ -2853,12 +3707,16 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     mapController.rotate(0);
     if (me != null) mapController.move(me!, 14.5);
     if (arrived) {
-      final msg = tr('الحمد لله على سلامتك، لقد وصلت إلى وجهتك بالسلامة',
-          'Thank God for your safety, you have arrived at your destination safely');
+      final msg = tr(
+        'الحمد لله على سلامتك، لقد وصلت إلى وجهتك بالسلامة',
+        'Thank God for your safety, you have arrived at your destination safely',
+      );
       _toast(msg);
-      _say(isEnglish
-          ? 'Thank God for your safety, you have arrived at your destination safely.'
-          : 'الْحَمْدُ لِلَّهِ عَلَى سَلَامَتِكَ، لَقَدْ وَصَلْتَ إِلَى وِجْهَتِكَ بِالسَّلَامَةِ.');
+      _say(
+        isEnglish
+            ? 'Thank God for your safety, you have arrived at your destination safely.'
+            : 'الْحَمْدُ لِلَّهِ عَلَى سَلَامَتِكَ، لَقَدْ وَصَلْتَ إِلَى وِجْهَتِكَ بِالسَّلَامَةِ.',
+      );
       setState(() {
         selectedStars = 5;
         showRateModal = true;
@@ -2871,8 +3729,10 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     final List<dynamic> rawCoords =
         routes[selectedRouteIndex]['geometry']['coordinates'];
     if (rawCoords.isEmpty) return;
-    me = LatLng((rawCoords[0][1] as num).toDouble(),
-        (rawCoords[0][0] as num).toDouble());
+    me = LatLng(
+      (rawCoords[0][1] as num).toDouble(),
+      (rawCoords[0][0] as num).toDouble(),
+    );
     _startNav();
     if (navCoords.length < 2) return;
 
@@ -2894,8 +3754,10 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           ? 0.0
           : ((d - cum[seg]) / segLen).clamp(0.0, 1.0).toDouble();
       final a = navCoords[seg], b = navCoords[seg + 1];
-      return LatLng(a.latitude + (b.latitude - a.latitude) * t,
-          a.longitude + (b.longitude - a.longitude) * t);
+      return LatLng(
+        a.latitude + (b.latitude - a.latitude) * t,
+        a.longitude + (b.longitude - a.longitude) * t,
+      );
     }
 
     simTimer?.cancel();
@@ -2917,17 +3779,25 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   void _onReportButtonTap() {
     final now = DateTime.now().millisecondsSinceEpoch;
     if (now - lastReportTimeMs < 5 * 60 * 1000) {
-      final remMin =
-          ((5 * 60 * 1000 - (now - lastReportTimeMs)) / 60000).ceil();
-      _toast(tr('يرجى الانتظار $remMin دقيقة قبل إرسال بلاغ آخر',
-          'Please wait $remMin min before reporting again'));
+      final remMin = ((5 * 60 * 1000 - (now - lastReportTimeMs)) / 60000)
+          .ceil();
+      _toast(
+        tr(
+          'يرجى الانتظار $remMin دقيقة قبل إرسال بلاغ آخر',
+          'Please wait $remMin min before reporting again',
+        ),
+      );
       return;
     }
     final targetPt = reportPoint ?? me ?? mapController.camera.center;
     me ??= targetPt;
     if (_distanceMeters(me!, targetPt) > 300) {
-      _toast(tr('يرجى الاقتراب من موقع الحدث (ضمن 300 متر)',
-          'Please get closer to incident'));
+      _toast(
+        tr(
+          'يرجى الاقتراب من موقع الحدث (ضمن 300 متر)',
+          'Please get closer to incident',
+        ),
+      );
       return;
     }
     setState(() {
@@ -2937,11 +3807,12 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   }
 
   Future<void> _submitCloudReport(String type, String label) async {
+    if (!await _requireAccount() || !mounted) return;
     final pt = reportPoint ?? me ?? mapController.camera.center;
-    lastReportTimeMs = DateTime.now().millisecondsSinceEpoch;
     setState(() => showRepSheet = false);
     try {
       await FirebaseFirestore.instance.collection('reports').add({
+        'ownerUid': PublicPlaces.uid,
         'type': type,
         'label': label,
         'lat': pt.latitude,
@@ -2950,62 +3821,70 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         'endVotes': 0,
         'createdAt': FieldValue.serverTimestamp(),
       });
-      _toast(tr('تم نشر بلاغ «$label» على الخريطة لجميع السائقين',
-          'Report "$label" published'));
+      lastReportTimeMs = DateTime.now().millisecondsSinceEpoch;
+      _toast(
+        tr(
+          'تم نشر بلاغ «$label» على الخريطة لجميع السائقين',
+          'Report "$label" published',
+        ),
+      );
     } catch (_) {
       _toast(tr('تعذر نشر البلاغ سحابياً', 'Could not publish report'));
     }
   }
 
-  Future<void> _voteReportYes(String id) async {
-    setState(() => selectedReportPopupId = null);
-    final prefs = await SharedPreferences.getInstance();
-    final key = 'dlini_yes_$id';
-    if (prefs.getBool(key) == true) {
-      _toast(tr('لقد قمت بتأكيد هذا البلاغ مسبقاً', 'Already confirmed'));
-      return;
-    }
-    try {
-      await FirebaseFirestore.instance
-          .collection('reports')
-          .doc(id)
-          .update({'confirmations': FieldValue.increment(1)});
-      await prefs.setBool(key, true);
-      _toast(tr('تم تأكيد وجود البلاغ بنجاح', 'Report confirmed'));
-    } catch (_) {}
-  }
+  Future<void> _voteReportYes(String id) => _voteReport(id, 'confirmations');
 
-  Future<void> _voteReportNo(String id, int currentEndVotes) async {
+  Future<void> _voteReportNo(String id, int currentEndVotes) =>
+      _voteReport(id, 'endVotes');
+
+  Future<void> _voteReport(String id, String field) async {
+    if (!await _requireAccount() || !mounted) return;
     setState(() => selectedReportPopupId = null);
-    final prefs = await SharedPreferences.getInstance();
-    final key = 'dlini_no_$id';
-    if (prefs.getBool(key) == true) {
-      _toast(tr('تم تسجيل صوتك مسبقاً', 'Already voted'));
-      return;
-    }
-    final nextVotes = currentEndVotes + 1;
+    final uid = PublicPlaces.uid!;
+    final db = FirebaseFirestore.instance;
+    final report = db.collection('reports').doc(id);
+    final vote = report.collection('votes').doc(uid);
     try {
-      if (nextVotes >= endVotesThreshold) {
-        await FirebaseFirestore.instance.collection('reports').doc(id).delete();
-        _toast(tr('تمت إزالة البلاغ نهائياً', 'Report removed'));
-      } else {
-        await FirebaseFirestore.instance
-            .collection('reports')
-            .doc(id)
-            .update({'endVotes': FieldValue.increment(1)});
-        await prefs.setBool(key, true);
-        _toast(tr(
-            'تم تسجيل صوتك ($nextVotes/$endVotesThreshold)', 'Vote recorded'));
-      }
-    } catch (_) {}
+      final recorded = await db.runTransaction<bool>((tx) async {
+        final previous = await tx.get(vote);
+        final current = await tx.get(report);
+        if (previous.exists || !current.exists) return false;
+        final data = current.data()!;
+        if ((data['endVotes'] as num? ?? 0) >= endVotesThreshold) return false;
+        tx.set(vote, {
+          'kind': field,
+          'createdAt': FieldValue.serverTimestamp(),
+        });
+        tx.update(report, {field: FieldValue.increment(1)});
+        return true;
+      });
+      _toast(
+        recorded
+            ? tr('تم تسجيل صوتك', 'Vote recorded')
+            : tr(
+                'صوّتّ مسبقاً أو انتهى البلاغ',
+                'Already voted or report ended',
+              ),
+      );
+    } catch (_) {
+      _toast(
+        tr(
+          'تعذر تسجيل التصويت، حاول مجدداً',
+          'Could not record vote. Try again',
+        ),
+      );
+    }
   }
 
   void _toggleVoiceState() {
     setState(() => voiceEnabled = !voiceEnabled);
     if (!voiceEnabled) flutterTts.stop();
-    _toast(voiceEnabled
-        ? tr('تم تفعيل المساعد الصوتي', 'Voice assistant on')
-        : tr('تم كتم المساعد الصوتي', 'Voice muted'));
+    _toast(
+      voiceEnabled
+          ? tr('تم تفعيل المساعد الصوتي', 'Voice assistant on')
+          : tr('تم كتم المساعد الصوتي', 'Voice muted'),
+    );
   }
 
   // سياسة خصوصية وأمان موسعة وشاملة جداً
@@ -3013,50 +3892,70 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     Navigator.of(context).maybePop();
     setState(() {
       modalHeaderIcon = Icons.shield_rounded;
-      modalTitle = tr('سياسة الخصوصية والأمان الشاملة',
-          'Comprehensive Privacy & Security Policy');
+      modalTitle = tr(
+        'سياسة الخصوصية والأمان الشاملة',
+        'Comprehensive Privacy & Security Policy',
+      );
       modalSections = [
         {
-          'title': tr('1. بيانات الموقع الجغرافي الحي (GPS)',
-              '1. Real-Time Location Data (GPS)'),
+          'title': tr(
+            '1. بيانات الموقع الجغرافي الحي (GPS)',
+            '1. Real-Time Location Data (GPS)',
+          ),
           'body': tr(
-              'يعتمد تطبيق "دلّيني" على إحداثيات موقعك الجغرافي (GPS) بشكل لحظي ومحلي داخل جهازك لغرض وحيد هو إظهار موقعك على الخريطة، حساب المسارات بدقة، وتقديم التوجيه الصوتي خطوة بخطوة. لا يتم تخزين سجل تحركاتك أو تتبع مساراتك الشخصية على خوادمنا إطلاقاً، ولا نشارك موقعك مع أي طرف ثالث أو جهات إعلانية.',
-              'Dlinii uses your real-time GPS coordinates strictly to display your position, calculate accurate routes, and provide turn-by-turn voice navigation. Your movement history is never stored on our servers or shared with third-party advertisers.')
+            'يعتمد تطبيق "دلّيني" على إحداثيات موقعك الجغرافي (GPS) بشكل لحظي ومحلي داخل جهازك لغرض وحيد هو إظهار موقعك على الخريطة، حساب المسارات بدقة، وتقديم التوجيه الصوتي خطوة بخطوة. لا يتم تخزين سجل تحركاتك أو تتبع مساراتك الشخصية على خوادمنا إطلاقاً، ولا نشارك موقعك مع أي طرف ثالث أو جهات إعلانية.',
+            'Dlinii uses your real-time GPS coordinates strictly to display your position, calculate accurate routes, and provide turn-by-turn voice navigation. Your movement history is never stored on our servers or shared with third-party advertisers.',
+          ),
         },
         {
-          'title': tr('2. نظام البلاغات المرورية التشاركي والمجهول',
-              '2. Anonymous Community Road Reports'),
+          'title': tr(
+            '2. نظام البلاغات المرورية التشاركي والمجهول',
+            '2. Anonymous Community Road Reports',
+          ),
           'body': tr(
-              'عندما تقوم بإرسال تنبيه طريق (مثل: مطب، حفرة، حادث، ازدحام مروري، أو نقطة مرور)، يتم رفع نوع البلاغ وإحداثيات الموقع الجغرافي للحدث فقط إلى قاعدة البيانات السحابية لتنبيه السائقين الآخرين، وذلك بشكل مجهول الهوية تماماً (Anonymous) دون إرفاق اسمك أو رقم هاتفك أو أي معرف شخصي.',
-              'When you submit a road alert (speed bump, pothole, accident, traffic jam, or checkpoint), only the incident type and coordinates are uploaded anonymously to warn other drivers, without any personal identifiers.')
+            'عندما تقوم بإرسال تنبيه طريق (مثل: مطب، حفرة، حادث، ازدحام مروري، أو نقطة مرور)، يتم رفع نوع البلاغ وإحداثيات الموقع الجغرافي للحدث فقط إلى قاعدة البيانات السحابية لتنبيه السائقين الآخرين، وذلك بشكل مجهول الهوية تماماً (Anonymous) دون إرفاق اسمك أو رقم هاتفك أو أي معرف شخصي.',
+            'When you submit a road alert (speed bump, pothole, accident, traffic jam, or checkpoint), only the incident type and coordinates are uploaded anonymously to warn other drivers, without any personal identifiers.',
+          ),
         },
         {
-          'title': tr('3. التخزين المحلي والخرائط بدون إنترنت',
-              '3. Local Storage & Offline Maps'),
+          'title': tr(
+            '3. التخزين المحلي والخرائط بدون إنترنت',
+            '3. Local Storage & Offline Maps',
+          ),
           'body': tr(
-              'تُحفظ تفضيلاتك الشخصية (مثل: الصوت المفضل المثبّت للمساعد الصوتي، الوضع الليلي أو النهاري، لغة التطبيق، وخرائط المحافظات الـ 18 المحمّلة للعمل بدون إنترنت) محلياً داخل ذاكرة هاتفك الآمنة فقط، ولا يمكن لأي جهة خارجية الاطلاع عليها.',
-              'Your preferences (pinned voice assistant, dark/light theme, language, and downloaded offline maps for Iraq\'s 18 governorates) are stored locally on your device.')
+            'تُحفظ تفضيلاتك الشخصية (مثل: الصوت المفضل المثبّت للمساعد الصوتي، الوضع الليلي أو النهاري، لغة التطبيق، وخرائط المحافظات الـ 18 المحمّلة للعمل بدون إنترنت) محلياً داخل ذاكرة هاتفك الآمنة فقط، ولا يمكن لأي جهة خارجية الاطلاع عليها.',
+            'Your preferences (pinned voice assistant, dark/light theme, language, and downloaded offline maps for Iraq\'s 18 governorates) are stored locally on your device.',
+          ),
         },
         {
-          'title': tr('4. ميزة مشاركة الموقع و "دلّي صديق"',
-              '4. Location Sharing & "Guide a Friend"'),
+          'title': tr(
+            '4. ميزة مشاركة الموقع و "دلّي صديق"',
+            '4. Location Sharing & "Guide a Friend"',
+          ),
           'body': tr(
-              'لا يقوم التطبيق بمشاركة موقعك الجغرافي تلقائياً مع أي شخص. تتم عملية مشاركة موقعك الحالي أو إرسال موقع وجهة عبر ميزة "دلّي صديق" حصرياً بإرادتك الكاملة وعند ضغطك المباشر على زر المشاركة لإرسال الرابط عبر تطبيقات المراسلة التي تختارها أنت.',
-              'Dlinii never shares your location automatically. Sharing your current spot or guiding a friend happens strictly when you manually tap the share button.')
+            'لا يقوم التطبيق بمشاركة موقعك الجغرافي تلقائياً مع أي شخص. تتم عملية مشاركة موقعك الحالي أو إرسال موقع وجهة عبر ميزة "دلّي صديق" حصرياً بإرادتك الكاملة وعند ضغطك المباشر على زر المشاركة لإرسال الرابط عبر تطبيقات المراسلة التي تختارها أنت.',
+            'Dlinii never shares your location automatically. Sharing your current spot or guiding a friend happens strictly when you manually tap the share button.',
+          ),
         },
         {
-          'title': tr('5. التشفير وأمان الاتصال السحابي',
-              '5. Encryption & Cloud Security'),
+          'title': tr(
+            '5. التشفير وأمان الاتصال السحابي',
+            '5. Encryption & Cloud Security',
+          ),
           'body': tr(
-              'جميع الاتصالات بين تطبيق "دلّيني" ومحركات البحث الجغرافي والتوجيه وخوادم البلاغات السحابية تتم عبر بروتوكولات اتصال مشفرة بالكامل (HTTPS / TLS) لضمان حماية بياناتك أثناء النقل من أي اعتراض غير مصرح به.',
-              'All communications between Dlinii, routing engines, and cloud report servers are protected using industry-standard HTTPS/TLS encryption.')
+            'جميع الاتصالات بين تطبيق "دلّيني" ومحركات البحث الجغرافي والتوجيه وخوادم البلاغات السحابية تتم عبر بروتوكولات اتصال مشفرة بالكامل (HTTPS / TLS) لضمان حماية بياناتك أثناء النقل من أي اعتراض غير مصرح به.',
+            'All communications between Dlinii, routing engines, and cloud report servers are protected using industry-standard HTTPS/TLS encryption.',
+          ),
         },
         {
-          'title': tr('6. تحكم المستخدم الكامل في الأذونات',
-              '6. Full User Control Over Permissions'),
+          'title': tr(
+            '6. تحكم المستخدم الكامل في الأذونات',
+            '6. Full User Control Over Permissions',
+          ),
           'body': tr(
-              'يمنحك تطبيق "دلّيني" السيطرة الكاملة؛ حيث يمكنك في أي وقت إيقاف صلاحية الوصول إلى الموقع الجغرافي أو الإشعارات من إعدادات هاتفك، أو كتم المساعد الصوتي وحذف الخرائط المحملة من داخل التطبيق بضغطة زر واحدة.',
-              'You retain full control at all times. You can revoke GPS or notification permissions from your device settings, mute voice guidance, or delete offline maps with a single tap.')
+            'يمنحك تطبيق "دلّيني" السيطرة الكاملة؛ حيث يمكنك في أي وقت إيقاف صلاحية الوصول إلى الموقع الجغرافي أو الإشعارات من إعدادات هاتفك، أو كتم المساعد الصوتي وحذف الخرائط المحملة من داخل التطبيق بضغطة زر واحدة.',
+            'You retain full control at all times. You can revoke GPS or notification permissions from your device settings, mute voice guidance, or delete offline maps with a single tap.',
+          ),
         },
       ];
       showModalBox = true;
@@ -3069,330 +3968,682 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     setState(() {
       modalHeaderIcon = Icons.auto_awesome_rounded;
       modalTitle = tr(
-          'عن تطبيق دلّيني ومميزاته الكاملة', 'About Dlinii & Full Features');
+        'عن تطبيق دلّيني ومميزاته الكاملة',
+        'About Dlinii & Full Features',
+      );
       modalSections = [
         {
-          'title': tr('دلّيني – رفيقك الذكي على كل طريق',
-              'Dlinii – Your Smart Companion on Every Road'),
+          'title': tr(
+            'دلّيني – رفيقك الذكي على كل طريق',
+            'Dlinii – Your Smart Companion on Every Road',
+          ),
           'body': tr(
-              'تطبيق "دلّيني" هو نظام ملاحة وخرائط وتنبيهات طرق ذكي صُمم بمعايير عالمية وسلاسة فائقة ليقدم للسائق تجربة قيادة آمنة، عصرية، ومريحة داخل العراق وجميع أنحاء العالم، مع دعم كامل للعمل في كافة الظروف.',
-              'Dlinii is an advanced smart navigation, mapping, and road alert system engineered with ultra-smooth performance to deliver a safe and modern driving experience across Iraq and worldwide.')
-        },
-        {
-          'title': tr('1. خرائط احترافية بالوضع الليلي والنهاري ومنظور 3D',
-              '1. Pro Dark/Light Maps & 3D Driving View'),
-          'body': tr(
-              '• تصميم خريطة ليلي (Dark Mode) فخم ومريح للعين أثناء القيادة الليلية مع إبراز الأنهار باللون الأزرق الفاتح والطرق بتدرجات رصاصية واضحة، مع إمكانية التحويل للخريطة البيضاء النهارية بضغطة زر.\n• دعم منظور القيادة ثلاثي الأبعاد (3D) الذي يميل مع اتجاه حركة السيارة تماماً مثل أرقى أنظمة الملاحة العالمية، مع إمكانية التبديل للمنظور المسطح (2D).',
-              '• Custom eye-friendly Dark Mode map with light-blue rivers and distinct dark-grey roads, plus one-tap switching to Light Mode.\n• Smooth 3D first-person driving perspective that rotates with your vehicle, alongside 2D top-down view.')
+            'تطبيق "دلّيني" هو نظام ملاحة وخرائط وتنبيهات طرق ذكي صُمم بمعايير عالمية وسلاسة فائقة ليقدم للسائق تجربة قيادة آمنة، عصرية، ومريحة داخل العراق وجميع أنحاء العالم، مع دعم كامل للعمل في كافة الظروف.',
+            'Dlinii is an advanced smart navigation, mapping, and road alert system engineered with ultra-smooth performance to deliver a safe and modern driving experience across Iraq and worldwide.',
+          ),
         },
         {
           'title': tr(
-              '2. المساعد الصوتي الذكي (فتاة / رجل) مع ميزة تثبيت الصوت',
-              '2. Smart Voice Assistant (Female/Male) & Voice Pinning'),
+            '1. خرائط احترافية بالوضع الليلي والنهاري ومنظور 3D',
+            '1. Pro Dark/Light Maps & 3D Driving View',
+          ),
           'body': tr(
-              '• توجيه صوتي نقي وواضح باللغتين العربية والإنجليزية، مع نطق مشكّل بالحركات الدقيقة لضمان فصاحة ووضوح التوجيهات.\n• إمكانية التبديل الفوري بين (صوت فتاة) و (صوت رجل)، والتحكم بسرعة التحدث (هادئ، طبيعي، سريع).\n• ميزة "تثبيت الصوت 📌" التي تحفظ صوتك المفضل في ذاكرة الهاتف ليظل ثابتاً معك دائماً حتى بعد إغلاق التطبيق.',
-              '• Studio-clear voice guidance in both Arabic and English.\n• Instant switching between Female and Male voices with adjustable speech speed.\n• "Pin Voice 📌" feature that permanently locks your favorite voice across app restarts.')
-        },
-        {
-          'title': tr('3. كشف الازدحامات المرورية وتنبيهات المخاطر الحية',
-              '3. Real-Time Traffic & Road Hazard Alerts'),
-          'body': tr(
-              '• يلوّن التطبيق مقاطع المسار تلقائياً بناءً على البيانات الحقيقية: الأخضر الزمردي للطرق السالكة، الأصفر لمناطق الحوادث والحفريات والمطبات، والأحمر لمناطق الازدحام المروري.\n• نظام بلاغات تشاركي يتيح للسائقين الإبلاغ الفوري عن (مطب، حفرة، حادث، ازدحام، نقطة مرور، أو خطر) مع تنبيه صوتي تلقائي قبل الوصول للخطر، ونظام تصويت ذكي (موجود / منتهي) يحذف البلاغ تلقائياً عند انتهائه.',
-              '• Color-coded route segments based on real data: Emerald Green for clear roads, Yellow for hazards/accidents, and Red for traffic jams.\n• Community reporting system for speed bumps, potholes, crashes, and checkpoints with automatic voice warnings and smart crowd-voting.')
-        },
-        {
-          'title': tr('4. ميزة "اكتشف ما حولك" المرتبة حسب الأقرب إليك',
-              '4. "Explore Nearby" Sorted by Closest Distance'),
-          'body': tr(
-              '• شريط وصول سريع لاكتشاف الخدمات المحيطة بك: (مطاعم، مستشفيات، محطات وقود، شواحن كهربائية، مساجد، بنوك، ومراكز تسوق).\n• يقوم التطبيق بجلب الأماكن المحيطة بموقعك وترتيبها تصاعدياً من الأقرب إليك بالكيلومتر، مع إمكانية عرضها جميعاً على الخريطة أو الانطلاق لأي منها بضغطة واحدة.',
-              '• Quick-access bar to discover nearby restaurants, hospitals, fuel stations, EV chargers, mosques, banks, and shopping centers—automatically sorted from closest to farthest.')
+            '• تصميم خريطة ليلي (Dark Mode) فخم ومريح للعين أثناء القيادة الليلية مع إبراز الأنهار باللون الأزرق الفاتح والطرق بتدرجات رصاصية واضحة، مع إمكانية التحويل للخريطة البيضاء النهارية بضغطة زر.\n• دعم منظور القيادة ثلاثي الأبعاد (3D) الذي يميل مع اتجاه حركة السيارة تماماً مثل أرقى أنظمة الملاحة العالمية، مع إمكانية التبديل للمنظور المسطح (2D).',
+            '• Custom eye-friendly Dark Mode map with light-blue rivers and distinct dark-grey roads, plus one-tap switching to Light Mode.\n• Smooth 3D first-person driving perspective that rotates with your vehicle, alongside 2D top-down view.',
+          ),
         },
         {
           'title': tr(
-              '5. ميزة "دلّي صديق" ومشاركة موقعي وخرائط الـ 18 محافظة بدون نت',
-              '5. "Guide a Friend", Live Location & 18 Offline Province Maps'),
+            '2. المساعد الصوتي الذكي (فتاة / رجل) مع ميزة تثبيت الصوت',
+            '2. Smart Voice Assistant (Female/Male) & Voice Pinning',
+          ),
           'body': tr(
-              '• مشاركة موقعك الحالي المباشر مع أصدقائك، أو استخدام ميزة "دلّي صديق على مكان" لتحديد أي نقطة على الخريطة وإرسالها لصديقك ليرسم له تطبيق "دلّيني" المسار إليها تلقائياً.\n• ميزة تحميل خرائط جميع محافظات العراق الـ 18 كاملة للعمل بكفاءة عالية حتى عند انقطاع اتصال الإنترنت في الطرق الخارجية.',
-              '• Share your live GPS spot or use "Guide a Friend" to send any pinned destination so Dlinii plots the route for your friend automatically.\n• Downloadable offline maps for all 18 Iraqi governorates.')
+            '• توجيه صوتي نقي وواضح باللغتين العربية والإنجليزية، مع نطق مشكّل بالحركات الدقيقة لضمان فصاحة ووضوح التوجيهات.\n• إمكانية التبديل الفوري بين (صوت فتاة) و (صوت رجل)، والتحكم بسرعة التحدث (هادئ، طبيعي، سريع).\n• ميزة "تثبيت الصوت 📌" التي تحفظ صوتك المفضل في ذاكرة الهاتف ليظل ثابتاً معك دائماً حتى بعد إغلاق التطبيق.',
+            '• Studio-clear voice guidance in both Arabic and English.\n• Instant switching between Female and Male voices with adjustable speech speed.\n• "Pin Voice 📌" feature that permanently locks your favorite voice across app restarts.',
+          ),
+        },
+        {
+          'title': tr(
+            '3. كشف الازدحامات المرورية وتنبيهات المخاطر الحية',
+            '3. Real-Time Traffic & Road Hazard Alerts',
+          ),
+          'body': tr(
+            '• يلوّن التطبيق مقاطع المسار تلقائياً بناءً على البيانات الحقيقية: الأخضر الزمردي للطرق السالكة، الأصفر لمناطق الحوادث والحفريات والمطبات، والأحمر لمناطق الازدحام المروري.\n• نظام بلاغات تشاركي يتيح للسائقين الإبلاغ الفوري عن (مطب، حفرة، حادث، ازدحام، نقطة مرور، أو خطر) مع تنبيه صوتي تلقائي قبل الوصول للخطر، ونظام تصويت ذكي (موجود / منتهي) يحذف البلاغ تلقائياً عند انتهائه.',
+            '• Color-coded route segments based on real data: Emerald Green for clear roads, Yellow for hazards/accidents, and Red for traffic jams.\n• Community reporting system for speed bumps, potholes, crashes, and checkpoints with automatic voice warnings and smart crowd-voting.',
+          ),
+        },
+        {
+          'title': tr(
+            '4. ميزة "اكتشف ما حولك" المرتبة حسب الأقرب إليك',
+            '4. "Explore Nearby" Sorted by Closest Distance',
+          ),
+          'body': tr(
+            '• شريط وصول سريع لاكتشاف الخدمات المحيطة بك: (مطاعم، مستشفيات، محطات وقود، شواحن كهربائية، مساجد، بنوك، ومراكز تسوق).\n• يقوم التطبيق بجلب الأماكن المحيطة بموقعك وترتيبها تصاعدياً من الأقرب إليك بالكيلومتر، مع إمكانية عرضها جميعاً على الخريطة أو الانطلاق لأي منها بضغطة واحدة.',
+            '• Quick-access bar to discover nearby restaurants, hospitals, fuel stations, EV chargers, mosques, banks, and shopping centers—automatically sorted from closest to farthest.',
+          ),
+        },
+        {
+          'title': tr(
+            '5. ميزة "دلّي صديق" ومشاركة موقعي وخرائط الـ 18 محافظة بدون نت',
+            '5. "Guide a Friend", Live Location & 18 Offline Province Maps',
+          ),
+          'body': tr(
+            '• مشاركة موقعك الحالي المباشر مع أصدقائك، أو استخدام ميزة "دلّي صديق على مكان" لتحديد أي نقطة على الخريطة وإرسالها لصديقك ليرسم له تطبيق "دلّيني" المسار إليها تلقائياً.\n• ميزة تحميل خرائط جميع محافظات العراق الـ 18 كاملة للعمل بكفاءة عالية حتى عند انقطاع اتصال الإنترنت في الطرق الخارجية.',
+            '• Share your live GPS spot or use "Guide a Friend" to send any pinned destination so Dlinii plots the route for your friend automatically.\n• Downloadable offline maps for all 18 Iraqi governorates.',
+          ),
         },
       ];
       showModalBox = true;
     });
   }
 
-  void _openVoiceModal() {
-    Navigator.of(context).maybePop();
-    setState(() {
-      showVoiceModal = true;
-    });
+  void _openQuickPlace(String shortcut) {
+    for (final place in _places) {
+      if (place['shortcut'] == shortcut) {
+        setState(() {
+          dest = LatLng(
+            (place['lat'] as num).toDouble(),
+            (place['lng'] as num).toDouble(),
+          );
+          destName = place['name'].toString();
+          destController.text = destName;
+        });
+        _planRoute();
+        return;
+      }
+    }
+    _placeDraft = {
+      'shortcut': shortcut,
+      'name': shortcut == 'home' ? tr('المنزل', 'Home') : tr('العمل', 'Work'),
+      'category': 'other',
+    };
+    _namePlace(me ?? mapController.camera.center);
   }
 
-  void _openOfflineMapsModal() {
-    Navigator.of(context).maybePop();
+  double _homeExtent = .30;
+
+  bool _routeBusy = false;
+
+  void _pickFromHome(String mode) {
+    FocusScope.of(context).unfocus();
     setState(() {
-      showOfflineMapsModal = true;
+      pickMode = mode;
+      showSearchList = false;
     });
+    _toast(
+      tr('المس النقطة المطلوبة على الخريطة', 'Tap the location on the map'),
+    );
   }
 
-  Widget _buildStandardAppDrawer() {
-    return Drawer(
-      backgroundColor: panelColor,
-      width: 285,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.horizontal(
-          left: Radius.circular(24),
-          right: Radius.circular(0),
+  Widget _homeRow(
+    String title,
+    String subtitle,
+    IconData icon,
+    VoidCallback action,
+  ) => Padding(
+    padding: const EdgeInsets.only(bottom: 2),
+    child: Material(
+      color: landColor,
+      borderRadius: DliniiBrand.cardShape,
+      child: ListTile(
+        onTap: action,
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        leading: Container(
+          width: 44,
+          height: 44,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: accentColor.withValues(alpha: .12),
+            borderRadius: BorderRadius.circular(15),
+          ),
+          child: DliniiAppIcon(icon, color: accentColor, size: 23),
+        ),
+        title: Text(
+          title,
+          style: TextStyle(
+            color: textColor,
+            fontSize: 16,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        subtitle: subtitle.isEmpty
+            ? null
+            : Text(subtitle, style: TextStyle(color: subColor, fontSize: 12)),
+        trailing: DliniiAppIcon(
+          Icons.arrow_forward_ios_rounded,
+          color: subColor,
+          size: 15,
         ),
       ),
-      child: Column(
-        children: [
-          Container(
-            width: double.infinity,
-            padding: EdgeInsets.only(
-              top: MediaQuery.of(context).padding.top + 20,
-              bottom: 20,
-              left: 20,
-              right: 20,
-            ),
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                colors: [Color(0xFF087e76), Color(0xFF12302d)],
-                begin: Alignment.topRight,
-                end: Alignment.bottomLeft,
-              ),
-            ),
-            child: Row(
-              children: [
-                ClipRRect(
-                    borderRadius: BorderRadius.circular(12),
-                    child: Image.asset('assets/images/dlinii_icon.png',
-                        width: 44, height: 44, fit: BoxFit.cover)),
-                const SizedBox(width: 14),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+    ),
+  );
+
+  void _openHomeMenu() {
+    FocusScope.of(context).unfocus();
+    if (isEnglish) {
+      _scaffoldKey.currentState?.openEndDrawer();
+    } else {
+      _scaffoldKey.currentState?.openDrawer();
+    }
+  }
+
+  ThemeData get _interfaceTheme => ThemeData(
+    useMaterial3: true,
+    fontFamily: 'Tajawal',
+    brightness: isDark ? Brightness.dark : Brightness.light,
+    colorScheme: ColorScheme.fromSeed(
+      seedColor: DliniiBrand.teal,
+      brightness: isDark ? Brightness.dark : Brightness.light,
+      surface: panelColor,
+    ),
+    scaffoldBackgroundColor: panelColor,
+  );
+
+  void _openHomeSettings() {
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      showDragHandle: false,
+      backgroundColor: Colors.transparent,
+      builder: (sheetContext) => StatefulBuilder(
+        builder: (_, refresh) => Theme(
+          data: _interfaceTheme,
+          child: ColoredBox(
+            color: panelColor,
+            child: Directionality(
+              textDirection: isEnglish ? TextDirection.ltr : TextDirection.rtl,
+              child: SafeArea(
+                child: SizedBox(
+                  height: MediaQuery.sizeOf(context).height * .80,
+                  child: ListView(
+                    padding: const EdgeInsets.all(24),
                     children: [
+                      _homeRow(
+                        tr('حسابي', 'My account'),
+                        tr(
+                          'البريد وكلمة المرور وملكية الأماكن',
+                          'Email, password and place ownership',
+                        ),
+                        Icons.person_outline,
+                        _accountAction,
+                      ),
                       Text(
-                        tr('تطبيق دلّيني', 'Dlinii App'),
-                        style: const TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.w900,
-                          color: Colors.white,
+                        tr('الإعدادات', 'Settings'),
+                        style: TextStyle(
+                          color: textColor,
+                          fontSize: 28,
+                          fontWeight: FontWeight.w800,
                         ),
                       ),
-                      const SizedBox(height: 3),
+                      const SizedBox(height: 26),
                       Text(
-                        tr('رفيقك الذكي على الطريق', 'Your Smart Road Guide'),
-                        style: const TextStyle(
-                          fontSize: 12,
-                          color: Color(0xFF9cdbc0),
-                          fontWeight: FontWeight.w500,
+                        tr('اللغة', 'Language'),
+                        style: TextStyle(color: textColor, fontSize: 18),
+                      ),
+                      const SizedBox(height: 12),
+                      SegmentedButton<bool>(
+                        segments: const [
+                          ButtonSegment(value: false, label: Text('العربية')),
+                          ButtonSegment(value: true, label: Text('English')),
+                        ],
+                        selected: {isEnglish},
+                        showSelectedIcon: false,
+                        onSelectionChanged: (values) async {
+                          if (values.first != isEnglish)
+                            await _toggleLanguage();
+                          if (sheetContext.mounted) refresh(() {});
+                        },
+                      ),
+                      const SizedBox(height: 26),
+                      Text(
+                        tr('مظهر الخريطة', 'Map appearance'),
+                        style: TextStyle(color: textColor, fontSize: 18),
+                      ),
+                      const SizedBox(height: 12),
+                      SegmentedButton<bool>(
+                        segments: [
+                          ButtonSegment(
+                            value: false,
+                            label: Text(tr('نهاري', 'Day')),
+                          ),
+                          ButtonSegment(
+                            value: true,
+                            label: Text(tr('ليلي', 'Night')),
+                          ),
+                        ],
+                        selected: {isDark},
+                        showSelectedIcon: false,
+                        onSelectionChanged: (values) async {
+                          setState(() => isDark = values.first);
+                          refresh(() {});
+                          final prefs = await SharedPreferences.getInstance();
+                          await prefs.setBool(
+                            'dlini_is_dark_default_v2',
+                            isDark,
+                          );
+                        },
+                      ),
+                      const SizedBox(height: 26),
+                      SwitchListTile.adaptive(
+                        value: voiceEnabled,
+                        activeTrackColor: accentColor,
+                        title: Text(
+                          tr('التوجيه الصوتي', 'Voice guidance'),
+                          style: TextStyle(color: textColor),
                         ),
+                        onChanged: (_) {
+                          _toggleVoiceState();
+                          refresh(() {});
+                        },
+                      ),
+                      _homeRow(
+                        tr('الصوت وسرعة التحدث', 'Voice & speaking speed'),
+                        '',
+                        Icons.record_voice_over_rounded,
+                        () {
+                          Navigator.pop(sheetContext);
+                          setState(() => showVoiceModal = true);
+                        },
+                      ),
+                      const SizedBox(height: 20),
+                      _homeRow(
+                        tr('أماكني والسجل', 'My places & history'),
+                        tr(
+                          'عرض الأماكن المحفوظة وحذفها',
+                          'View and delete saved places',
+                        ),
+                        Icons.star_rounded,
+                        () {
+                          Navigator.pop(sheetContext);
+                          _showPlaces();
+                        },
                       ),
                     ],
                   ),
                 ),
-              ],
+              ),
             ),
           ),
-          Expanded(
-            child: ListView(
-              padding: const EdgeInsets.symmetric(vertical: 8),
-              children: [
-                _buildDrawerTile(
-                  icon: Icons.cloud_download_rounded,
-                  iconColor: const Color(0xFF10b981),
-                  title: tr('خرائط بدون نت (18 محافظة)',
-                      'Offline Maps (18 Provinces)'),
-                  subtitle: tr(
-                      'حمل خريطة محافظتك لتعمل بدون إنترنت (${downloadedProvinces.length}/18)',
-                      'Download governorate map for offline use'),
-                  onTap: _openOfflineMapsModal,
-                ),
-                Divider(
-                    color: lineColor, height: 16, indent: 16, endIndent: 16),
-                _buildDrawerTile(
-                  icon: Icons.my_location_rounded,
-                  iconColor: const Color(0xFF087e76),
-                  title: tr('مشاركة موقعي الحالي', 'Share My Location'),
-                  subtitle: tr('إرسال موقعك المباشر عبر تطبيق دلّيني',
-                      'Share your live location via Dlinii'),
-                  onTap: () {
-                    Navigator.of(context).pop();
-                    _shareMyCurrentLocation();
-                  },
-                ),
-                _buildDrawerTile(
-                  icon: Icons.pin_drop_rounded,
-                  iconColor: const Color(0xFFd99b26),
-                  title: tr('دلّي صديق على مكان', 'Guide a Friend'),
-                  subtitle: tr('حدد وجهة ليرسم له المسار إليها مباشرة',
-                      'Pick a spot on map to guide friend'),
-                  onTap: () {
-                    Navigator.of(context).pop();
-                    setState(() {
-                      pickMode = 'share_spot';
-                      showSearchList = false;
-                    });
-                    _toast(tr('اضغط على المكان المراد إرساله لصديقك بالخريطة',
-                        'Tap the spot on the map to guide your friend'));
-                  },
-                ),
-                _buildDrawerTile(
-                  icon: Icons.content_paste_go_rounded,
-                  iconColor: const Color(0xFF38BDF8),
-                  title: tr('فتح موقع مرسل من صديق', 'Open Friend Shared Link'),
-                  subtitle: tr('افتح أي رابط أو رسالة موقع نسختها فوراً',
-                      'Paste & open copied location message'),
-                  onTap: () async {
-                    Navigator.of(context).pop();
-                    final data = await Clipboard.getData(Clipboard.kTextPlain);
-                    final txt = data?.text ?? '';
-                    if (!_parseAndOpenSharedText(txt)) {
-                      _toast(tr(
-                          'انسخ رسالة الموقع من واتساب أولاً ثم اضغط هنا ليفتح فوراً',
-                          'Copy the location message from WhatsApp first'));
-                    }
-                  },
-                ),
-                Divider(
-                    color: lineColor, height: 16, indent: 16, endIndent: 16),
-                _buildDrawerTile(
-                  icon: Icons.record_voice_over_rounded,
-                  iconColor: const Color(0xFF087e76),
-                  title: tr('المساعد الصوتي (عربي / أجنبي)', 'Voice Assistant'),
-                  subtitle:
-                      isEnglish ? currentVoice.nameEn : currentVoice.nameAr,
-                  onTap: _openVoiceModal,
-                ),
-                _buildDrawerTile(
-                  icon: Icons.translate_rounded,
-                  iconColor: const Color(0xFF2563eb),
-                  title: tr('لغة التطبيق: العربية', 'App Language: English'),
-                  subtitle: tr(
-                      'اضغط للتحويل إلى الإنجليزية', 'Tap to switch to Arabic'),
-                  onTap: () {
-                    Navigator.of(context).pop();
-                    _toggleLanguage();
-                  },
-                ),
-                _buildDrawerTile(
-                  icon:
-                      isDark ? Icons.wb_sunny_rounded : Icons.dark_mode_rounded,
-                  iconColor: isDark
-                      ? const Color(0xFFefbb52)
-                      : const Color(0xFF087e76),
-                  title: tr(
-                      isDark
-                          ? 'الوضع النهاري (الخريطة البيضاء)'
-                          : 'الوضع الليلي (الخريطة السوداء)',
-                      isDark ? 'Light Map Mode' : 'Dark Map Mode'),
-                  subtitle: tr(
-                      'تغيير مظهر الخريطة والقوائم', 'Switch map & UI theme'),
-                  onTap: () async {
-                    Navigator.of(context).pop();
-                    setState(() => isDark = !isDark);
-                    final prefs = await SharedPreferences.getInstance();
-                    await prefs.setBool('dlini_is_dark_default_v2', isDark);
-                  },
-                ),
-                Divider(
-                    color: lineColor, height: 16, indent: 16, endIndent: 16),
-                _buildDrawerTile(
-                  icon: Icons.star_rounded,
-                  iconColor: const Color(0xFFefbb52),
-                  title: tr('تقييم تطبيق دلّيني', 'Rate Dlinii App'),
-                  subtitle: tr(
-                      'ادعمنا بتقييمك على المتجر', 'Support us on the store'),
-                  onTap: () {
-                    Navigator.of(context).pop();
-                    setState(() {
-                      selectedStars = 5;
-                      showRateModal = true;
-                    });
-                  },
-                ),
-                _buildDrawerTile(
-                  icon: Icons.share_rounded,
-                  iconColor: const Color(0xFF087e76),
-                  title: tr('مشاركة تطبيق دلّيني', 'Share Dlinii App'),
-                  subtitle:
-                      tr('أرسل التطبيق لأصدقائك', 'Share app with friends'),
-                  onTap: () {
-                    Navigator.of(context).pop();
-                    Share.share(tr(
-                        'حمّل تطبيق "دلّيني" للملاحة الذكية وتنبيهات الطرق:\n$playStoreUrl',
-                        'Download "Dlinii" smart navigation app:\n$playStoreUrl'));
-                  },
-                ),
-                _buildDrawerTile(
-                  icon: Icons.verified_user_rounded,
-                  iconColor: const Color(0xFF087e76),
-                  title:
-                      tr('سياسة الخصوصية والأمان', 'Privacy & Security Policy'),
-                  subtitle: tr('تفاصيل حماية البيانات والموقع الجغرافي',
-                      'Detailed data & GPS privacy'),
-                  onTap: _openPrivacyModal,
-                ),
-                _buildDrawerTile(
-                  icon: Icons.info_outline_rounded,
-                  iconColor: const Color(0xFFd99b26),
-                  title:
-                      tr('عن تطبيق دلّيني ومميزاته', 'About Dlinii & Features'),
-                  subtitle: tr('شرح شامل لجميع مميزات وخصائص النظام',
-                      'Full guide to all app features'),
-                  onTap: _openAboutModal,
-                ),
-              ],
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.all(14),
-            child: Text(
-              tr('دلّيني © رفيقك على طريقك', 'Dlinii © Your Road Companion'),
-              style: TextStyle(
-                  fontSize: 11, color: subColor, fontWeight: FontWeight.w600),
-            ),
-          ),
-        ],
+        ),
       ),
     );
   }
 
-  Widget _buildDrawerTile({
-    required IconData icon,
-    required Color iconColor,
-    required String title,
-    required String subtitle,
-    required VoidCallback onTap,
-  }) {
-    return ListTile(
-      onTap: onTap,
-      contentPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 2),
-      leading: Container(
-        width: 40,
-        height: 40,
-        decoration: BoxDecoration(
-          color: iconColor.withOpacity(0.12),
-          borderRadius: BorderRadius.circular(11),
+  Widget _buildHomeSheet() =>
+      NotificationListener<DraggableScrollableNotification>(
+        onNotification: (notice) {
+          if ((_homeExtent - notice.extent).abs() > .005)
+            setState(() => _homeExtent = notice.extent);
+          return false;
+        },
+        child: DliniiSheet(
+          builder: (context, scroll, expand) => Align(
+            alignment: Alignment.bottomCenter,
+            child: Container(
+              constraints: const BoxConstraints(maxWidth: 540),
+              decoration: BoxDecoration(
+                color: panelColor,
+                borderRadius: const BorderRadius.vertical(
+                  top: Radius.circular(30),
+                ),
+                border: Border.all(color: lineColor),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: .18),
+                    blurRadius: 25,
+                  ),
+                ],
+              ),
+              child: ListView(
+                controller: scroll,
+                padding: EdgeInsets.fromLTRB(
+                  20,
+                  10,
+                  20,
+                  24 + MediaQuery.paddingOf(context).bottom,
+                ),
+                children: [
+                  Center(
+                    child: Container(
+                      width: 38,
+                      height: 5,
+                      decoration: BoxDecoration(
+                        color: subColor.withValues(alpha: .4),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 18),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 8,
+                    ),
+                    decoration: BoxDecoration(
+                      color: landColor,
+                      borderRadius: BorderRadius.circular(24),
+                    ),
+                    child: Row(
+                      children: [
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(10),
+                          child: Image.asset(
+                            'assets/images/dlinii_icon.png',
+                            width: 30,
+                            height: 30,
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: TextField(
+                            controller: destController,
+                            style: TextStyle(color: textColor, fontSize: 17),
+                            onTap: expand,
+                            onChanged: (v) => _onSearchChanged(v, 'q'),
+                            decoration: InputDecoration(
+                              hintText: tr('وين نوصلك؟', 'Where shall we go?'),
+                              hintStyle: TextStyle(color: subColor),
+                              border: InputBorder.none,
+                            ),
+                          ),
+                        ),
+                        _compactSearchAction(
+                          'mic',
+                          tr('بحث صوتي بالعربية', 'Arabic voice search'),
+                          _toggleVoiceSearch,
+                          active: isListeningVoice,
+                        ),
+                        _compactSearchAction(
+                          'paste',
+                          tr('لصق موقع', 'Paste location'),
+                          _pasteLocation,
+                        ),
+                      ],
+                    ),
+                  ),
+                  if (showSearchList) ...[
+                    const SizedBox(height: 12),
+                    if (searchResults.isEmpty)
+                      Padding(
+                        padding: const EdgeInsets.all(16),
+                        child: Text(
+                          tr('لا توجد نتائج مطابقة', 'No matching results'),
+                          style: TextStyle(color: subColor),
+                        ),
+                      ),
+                    for (final item in searchResults)
+                      ListTile(
+                        leading: DliniiAppIcon(
+                          Icons.pin_drop_rounded,
+                          color: accentColor,
+                          size: 23,
+                        ),
+                        title: Text(
+                          (item['name'] ?? item['display_name'] ?? '')
+                              .toString()
+                              .split(',')
+                              .first,
+                          style: TextStyle(color: textColor),
+                        ),
+                        subtitle: Text(
+                          _fmtSearchDist(item) +
+                              (item['display_name'] ?? '').toString(),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(color: subColor, fontSize: 12),
+                        ),
+                        onTap: () {
+                          final lat = double.tryParse(item['lat'].toString()),
+                              lng = double.tryParse(item['lon'].toString());
+                          if (lat == null ||
+                              lng == null ||
+                              !lat.isFinite ||
+                              !lng.isFinite ||
+                              lat.abs() > 90 ||
+                              lng.abs() > 180)
+                            return;
+                          FocusScope.of(context).unfocus();
+                          if (activeSearchField == 'origin') {
+                            setState(() {
+                              origin = LatLng(lat, lng);
+                              originController.text =
+                                  (item['name'] ?? item['display_name'] ?? '')
+                                      .toString()
+                                      .split(',')
+                                      .first;
+                              showSearchList = false;
+                            });
+                            if (dest != null) _planRoute();
+                            return;
+                          }
+                          setState(() {
+                            dest = LatLng(lat, lng);
+                            destName =
+                                (item['name'] ?? item['display_name'] ?? '')
+                                    .toString()
+                                    .split(',')
+                                    .first;
+                            destController.text = destName;
+                            showSearchList = false;
+                          });
+                          _planRoute();
+                        },
+                      ),
+                  ],
+                  const SizedBox(height: 18),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _placeAction(
+                          tr('أماكني', 'My places'),
+                          Icons.star_rounded,
+                          _showPlaces,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: _placeAction(
+                          tr('تحديد وجهة', 'Pick destination'),
+                          Icons.pin_drop_rounded,
+                          () => _pickFromHome('dest'),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _placeAction(
+                          tr('المنزل', 'Home'),
+                          Icons.home_rounded,
+                          () => _openQuickPlace('home'),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: _placeAction(
+                          tr('العمل', 'Work'),
+                          Icons.work_rounded,
+                          () => _openQuickPlace('work'),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 26),
+                  Text(
+                    tr('محطات على طريقك', 'Stops along your way'),
+                    style: TextStyle(
+                      color: textColor,
+                      fontSize: 23,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                  const SizedBox(height: 18),
+                  LayoutBuilder(
+                    builder: (_, box) => Wrap(
+                      spacing: 10,
+                      runSpacing: 10,
+                      children: [
+                        for (final cat in kExploreCategories)
+                          SizedBox(
+                            width: box.maxWidth < 280
+                                ? box.maxWidth
+                                : (box.maxWidth - 10) / 2,
+                            child: DliniiExploreTile(
+                              dark: isDark,
+                              label: isEnglish ? cat.nameEn : cat.nameAr,
+                              hint: tr('اعرض الأقرب', 'Find nearby'),
+                              icon: DliniiPlaceBadge(
+                                const {
+                                      'restaurants': 'restaurant',
+                                      'hospitals': 'hospital',
+                                      'chargers': 'charging',
+                                      'mosques': 'mosque',
+                                      'banks': 'bank',
+                                    }[cat.id] ??
+                                    cat.id,
+                                size: 38,
+                              ),
+                              onTap: () => _openAndFetchCategory(cat),
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  _homeRow(
+                    tr('خرائط دون اتصال', 'Offline maps'),
+                    tr('إدارة الخرائط المحفوظة', 'Manage saved maps'),
+                    Icons.cloud_download_rounded,
+                    () => setState(() => showOfflineMapsModal = true),
+                  ),
+                  _homeRow(
+                    tr('إضافة مكان', 'Add a place'),
+                    tr(
+                      'انشر مكاناً للجميع بحسابك',
+                      'Publish a place with your account',
+                    ),
+                    Icons.add_rounded,
+                    () => _namePlace(me ?? mapController.camera.center),
+                  ),
+                  _homeRow(
+                    tr('دلّي صديق', 'Guide a friend'),
+                    tr('شارك مكاناً بسهولة', 'Share a destination'),
+                    Icons.share_rounded,
+                    () => _pickFromHome('share_spot'),
+                  ),
+                  ExpansionTile(
+                    title: Text(
+                      tr('نقطة الانطلاق', 'Starting point'),
+                      style: TextStyle(color: textColor),
+                    ),
+                    children: [
+                      TextField(
+                        controller: originController,
+                        style: TextStyle(color: textColor),
+                        decoration: InputDecoration(
+                          hintText: tr('موقعي الحالي', 'Current location'),
+                        ),
+                        onChanged: (v) => _onSearchChanged(v, 'origin'),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
         ),
-        alignment: Alignment.center,
-        child: Icon(icon, color: iconColor, size: 22),
-      ),
-      title: Text(
-        title,
-        style: TextStyle(
-          fontSize: 13.5,
-          fontWeight: FontWeight.w800,
-          color: textColor,
+      );
+
+  Widget _buildStandardAppDrawer() {
+    void open(VoidCallback action) {
+      Navigator.of(context).pop();
+      action();
+    }
+
+    DliniiMenuEntry entry(
+      String ar,
+      String en,
+      IconData icon,
+      VoidCallback action, [
+      String detail = '',
+    ]) => DliniiMenuEntry(
+      label: tr(ar, en),
+      detail: detail,
+      icon: DliniiAppIcon(icon, color: accentColor, size: 23),
+      onTap: action,
+    );
+    return DliniiSideMenu(
+      dark: isDark,
+      english: isEnglish,
+      onClose: () => Navigator.of(context).pop(),
+      entries: [
+        entry(
+          'أماكني ورحلاتي',
+          'My places & journeys',
+          Icons.star_rounded,
+          () => open(_showPlaces),
         ),
-      ),
-      subtitle: Text(
-        subtitle,
-        style: TextStyle(fontSize: 11, color: subColor),
-      ),
-      trailing:
-          Icon(Icons.arrow_forward_ios_rounded, size: 13, color: subColor),
+        entry(
+          'إضافة مكان',
+          'Add a place',
+          Icons.add_rounded,
+          () => open(() => _namePlace(me ?? mapController.camera.center)),
+        ),
+        entry(
+          'خرائطي المحفوظة',
+          'Saved maps',
+          Icons.cloud_download_rounded,
+          () => open(() => setState(() => showOfflineMapsModal = true)),
+        ),
+        entry(
+          'دلّي صديق',
+          'Guide a friend',
+          Icons.send_rounded,
+          () => open(() => _pickFromHome('share_spot')),
+          tr(
+            'مكان منك… والطريق من دلّيني',
+            'Your destination. Dlinii directions.',
+          ),
+        ),
+        entry(
+          'شارك موقعي',
+          'Share my location',
+          Icons.share_location_rounded,
+          () => open(_shareMyCurrentLocation),
+        ),
+        entry(
+          'افتح رابط موقع',
+          'Open a location link',
+          Icons.content_paste_go_rounded,
+          () => open(_pasteLocation),
+        ),
+        entry(
+          'ضبط رحلتك',
+          'Journey settings',
+          Icons.tune_rounded,
+          () => open(_openHomeSettings),
+        ),
+        entry(
+          'صوت دلّيني',
+          'Dlinii voice',
+          Icons.record_voice_over_rounded,
+          () => open(() => setState(() => showVoiceModal = true)),
+        ),
+        entry(
+          'الخصوصية',
+          'Privacy',
+          Icons.verified_user_rounded,
+          _openPrivacyModal,
+        ),
+        entry(
+          'عن دلّيني',
+          'About Dlinii',
+          Icons.info_outline_rounded,
+          _openAboutModal,
+        ),
+      ],
     );
   }
 
@@ -3407,40 +4658,366 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       ],
       child: Directionality(
         textDirection: outerDir,
-        child: Builder(builder: _buildMain),
+        child: Theme(
+          data: _interfaceTheme,
+          child: Builder(builder: _buildMain),
+        ),
       ),
     );
   }
 
+  Widget _panelShell(
+    String title,
+    String subtitle,
+    Widget body,
+    VoidCallback close, {
+    double height = .78,
+  }) => Positioned.fill(
+    child: Material(
+      color: Colors.black54,
+      child: SafeArea(
+        child: Center(
+          child: Container(
+            width: 540,
+            height: MediaQuery.sizeOf(context).height * height,
+            margin: const EdgeInsets.all(16),
+            clipBehavior: Clip.antiAlias,
+            decoration: BoxDecoration(
+              color: panelColor,
+              borderRadius: BorderRadius.circular(28),
+              border: Border.all(color: lineColor),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 20, 12, 8),
+                  child: Row(
+                    children: [
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(12),
+                        child: Image.asset(
+                          'assets/images/dlinii_icon.png',
+                          width: 40,
+                          height: 40,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          title,
+                          style: TextStyle(
+                            color: textColor,
+                            fontSize: 21,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                      ),
+                      IconButton(
+                        tooltip: tr('إغلاق', 'Close'),
+                        onPressed: close,
+                        icon: DliniiAppIcon(
+                          Icons.close_rounded,
+                          color: textColor,
+                          size: 22,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 22,
+                    vertical: 8,
+                  ),
+                  child: Text(
+                    subtitle,
+                    style: TextStyle(color: subColor, height: 1.5),
+                  ),
+                ),
+                Expanded(child: body),
+              ],
+            ),
+          ),
+        ),
+      ),
+    ),
+  );
+
+  Widget _explorePanel() {
+    final category = kExploreCategories.firstWhere(
+      (c) => c.id == selectedCategoryId,
+      orElse: () => kExploreCategories.first,
+    );
+    return _panelShell(
+      tr('محطات على طريقك', 'Stops along your way'),
+      tr('اختر مكانك التالي', 'Choose your next destination'),
+      Column(
+        children: [
+          SizedBox(
+            height: 54,
+            child: ListView(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              scrollDirection: Axis.horizontal,
+              children: [
+                for (final cat in kExploreCategories)
+                  Padding(
+                    padding: const EdgeInsetsDirectional.only(end: 8),
+                    child: ChoiceChip(
+                      selected: cat.id == selectedCategoryId,
+                      onSelected: (_) => _openAndFetchCategory(cat),
+                      avatar: DliniiAppIcon(
+                        cat.icon,
+                        color: cat.color,
+                        size: 18,
+                      ),
+                      label: Text(isEnglish ? cat.nameEn : cat.nameAr),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+          if (nearbyCategoryPlaces.isNotEmpty)
+            Align(
+              alignment: AlignmentDirectional.centerEnd,
+              child: TextButton(
+                onPressed: _showCategoryResultsOnMap,
+                child: Text(
+                  tr('عرض النتائج على الخريطة', 'Show results on map'),
+                ),
+              ),
+            ),
+          Expanded(
+            child: isLoadingCategory
+                ? Center(child: DliniiLoader(color: accentColor, size: 40))
+                : nearbyCategoryPlaces.isEmpty
+                ? Center(
+                    child: Text(
+                      tr('لا توجد نتائج قريبة', 'No nearby results'),
+                      style: TextStyle(color: subColor),
+                    ),
+                  )
+                : ListView.separated(
+                    padding: const EdgeInsets.all(16),
+                    itemCount: nearbyCategoryPlaces.length,
+                    separatorBuilder: (_, __) => const SizedBox(height: 10),
+                    itemBuilder: (context, index) {
+                      final item = nearbyCategoryPlaces[index];
+                      return Material(
+                        color: landColor,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: DliniiBrand.cardShape,
+                          side: BorderSide(color: lineColor),
+                        ),
+                        clipBehavior: Clip.antiAlias,
+                        child: ListTile(
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 14,
+                            vertical: 10,
+                          ),
+                          leading: Container(
+                            width: 44,
+                            height: 44,
+                            decoration: BoxDecoration(
+                              color: category.color.withValues(alpha: .13),
+                              borderRadius: BorderRadius.circular(14),
+                            ),
+                            child: DliniiAppIcon(
+                              category.icon,
+                              color: category.color,
+                              size: 23,
+                            ),
+                          ),
+                          title: Text(
+                            item['title'].toString(),
+                            style: TextStyle(
+                              color: textColor,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                          subtitle: Text(
+                            item['subtitle'].toString(),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(color: subColor),
+                          ),
+                          trailing: Text(
+                            '${(item['distKm'] as num).toStringAsFixed(1)} ${tr('كم', 'km')}',
+                            style: TextStyle(
+                              color: accentColor,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          onTap: () {
+                            setState(() {
+                              dest = LatLng(
+                                (item['lat'] as num).toDouble(),
+                                (item['lng'] as num).toDouble(),
+                              );
+                              destName = item['title'].toString();
+                              destController.text = destName;
+                              showExploreModal = false;
+                            });
+                            _planRoute();
+                          },
+                        ),
+                      );
+                    },
+                  ),
+          ),
+        ],
+      ),
+      () => setState(() => showExploreModal = false),
+    );
+  }
+
+  Widget _offlinePanel() => _panelShell(
+    tr('خرائطك المحفوظة', 'Your saved maps'),
+    kIsWeb
+        ? tr(
+            'التنزيل الدائم متاح حالياً على تطبيق الهاتف.',
+            'Persistent downloads are currently available in the mobile app.',
+          )
+        : tr(
+            'التنزيل يغطي منطقة حول مركز المحافظة؛ لا يشمل كامل المحافظة أو حساب مسارات جديدة دون اتصال.',
+            'Downloads cover the provincial centre area, not the entire province or new offline routes.',
+          ),
+    ListView.separated(
+      padding: const EdgeInsets.all(16),
+      itemCount: kIraqProvinces.length,
+      separatorBuilder: (_, __) => const SizedBox(height: 10),
+      itemBuilder: (context, index) {
+        final province = kIraqProvinces[index];
+        final saved = downloadedProvinces.contains(province.id);
+        final loading = downloadingProvinceId == province.id;
+        return Container(
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: landColor,
+            borderRadius: DliniiBrand.cardShape,
+            border: Border.all(color: lineColor),
+          ),
+          child: Column(
+            children: [
+              Row(
+                children: [
+                  DliniiAppIcon(
+                    Icons.map_rounded,
+                    color: accentColor,
+                    size: 28,
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      isEnglish ? province.nameEn : province.nameAr,
+                      style: TextStyle(
+                        color: textColor,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ),
+                  if (loading)
+                    DliniiLoader(size: 28, color: accentColor)
+                  else if (saved)
+                    IconButton(
+                      tooltip: tr('حذف التنزيل', 'Delete download'),
+                      onPressed: () => _deleteProvinceOfflineMap(province),
+                      icon: DliniiAppIcon(
+                        Icons.delete_outline_rounded,
+                        color: subColor,
+                        size: 22,
+                      ),
+                    )
+                  else
+                    FilledButton(
+                      onPressed: kIsWeb || downloadingProvinceId != null
+                          ? null
+                          : () => _downloadProvinceOfflineMap(province),
+                      child: Text(tr('تنزيل', 'Download')),
+                    ),
+                ],
+              ),
+              if (loading)
+                Padding(
+                  padding: const EdgeInsets.only(top: 12),
+                  child: LinearProgressIndicator(
+                    value: downloadProgress,
+                    color: accentColor,
+                  ),
+                ),
+              if (saved)
+                Align(
+                  alignment: AlignmentDirectional.centerStart,
+                  child: Text(
+                    tr(
+                      'منطقة محفوظة على هذا الجهاز',
+                      'Area saved on this device',
+                    ),
+                    style: TextStyle(color: accentColor, fontSize: 12),
+                  ),
+                ),
+            ],
+          ),
+        );
+      },
+    ),
+    () => setState(() => showOfflineMapsModal = false),
+  );
+
+  Widget _permissionPanel() => _panelShell(
+    tr('خلّ دلّيني يعرف طريقك', 'Let Dlinii find your way'),
+    tr(
+      'اسمح بالموقع لعرض موقعك والتوجيه. يمكنك تغيير الإذن من إعدادات جهازك.',
+      'Allow location to show your position and directions. You can change this in device settings.',
+    ),
+    SingleChildScrollView(
+      padding: const EdgeInsets.all(20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          FilledButton(
+            onPressed: () {
+              setState(() => showNotifPermissionModal = false);
+              _initLocationTracking(userInitiated: true);
+            },
+            child: Text(tr('السماح بالموقع', 'Allow location')),
+          ),
+          TextButton(
+            onPressed: () => setState(() => showNotifPermissionModal = false),
+            child: Text(tr('لاحقاً', 'Later')),
+          ),
+        ],
+      ),
+    ),
+    () => setState(() => showNotifPermissionModal = false),
+    height: .58,
+  );
+
   Widget _buildMain(BuildContext context) {
-    final activeVtStyle = _vtLight;
+    final activeVtStyle = isDark ? (_vtDark ?? _vtLight) : _vtLight;
     final Widget? ofmLayer = (activeVtStyle == null || _forceOffline)
         ? null
-        : ColorFiltered(
-            colorFilter: isDark
-                ? kInstantDarkFilter
-                : const ColorFilter.mode(Colors.transparent, BlendMode.dst),
-            child: vt.VectorTileLayer(
-              key: const ValueKey('dlinii_vector_map'),
-              theme: activeVtStyle.theme,
-              tileProviders: activeVtStyle.providers,
-              rasterSources: activeVtStyle.rasterSources,
-              sprites: activeVtStyle.sprites,
-            ),
+        : vt.VectorTileLayer(
+            key: const ValueKey('dlinii_vector_map'),
+            theme: activeVtStyle.theme,
+            tileProviders: activeVtStyle.providers,
+            rasterSources: activeVtStyle.rasterSources,
+            sprites: activeVtStyle.sprites,
           );
 
     final Matrix4 perspectiveMatrix = isFirstPerson3D
         ? (Matrix4.identity()
-          ..setEntry(3, 2, 0.00085)
-          ..rotateX(-0.50)
-          ..scale(1.18))
+            ..setEntry(3, 2, 0.00085)
+            ..rotateX(-0.50)
+            ..scale(1.18))
         : Matrix4.identity();
 
     return Scaffold(
       key: _scaffoldKey,
       backgroundColor: landColor,
-      drawer: _buildStandardAppDrawer(),
-      endDrawer: _buildStandardAppDrawer(),
+      drawer: isEnglish ? null : _buildStandardAppDrawer(),
+      endDrawer: isEnglish ? _buildStandardAppDrawer() : null,
+      drawerScrimColor: const Color(0xFF041B22).withValues(alpha: .55),
       body: Stack(
         children: [
           AnimatedContainer(
@@ -3451,16 +5028,26 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
             child: FlutterMap(
               mapController: mapController,
               options: MapOptions(
-                backgroundColor:
-                    isDark ? const Color(0xFF0D1014) : const Color(0xFFedf5f2),
+                onMapReady: () {
+                  _mapReady = true;
+                  if (_hasRealFix && me != null) mapController.move(me!, 15.5);
+                  final pending = _pendingMapLink;
+                  _pendingMapLink = null;
+                  if (pending != null) _handleIncomingUri(pending);
+                },
+                backgroundColor: isDark
+                    ? const Color(0xFF101814)
+                    : const Color(0xFFF3F7FA),
                 initialCenter: me ?? kDefaultCenter,
                 initialZoom: currentZoom,
-                interactionOptions:
-                    const InteractionOptions(flags: InteractiveFlag.all),
+                interactionOptions: const InteractionOptions(
+                  flags: InteractiveFlag.all,
+                ),
                 onPositionChanged: (pos, hasGesture) {
                   if (hasGesture && follow) setState(() => follow = false);
                   currentZoom = pos.zoom;
                 },
+                onLongPress: (tapPos, point) => _namePlace(point),
                 onTap: (tapPos, point) {
                   if (selectedReportPopupId != null) {
                     setState(() => selectedReportPopupId = null);
@@ -3473,11 +5060,15 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                       reportPoint = point;
                       showRepSheet = true;
                     });
+                  } else if (mode == 'save_place') {
+                    _namePlace(point);
                   } else if (mode == 'origin') {
                     setState(() {
                       origin = point;
-                      originController.text =
-                          tr('نقطة انطلاق محددة', 'Selected Origin');
+                      originController.text = tr(
+                        'نقطة انطلاق محددة',
+                        'Selected Origin',
+                      );
                     });
                     _toast(tr('تم تحديد نقطة الانطلاق', 'Origin selected'));
                     if (dest != null) _planRoute();
@@ -3489,8 +5080,10 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                     });
                     _planRoute();
                   } else if (mode == 'share_spot') {
-                    _shareCustomSpot(point,
-                        tr('موقع محدد على الخريطة', 'Pinned Map Location'));
+                    _shareCustomSpot(
+                      point,
+                      tr('موقع محدد على الخريطة', 'Pinned Map Location'),
+                    );
                   }
                 },
               ),
@@ -3500,13 +5093,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                 else
                   ColorFiltered(
                     key: const ValueKey<String>('dlinii_raster_map'),
-                    colorFilter: isDark
-                        ? kInstantDarkFilter
-                        : const ColorFilter.mode(
-                            Colors.transparent, BlendMode.dst),
+                    colorFilter: isDark ? kInstantDarkFilter : kSoftDayFilter,
                     child: TileLayer(
-                      urlTemplate:
-                          'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png',
+                      urlTemplate: 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png',
                       subdomains: const ['a', 'b', 'c', 'd'],
                       maxZoom: 20,
                       userAgentPackageName: 'com.dlinii.app',
@@ -3521,8 +5110,12 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                         final List<dynamic> coords =
                             entry.value['geometry']['coordinates'];
                         final points = coords
-                            .map((c) => LatLng((c[1] as num).toDouble(),
-                                (c[0] as num).toDouble()))
+                            .map(
+                              (c) => LatLng(
+                                (c[1] as num).toDouble(),
+                                (c[0] as num).toDouble(),
+                              ),
+                            )
                             .toList();
                         final bool isSelected = idx == selectedRouteIndex;
                         if (!isSelected) {
@@ -3547,37 +5140,47 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                         );
                       }),
                       if (routes.isNotEmpty)
-                        ...routes.asMap().entries.map((entry) {
-                          final int idx = entry.key;
-                          if (idx != selectedRouteIndex) {
-                            return Polyline(
-                                points: const [], color: Colors.transparent);
-                          }
-                          final List<dynamic> coords =
-                              entry.value['geometry']['coordinates'];
-                          final points = coords
-                              .map((c) => LatLng((c[1] as num).toDouble(),
-                                  (c[0] as num).toDouble()))
-                              .toList();
-                          final double flowAlpha =
-                              (0.55 + 0.35 * math.sin(pulseValue))
-                                  .clamp(0.25, 0.90);
-                          return Polyline(
-                            points: points,
-                            color: (isDark
-                                    ? const Color(0xFF6ee7b7)
-                                    : const Color(0xFF99f6e4))
-                                .withOpacity(flowAlpha),
-                            strokeWidth: 3.8,
-                          );
-                        }),
+                        ...routes
+                            .asMap()
+                            .entries
+                            .where((entry) => entry.key == selectedRouteIndex)
+                            .map((entry) {
+                              final List<dynamic> coords =
+                                  entry.value['geometry']['coordinates'];
+                              final points = coords
+                                  .map(
+                                    (c) => LatLng(
+                                      (c[1] as num).toDouble(),
+                                      (c[0] as num).toDouble(),
+                                    ),
+                                  )
+                                  .toList();
+                              final double flowAlpha =
+                                  (0.55 + 0.35 * math.sin(pulseValue)).clamp(
+                                    0.25,
+                                    0.90,
+                                  );
+                              return Polyline(
+                                points: points,
+                                color:
+                                    (isDark
+                                            ? const Color(0xFF6ee7b7)
+                                            : const Color(0xFF99f6e4))
+                                        .withOpacity(flowAlpha),
+                                strokeWidth: 3.8,
+                              );
+                            }),
                       if (routes.isNotEmpty)
                         ..._buildRealTrafficAndHazardOverlays(
                           routes[selectedRouteIndex] as Map<String, dynamic>,
                           (routes[selectedRouteIndex]['geometry']['coordinates']
                                   as List)
-                              .map((c) => LatLng((c[1] as num).toDouble(),
-                                  (c[0] as num).toDouble()))
+                              .map(
+                                (c) => LatLng(
+                                  (c[1] as num).toDouble(),
+                                  (c[0] as num).toDouble(),
+                                ),
+                              )
                               .toList(),
                         ),
                     ],
@@ -3585,55 +5188,92 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                 MarkerLayer(
                   markers: [
                     ...categoryMapMarkers,
-                    if (origin != null)
-                      Marker(
-                          point: origin!,
-                          width: 38,
-                          height: 38,
-                          child: SvgPicture.string(kOriginPinSvg)),
-                    if (dest != null)
-                      Marker(
-                          point: dest!,
-                          width: 42,
-                          height: 48,
-                          child: SvgPicture.string(kDestPinSvg)),
-                    ...cloudReports
-                        .where((doc) => _reportIsVisible(
-                            doc.data() as Map<String, dynamic>))
-                        .map((doc) {
-                      final data = doc.data() as Map<String, dynamic>;
-                      final LatLng pt = LatLng(
-                          ((data['lat'] ?? 33.4258) as num).toDouble(),
-                          ((data['lng'] ?? 43.2995) as num).toDouble());
-                      return Marker(
-                        point: pt,
-                        width: 44,
-                        height: 44,
-                        child: GestureDetector(
-                          onTap: () => setState(() {
-                            selectedReportPopupId = doc.id;
-                            selectedReportPopupData = data;
-                          }),
-                          child: Container(
-                            padding: const EdgeInsets.all(5),
-                            decoration: BoxDecoration(
-                              color: panelColor,
-                              shape: BoxShape.circle,
-                              border: Border.all(
-                                  color: const Color(0xFFefbb52), width: 2.0),
-                              boxShadow: [
-                                BoxShadow(
-                                    color: Colors.black.withOpacity(0.22),
-                                    blurRadius: 10,
-                                    offset: const Offset(0, 3))
-                              ],
+                    ...[
+                      ..._publicPlaces,
+                      ..._places.where(
+                        (p) => p['saved'] == true && p['publicId'] == null,
+                      ),
+                    ].map(
+                      (p) => Marker(
+                        point: LatLng(
+                          (p['lat'] as num).toDouble(),
+                          (p['lng'] as num).toDouble(),
+                        ),
+                        width: 24,
+                        height: 24,
+                        rotate: true,
+                        child: Tooltip(
+                          message: p['name'] as String,
+                          child: GestureDetector(
+                            onTap: () => _showPlaceDetails(p),
+                            child: DliniiPlaceBadge(
+                              p['category']?.toString() ?? 'other',
+                              size: 22,
                             ),
-                            child: _buildReportSvg(data['type']?.toString(),
-                                size: 26),
                           ),
                         ),
-                      );
-                    }),
+                      ),
+                    ),
+                    if (origin != null)
+                      Marker(
+                        point: origin!,
+                        width: 38,
+                        height: 38,
+                        child: SvgPicture.string(kOriginPinSvg),
+                      ),
+                    if (dest != null)
+                      Marker(
+                        point: dest!,
+                        width: 42,
+                        height: 48,
+                        child: SvgPicture.string(kDestPinSvg),
+                      ),
+                    ...cloudReports
+                        .where(
+                          (doc) => _reportIsVisible(
+                            doc.data() as Map<String, dynamic>,
+                          ),
+                        )
+                        .map((doc) {
+                          final data = doc.data() as Map<String, dynamic>;
+                          final LatLng pt = LatLng(
+                            ((data['lat'] ?? 33.4258) as num).toDouble(),
+                            ((data['lng'] ?? 43.2995) as num).toDouble(),
+                          );
+                          return Marker(
+                            point: pt,
+                            width: 44,
+                            height: 44,
+                            child: GestureDetector(
+                              onTap: () => setState(() {
+                                selectedReportPopupId = doc.id;
+                                selectedReportPopupData = data;
+                              }),
+                              child: Container(
+                                padding: const EdgeInsets.all(5),
+                                decoration: BoxDecoration(
+                                  color: panelColor,
+                                  shape: BoxShape.circle,
+                                  border: Border.all(
+                                    color: const Color(0xFFefbb52),
+                                    width: 2.0,
+                                  ),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.black.withOpacity(0.22),
+                                      blurRadius: 10,
+                                      offset: const Offset(0, 3),
+                                    ),
+                                  ],
+                                ),
+                                child: _buildReportSvg(
+                                  data['type']?.toString(),
+                                  size: 26,
+                                ),
+                              ),
+                            ),
+                          );
+                        }),
                   ],
                 ),
                 ValueListenableBuilder<_DispState>(
@@ -3649,7 +5289,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                         child: isNavigating
                             ? Transform.rotate(
                                 angle: v.bearing * math.pi / 180,
-                                child: SvgPicture.string(kGreenNavArrowSvg))
+                                child: SvgPicture.string(kGreenNavArrowSvg),
+                              )
                             : SvgPicture.string(kMyLocationPulseSvg),
                       ),
                     ],
@@ -3690,15 +5331,17 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                   constraints: const BoxConstraints(maxWidth: 320),
                   padding: const EdgeInsets.all(14),
                   decoration: BoxDecoration(
-                      color: panelColor,
-                      borderRadius: BorderRadius.circular(18),
-                      border: Border.all(color: lineColor),
-                      boxShadow: [
-                        BoxShadow(
-                            color: Colors.black.withOpacity(0.2),
-                            blurRadius: 18,
-                            offset: const Offset(0, 6))
-                      ]),
+                    color: panelColor,
+                    borderRadius: BorderRadius.circular(18),
+                    border: Border.all(color: lineColor),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.2),
+                        blurRadius: 18,
+                        offset: const Offset(0, 6),
+                      ),
+                    ],
+                  ),
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
@@ -3706,34 +5349,45 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
                           const SizedBox(width: 22),
-                          Row(children: [
-                            _buildReportSvg(
+                          Row(
+                            children: [
+                              _buildReportSvg(
                                 selectedReportPopupData!['type']?.toString(),
-                                size: 24),
-                            const SizedBox(width: 8),
-                            Text(
+                                size: 24,
+                              ),
+                              const SizedBox(width: 8),
+                              Text(
                                 _getReportLabel(
-                                    selectedReportPopupData!['type']
-                                        ?.toString(),
-                                    selectedReportPopupData!['label']
-                                        ?.toString()),
+                                  selectedReportPopupData!['type']?.toString(),
+                                  selectedReportPopupData!['label']?.toString(),
+                                ),
                                 style: TextStyle(
-                                    fontWeight: FontWeight.w800,
-                                    fontSize: 15,
-                                    color: textColor)),
-                          ]),
+                                  fontWeight: FontWeight.w800,
+                                  fontSize: 15,
+                                  color: textColor,
+                                ),
+                              ),
+                            ],
+                          ),
                           GestureDetector(
-                              onTap: () =>
-                                  setState(() => selectedReportPopupId = null),
-                              child: Icon(Icons.close_rounded,
-                                  size: 19, color: subColor)),
+                            onTap: () =>
+                                setState(() => selectedReportPopupId = null),
+                            child: DliniiAppIcon(
+                              Icons.close_rounded,
+                              size: 19,
+                              color: subColor,
+                            ),
+                          ),
                         ],
                       ),
                       const SizedBox(height: 5),
                       Text(
-                          tr('يُحذف البلاغ تلقائياً عند $endVotesThreshold أصوات انتهاء',
-                              'Auto-deleted at $endVotesThreshold votes'),
-                          style: TextStyle(fontSize: 10.5, color: subColor)),
+                        tr(
+                          'يختفي البلاغ عند $endVotesThreshold أصوات انتهاء',
+                          'Hidden at $endVotesThreshold votes',
+                        ),
+                        style: TextStyle(fontSize: 10.5, color: subColor),
+                      ),
                       const SizedBox(height: 12),
                       Row(
                         children: [
@@ -3746,643 +5400,123 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                               padding: const EdgeInsets.symmetric(vertical: 9),
                               borderRadius: BorderRadius.circular(10),
                               child: Text(
-                                  '${tr('موجود', 'Exists')} (${selectedReportPopupData!['confirmations'] ?? 1})',
-                                  style: const TextStyle(
-                                      color: Colors.white,
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 11.5)),
+                                '${tr('موجود', 'Exists')} (${selectedReportPopupData!['confirmations'] ?? 1})',
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 11.5,
+                                ),
+                              ),
                             ),
                           ),
                           const SizedBox(width: 8),
                           Expanded(
                             child: GlassTapButton(
                               onTap: () => _voteReportNo(
-                                  selectedReportPopupId!,
-                                  ((selectedReportPopupData!['endVotes'] ?? 0)
-                                          as num)
-                                      .toInt()),
+                                selectedReportPopupId!,
+                                ((selectedReportPopupData!['endVotes'] ?? 0)
+                                        as num)
+                                    .toInt(),
+                              ),
                               backgroundColor: const Color(0xFFE5484D),
                               borderColor: Colors.transparent,
                               padding: const EdgeInsets.symmetric(vertical: 9),
                               borderRadius: BorderRadius.circular(10),
                               child: Text(
-                                  '${tr('منتهي', 'Ended')} (${selectedReportPopupData!['endVotes'] ?? 0}/$endVotesThreshold)',
-                                  style: const TextStyle(
-                                      color: Colors.white,
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 11.5)),
+                                '${tr('منتهي', 'Ended')} (${selectedReportPopupData!['endVotes'] ?? 0}/$endVotesThreshold)',
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 11.5,
+                                ),
+                              ),
                             ),
                           ),
                         ],
-                      )
+                      ),
                     ],
                   ),
                 ),
               ),
             ),
+          if (!isNavigating && !showPlanSheet && pickMode == null)
+            Positioned.fill(
+              key: const ValueKey('home-planner'),
+              child: _buildHomeSheet(),
+            ),
           if (!isNavigating && !showPlanSheet)
             Positioned(
-              top: MediaQuery.of(context).padding.top + 10,
-              right: 14,
-              left: 14,
-              child: Center(
-                child: ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 410),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
+              top: MediaQuery.paddingOf(context).top + 16,
+              left: 18,
+              right: 18,
+              child: Row(
+                textDirection: TextDirection.rtl,
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  GlassTapButton(
+                    width: 52,
+                    height: 52,
+                    backgroundColor: panelColor,
+                    borderColor: lineColor,
+                    borderRadius: BorderRadius.circular(19),
+                    onTap: _openHomeMenu,
+                    child: DliniiControlIcon(
+                      'menu',
+                      color: textColor,
+                      size: 25,
+                    ),
+                  ),
+                  GlassTapButton(
+                    width: 52,
+                    height: 52,
+                    backgroundColor: panelColor,
+                    borderColor: lineColor,
+                    borderRadius: BorderRadius.circular(19),
+                    onTap: _openHomeSettings,
+                    child: DliniiAppIcon(
+                      Icons.layers_rounded,
+                      color: textColor,
+                      size: 25,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          if (pickMode != null && !isNavigating)
+            Positioned(
+              bottom: 24,
+              left: 20,
+              right: 20,
+              child: _homeRow(
+                tr('حدد المكان على الخريطة', 'Choose a map location'),
+                tr('إلغاء التحديد', 'Cancel selection'),
+                Icons.close_rounded,
+                () => setState(() => pickMode = null),
+              ),
+            ),
+          if (_routeBusy)
+            Positioned(
+              top: MediaQuery.paddingOf(context).top + 82,
+              left: 55,
+              right: 55,
+              child: IgnorePointer(
+                child: Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(24),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      ClipRRect(
-                        borderRadius: BorderRadius.circular(18),
-                        child: BackdropFilter(
-                          filter: ui.ImageFilter.blur(sigmaX: 14, sigmaY: 14),
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 12, vertical: 8),
-                            decoration: BoxDecoration(
-                                color: glassColor,
-                                border: Border.all(color: lineColor),
-                                borderRadius: BorderRadius.circular(18)),
-                            child: Row(
-                              children: [
-                                GlassTapButton(
-                                  width: 36,
-                                  height: 36,
-                                  backgroundColor: landColor.withOpacity(0.85),
-                                  borderColor: lineColor,
-                                  borderRadius: BorderRadius.circular(11),
-                                  onTap: () {
-                                    _scaffoldKey.currentState?.openDrawer();
-                                  },
-                                  child: Icon(Icons.menu_rounded,
-                                      color: accentColor, size: 20),
-                                ),
-                                const SizedBox(width: 8),
-                                ClipRRect(
-                                    borderRadius: BorderRadius.circular(11),
-                                    child: Image.asset(
-                                        'assets/images/dlinii_icon.png',
-                                        width: 36,
-                                        height: 36,
-                                        fit: BoxFit.cover)),
-                                const SizedBox(width: 8),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Text(tr('دلّيني', 'Dlinii'),
-                                          style: TextStyle(
-                                              fontSize: 18,
-                                              fontWeight: FontWeight.w800,
-                                              height: 1.0,
-                                              color: accentColor)),
-                                      const SizedBox(height: 2),
-                                      Text(
-                                          tr('رفيقك على طريقك',
-                                              'Your companion on the road'),
-                                          style: TextStyle(
-                                              fontSize: 9.5,
-                                              color: subColor,
-                                              fontWeight: FontWeight.w600)),
-                                    ],
-                                  ),
-                                ),
-                                GlassTapButton(
-                                  width: 36,
-                                  height: 36,
-                                  backgroundColor: landColor.withOpacity(0.85),
-                                  borderColor: lineColor,
-                                  borderRadius: BorderRadius.circular(11),
-                                  onTap: () => setState(
-                                      () => showOfflineMapsModal = true),
-                                  child: Icon(Icons.cloud_download_rounded,
-                                      color: const Color(0xFFefbb52), size: 18),
-                                ),
-                                const SizedBox(width: 5),
-                                GlassTapButton(
-                                  width: 36,
-                                  height: 36,
-                                  backgroundColor: landColor.withOpacity(0.85),
-                                  borderColor: lineColor,
-                                  borderRadius: BorderRadius.circular(11),
-                                  onTap: _shareMyCurrentLocation,
-                                  child: Icon(Icons.share_location_rounded,
-                                      color: accentColor, size: 18),
-                                ),
-                                const SizedBox(width: 5),
-                                GlassTapButton(
-                                  width: 36,
-                                  height: 36,
-                                  backgroundColor: landColor.withOpacity(0.85),
-                                  borderColor: lineColor,
-                                  borderRadius: BorderRadius.circular(11),
-                                  onTap: () async {
-                                    setState(() => isDark = !isDark);
-                                    final prefs =
-                                        await SharedPreferences.getInstance();
-                                    await prefs.setBool(
-                                        'dlini_is_dark_default_v2', isDark);
-                                  },
-                                  child: Icon(
-                                      isDark
-                                          ? Icons.wb_sunny_rounded
-                                          : Icons.dark_mode_rounded,
-                                      color: isDark
-                                          ? const Color(0xFFefbb52)
-                                          : accentColor,
-                                      size: 18),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
+                      DliniiLoader(
+                        label: tr('جارٍ تجهيز المسار', 'Preparing route'),
                       ),
-                      const SizedBox(height: 8),
-                      ClipRRect(
-                        borderRadius: BorderRadius.circular(18),
-                        child: BackdropFilter(
-                          filter: ui.ImageFilter.blur(sigmaX: 14, sigmaY: 14),
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 12, vertical: 10),
-                            decoration: BoxDecoration(
-                                color: glassColor,
-                                border: Border.all(color: lineColor),
-                                borderRadius: BorderRadius.circular(18)),
-                            child: Column(
-                              children: [
-                                GestureDetector(
-                                  onTap: () => setState(() =>
-                                      isPlannerCollapsed = !isPlannerCollapsed),
-                                  child: Padding(
-                                    padding: const EdgeInsets.only(bottom: 4),
-                                    child: Row(
-                                      mainAxisAlignment:
-                                          MainAxisAlignment.spaceBetween,
-                                      children: [
-                                        Row(children: [
-                                          Icon(Icons.route_rounded,
-                                              size: 15, color: accentColor),
-                                          const SizedBox(width: 6),
-                                          Text(
-                                              tr('حدد وجهتك أو دلّي صديقك',
-                                                  'Set destination or guide a friend'),
-                                              style: TextStyle(
-                                                  fontSize: 11.5,
-                                                  color: accentColor,
-                                                  fontWeight: FontWeight.w800)),
-                                        ]),
-                                        Container(
-                                          padding: const EdgeInsets.symmetric(
-                                              horizontal: 8, vertical: 3),
-                                          decoration: BoxDecoration(
-                                              color: landColor,
-                                              borderRadius:
-                                                  BorderRadius.circular(8)),
-                                          child: Icon(
-                                              isPlannerCollapsed
-                                                  ? Icons
-                                                      .keyboard_arrow_down_rounded
-                                                  : Icons
-                                                      .keyboard_arrow_up_rounded,
-                                              size: 15,
-                                              color: accentColor),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ),
-                                if (!isPlannerCollapsed) ...[
-                                  Container(
-                                    margin: const EdgeInsets.only(
-                                        top: 4, bottom: 6),
-                                    padding: const EdgeInsets.symmetric(
-                                        horizontal: 10, vertical: 3),
-                                    decoration: BoxDecoration(
-                                        color: landColor,
-                                        borderRadius: BorderRadius.circular(12),
-                                        border: Border.all(
-                                            color: lineColor.withOpacity(0.6))),
-                                    child: Row(
-                                      children: [
-                                        SvgPicture.string(kOriginPinSvg,
-                                            width: 17, height: 17),
-                                        const SizedBox(width: 6),
-                                        SizedBox(
-                                            width: 30,
-                                            child: Text(tr('من', 'From'),
-                                                style: TextStyle(
-                                                    fontSize: 11,
-                                                    color: subColor,
-                                                    fontWeight:
-                                                        FontWeight.w700))),
-                                        Expanded(
-                                          child: SizedBox(
-                                            height: 28,
-                                            child: TextField(
-                                              controller: originController,
-                                              style: TextStyle(
-                                                  fontSize: 12.5,
-                                                  color: textColor),
-                                              onChanged: (v) =>
-                                                  _onSearchChanged(v, 'origin'),
-                                              decoration: InputDecoration(
-                                                  hintText: tr('موقعي الحالي',
-                                                      'Current location'),
-                                                  hintStyle: TextStyle(
-                                                      fontSize: 12.5,
-                                                      color: subColor),
-                                                  border: InputBorder.none,
-                                                  isDense: true,
-                                                  contentPadding:
-                                                      const EdgeInsets
-                                                          .symmetric(
-                                                          vertical: 5)),
-                                            ),
-                                          ),
-                                        ),
-                                        GestureDetector(
-                                          onTap: () {
-                                            setState(() {
-                                              origin = null;
-                                              originController.clear();
-                                            });
-                                            _initLocationTracking(
-                                                userInitiated: true);
-                                            if (me != null) {
-                                              _flyToMyLocation(me!,
-                                                  targetZoom: 16.0);
-                                              if (dest != null) _planRoute();
-                                            }
-                                          },
-                                          child: Container(
-                                              width: 26,
-                                              height: 26,
-                                              padding: const EdgeInsets.all(4),
-                                              decoration: BoxDecoration(
-                                                  color: panelColor,
-                                                  borderRadius:
-                                                      BorderRadius.circular(7)),
-                                              child: SvgPicture.string(
-                                                  kGpsTargetSvg)),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(
-                                        horizontal: 10, vertical: 3),
-                                    decoration: BoxDecoration(
-                                        color: landColor,
-                                        borderRadius: BorderRadius.circular(12),
-                                        border: Border.all(
-                                            color: lineColor.withOpacity(0.6))),
-                                    child: Row(
-                                      children: [
-                                        SvgPicture.string(kDestPinSvg,
-                                            width: 15, height: 19),
-                                        const SizedBox(width: 8),
-                                        SizedBox(
-                                            width: 30,
-                                            child: Text(tr('إلى', 'To'),
-                                                style: TextStyle(
-                                                    fontSize: 11,
-                                                    color: subColor,
-                                                    fontWeight:
-                                                        FontWeight.w700))),
-                                        Expanded(
-                                          child: SizedBox(
-                                            height: 28,
-                                            child: TextField(
-                                              controller: destController,
-                                              style: TextStyle(
-                                                  fontSize: 12.5,
-                                                  color: textColor),
-                                              onChanged: (v) =>
-                                                  _onSearchChanged(v, 'q'),
-                                              decoration: InputDecoration(
-                                                  hintText: tr(
-                                                      'ابحث أو الصق رابط موقع...',
-                                                      'Search or paste location link...'),
-                                                  hintStyle: TextStyle(
-                                                      fontSize: 12.5,
-                                                      color: subColor),
-                                                  border: InputBorder.none,
-                                                  isDense: true,
-                                                  contentPadding:
-                                                      const EdgeInsets
-                                                          .symmetric(
-                                                          vertical: 5)),
-                                            ),
-                                          ),
-                                        ),
-                                        GestureDetector(
-                                          onTap: _toggleVoiceSearch,
-                                          child: Container(
-                                            width: 26,
-                                            height: 26,
-                                            margin: const EdgeInsetsDirectional
-                                                .only(end: 6),
-                                            decoration: BoxDecoration(
-                                              color: isListeningVoice
-                                                  ? const Color(0xFFE5484D)
-                                                  : panelColor,
-                                              borderRadius:
-                                                  BorderRadius.circular(7),
-                                            ),
-                                            child: Icon(
-                                              isListeningVoice
-                                                  ? Icons.mic_rounded
-                                                  : Icons.mic_none_rounded,
-                                              size: 16,
-                                              color: isListeningVoice
-                                                  ? Colors.white
-                                                  : accentColor,
-                                            ),
-                                          ),
-                                        ),
-                                        GestureDetector(
-                                          onTap: () async {
-                                            final data =
-                                                await Clipboard.getData(
-                                                    Clipboard.kTextPlain);
-                                            final txt = data?.text ?? '';
-                                            if (!_parseAndOpenSharedText(txt)) {
-                                              _toast(tr(
-                                                  'انسخ رسالة الموقع من صديقك أولاً ثم اضغط هنا',
-                                                  'Copy friend location message first'));
-                                            }
-                                          },
-                                          child: Container(
-                                            width: 26,
-                                            height: 26,
-                                            decoration: BoxDecoration(
-                                              color: panelColor,
-                                              borderRadius:
-                                                  BorderRadius.circular(7),
-                                            ),
-                                            child: Icon(
-                                                Icons.content_paste_go_rounded,
-                                                size: 16,
-                                                color: accentColor),
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                  if (showSearchList)
-                                    Container(
-                                      margin: const EdgeInsets.only(top: 6),
-                                      constraints:
-                                          const BoxConstraints(maxHeight: 155),
-                                      decoration: BoxDecoration(
-                                          color: panelColor,
-                                          border: Border.all(color: lineColor),
-                                          borderRadius:
-                                              BorderRadius.circular(12)),
-                                      child: searchResults.isEmpty
-                                          ? Padding(
-                                              padding: const EdgeInsets.all(10),
-                                              child: Text(
-                                                  tr('لا توجد نتائج مطابقة',
-                                                      'No results found'),
-                                                  style: TextStyle(
-                                                      fontSize: 11.5,
-                                                      color: subColor)))
-                                          : ListView.builder(
-                                              shrinkWrap: true,
-                                              itemCount: searchResults.length,
-                                              itemBuilder: (context, idx) {
-                                                final item = searchResults[idx];
-                                                final String displayName =
-                                                    item['display_name'] ?? '';
-                                                final String title =
-                                                    item['name'] != null &&
-                                                            item['name']
-                                                                .toString()
-                                                                .isNotEmpty
-                                                        ? item['name']
-                                                        : displayName
-                                                            .split(',')[0];
-                                                return InkWell(
-                                                  onTap: () {
-                                                    final LatLng pt = LatLng(
-                                                        double.parse(item['lat']
-                                                            .toString()),
-                                                        double.parse(item['lon']
-                                                            .toString()));
-                                                    setState(() {
-                                                      showSearchList = false;
-                                                      if (activeSearchField ==
-                                                          'origin') {
-                                                        origin = pt;
-                                                        originController.text =
-                                                            title;
-                                                      } else {
-                                                        dest = pt;
-                                                        destName = title;
-                                                        destController.text =
-                                                            title;
-                                                      }
-                                                    });
-                                                    if (activeSearchField ==
-                                                        'origin') {
-                                                      mapController.move(
-                                                          pt, 14.5);
-                                                    }
-                                                    if (dest != null) {
-                                                      _planRoute();
-                                                    }
-                                                  },
-                                                  child: Container(
-                                                    padding: const EdgeInsets
-                                                        .symmetric(
-                                                        horizontal: 10,
-                                                        vertical: 8),
-                                                    decoration: BoxDecoration(
-                                                        border: Border(
-                                                            bottom: BorderSide(
-                                                                color:
-                                                                    lineColor))),
-                                                    child: Row(
-                                                      children: [
-                                                        SvgPicture.string(
-                                                            kDestPinSvg,
-                                                            width: 16,
-                                                            height: 20),
-                                                        const SizedBox(
-                                                            width: 8),
-                                                        Expanded(
-                                                          child: Column(
-                                                            crossAxisAlignment:
-                                                                CrossAxisAlignment
-                                                                    .start,
-                                                            children: [
-                                                              Text(title,
-                                                                  style: TextStyle(
-                                                                      fontSize:
-                                                                          12.5,
-                                                                      fontWeight:
-                                                                          FontWeight
-                                                                              .bold,
-                                                                      color:
-                                                                          textColor)),
-                                                              const SizedBox(
-                                                                  height: 1),
-                                                              Text(
-                                                                  _fmtSearchDist(
-                                                                          item) +
-                                                                      displayName,
-                                                                  style: TextStyle(
-                                                                      fontSize:
-                                                                          10,
-                                                                      color:
-                                                                          subColor),
-                                                                  maxLines: 1,
-                                                                  overflow:
-                                                                      TextOverflow
-                                                                          .ellipsis),
-                                                            ],
-                                                          ),
-                                                        ),
-                                                      ],
-                                                    ),
-                                                  ),
-                                                );
-                                              },
-                                            ),
-                                    ),
-                                  const SizedBox(height: 8),
-                                  Row(
-                                    children: [
-                                      Expanded(
-                                        child: GlassTapButton(
-                                          padding: const EdgeInsets.symmetric(
-                                              vertical: 8),
-                                          backgroundColor:
-                                              landColor.withOpacity(0.9),
-                                          borderColor: lineColor,
-                                          borderRadius:
-                                              BorderRadius.circular(11),
-                                          onTap: () {
-                                            setState(() {
-                                              pickMode = 'dest';
-                                              showSearchList = false;
-                                            });
-                                            _toast(tr(
-                                                'اضغط على الخريطة لتحديد الوجهة',
-                                                'Tap map to set destination'));
-                                          },
-                                          child: Row(
-                                            mainAxisAlignment:
-                                                MainAxisAlignment.center,
-                                            children: [
-                                              SvgPicture.string(kDestPinSvg,
-                                                  width: 14, height: 16),
-                                              const SizedBox(width: 5),
-                                              Text(
-                                                  tr('تحديد وجهة', 'Pick Dest'),
-                                                  style: TextStyle(
-                                                      fontSize: 11,
-                                                      fontWeight:
-                                                          FontWeight.w800,
-                                                      color: textColor)),
-                                            ],
-                                          ),
-                                        ),
-                                      ),
-                                      const SizedBox(width: 6),
-                                      Expanded(
-                                        child: GlassTapButton(
-                                          padding: const EdgeInsets.symmetric(
-                                              vertical: 8),
-                                          backgroundColor:
-                                              const Color(0xFF087e76),
-                                          borderColor: Colors.transparent,
-                                          borderRadius:
-                                              BorderRadius.circular(11),
-                                          onTap: () {
-                                            if (dest != null) {
-                                              _shareCustomSpot(dest!, destName);
-                                            } else {
-                                              setState(() {
-                                                pickMode = 'share_spot';
-                                                showSearchList = false;
-                                              });
-                                              _toast(tr(
-                                                  'اضغط على أي مكان بالخريطة لإرساله لصديقك عبر دلّي صديق',
-                                                  'Tap any spot on map to guide a friend'));
-                                            }
-                                          },
-                                          child: Row(
-                                            mainAxisAlignment:
-                                                MainAxisAlignment.center,
-                                            children: [
-                                              const Icon(Icons.send_rounded,
-                                                  size: 14,
-                                                  color: Colors.white),
-                                              const SizedBox(width: 5),
-                                              Text(
-                                                  tr('دلّي صديق على مكان',
-                                                      'Guide a Friend'),
-                                                  style: const TextStyle(
-                                                      fontSize: 11,
-                                                      fontWeight:
-                                                          FontWeight.w800,
-                                                      color: Colors.white)),
-                                            ],
-                                          ),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                  const SizedBox(height: 8),
-                                  SizedBox(
-                                    height: 34,
-                                    child: ListView.builder(
-                                      scrollDirection: Axis.horizontal,
-                                      itemCount: kExploreCategories.length,
-                                      itemBuilder: (context, i) {
-                                        final cat = kExploreCategories[i];
-                                        return Padding(
-                                          padding:
-                                              const EdgeInsets.only(left: 6),
-                                          child: GlassTapButton(
-                                            padding: const EdgeInsets.symmetric(
-                                                horizontal: 10, vertical: 5),
-                                            backgroundColor:
-                                                landColor.withOpacity(0.92),
-                                            borderColor: lineColor,
-                                            borderRadius:
-                                                BorderRadius.circular(10),
-                                            onTap: () =>
-                                                _openAndFetchCategory(cat),
-                                            child: Row(
-                                              children: [
-                                                Icon(cat.icon,
-                                                    size: 14, color: cat.color),
-                                                const SizedBox(width: 5),
-                                                Text(
-                                                  isEnglish
-                                                      ? cat.nameEn
-                                                      : cat.nameAr,
-                                                  style: TextStyle(
-                                                    fontSize: 11,
-                                                    fontWeight: FontWeight.w800,
-                                                    color: textColor,
-                                                  ),
-                                                ),
-                                              ],
-                                            ),
-                                          ),
-                                        );
-                                      },
-                                    ),
-                                  ),
-                                ],
-                              ],
-                            ),
-                          ),
+                      const SizedBox(width: 12),
+                      Flexible(
+                        child: Text(
+                          tr('جارٍ تجهيز المسار…', 'Preparing route…'),
+                          style: const TextStyle(color: Color(0xFF15241C)),
                         ),
                       ),
                     ],
@@ -4392,7 +5526,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
             ),
           Positioned(
             right: 16,
-            bottom: 165,
+            bottom: !isNavigating && !showPlanSheet && pickMode == null
+                ? MediaQuery.sizeOf(context).height * _homeExtent + 82
+                : 165,
             child: Column(
               children: [
                 GlassTapButton(
@@ -4402,7 +5538,11 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                   borderColor: lineColor,
                   borderRadius: BorderRadius.circular(13),
                   onTap: _zoomIn,
-                  child: Icon(Icons.add_rounded, size: 21, color: accentColor),
+                  child: DliniiAppIcon(
+                    Icons.add_rounded,
+                    size: 21,
+                    color: accentColor,
+                  ),
                 ),
                 const SizedBox(height: 8),
                 GlassTapButton(
@@ -4412,72 +5552,43 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                   borderColor: lineColor,
                   borderRadius: BorderRadius.circular(13),
                   onTap: _zoomOut,
-                  child:
-                      Icon(Icons.remove_rounded, size: 21, color: accentColor),
+                  child: DliniiAppIcon(
+                    Icons.remove_rounded,
+                    size: 21,
+                    color: accentColor,
+                  ),
                 ),
                 const SizedBox(height: 8),
                 GlassTapButton(
                   width: 42,
                   height: 42,
-                  backgroundColor:
-                      isFirstPerson3D ? const Color(0xFF087e76) : glassColor,
-                  borderColor:
-                      isFirstPerson3D ? const Color(0xFF7ce0be) : lineColor,
+                  backgroundColor: isFirstPerson3D
+                      ? const Color(0xFF087e76)
+                      : glassColor,
+                  borderColor: isFirstPerson3D
+                      ? const Color(0xFF7ce0be)
+                      : lineColor,
                   borderRadius: BorderRadius.circular(13),
                   onTap: _toggle3DPerspective,
                   child: Text(
                     isFirstPerson3D ? '3D' : '2D',
                     style: TextStyle(
-                        fontSize: 12.5,
-                        fontWeight: FontWeight.w900,
-                        color: isFirstPerson3D ? Colors.white : accentColor),
+                      fontSize: 12.5,
+                      fontWeight: FontWeight.w900,
+                      color: isFirstPerson3D ? Colors.white : accentColor,
+                    ),
                   ),
                 ),
               ],
             ),
           ),
-          if (!isNavigating && !showPlanSheet)
-            Positioned(
-              bottom: 20,
-              right: 16,
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(14),
-                child: BackdropFilter(
-                  filter: ui.ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-                  child: Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                    decoration: BoxDecoration(
-                        color: glassColor,
-                        borderRadius: BorderRadius.circular(14),
-                        border: Border.all(color: lineColor)),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                            tr('عينك على الطريق، ودليني وياك',
-                                'Keep your eyes on the road'),
-                            style: TextStyle(
-                                fontSize: 11,
-                                fontWeight: FontWeight.w700,
-                                color: textColor)),
-                        const SizedBox(height: 1),
-                        Text(
-                            tr('دليني خيارك الأول',
-                                'Dlinii is your first choice'),
-                            style: TextStyle(
-                                fontSize: 10,
-                                fontWeight: FontWeight.w800,
-                                color: accentColor)),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-            ),
           Positioned(
             left: 16,
-            bottom: isNavigating ? 105 : 24,
+            bottom: isNavigating
+                ? 105
+                : !showPlanSheet && pickMode == null
+                ? MediaQuery.sizeOf(context).height * _homeExtent + 14
+                : 100,
             child: Directionality(
               textDirection: TextDirection.ltr,
               child: Row(
@@ -4486,12 +5597,15 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                   GlassTapButton(
                     width: 52,
                     height: 52,
-                    isCircle: true,
-                    backgroundColor: glassColor,
+                    borderRadius: BorderRadius.circular(19),
+                    backgroundColor: const Color(0xFFF7FAF8),
                     borderColor: const Color(0xFFefbb52).withOpacity(0.65),
                     onTap: _onReportButtonTap,
-                    child: SvgPicture.string(kReportShieldSvg,
-                        width: 24, height: 24),
+                    child: SvgPicture.string(
+                      kReportShieldSvg,
+                      width: 24,
+                      height: 24,
+                    ),
                   ),
                   const SizedBox(width: 10),
                   GlassTapButton(
@@ -4504,496 +5618,24 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                       setState(() => follow = true);
                       _initLocationTracking(userInitiated: true);
                       if (me != null) {
-                        _flyToMyLocation(me!,
-                            targetZoom: isNavigating ? 17.8 : 16.8);
+                        _flyToMyLocation(
+                          me!,
+                          targetZoom: isNavigating ? 17.8 : 16.8,
+                        );
                       }
                     },
-                    child:
-                        SvgPicture.string(kGpsTargetSvg, width: 24, height: 24),
+                    child: SvgPicture.string(
+                      kGpsTargetSvg,
+                      width: 24,
+                      height: 24,
+                    ),
                   ),
                 ],
               ),
             ),
           ),
-          if (showOfflineMapsModal)
-            GestureDetector(
-              onTap: () => setState(() => showOfflineMapsModal = false),
-              child: Container(
-                color: Colors.black.withOpacity(0.55),
-                alignment: Alignment.center,
-                padding: const EdgeInsets.all(18),
-                child: GestureDetector(
-                  onTap: () {},
-                  child: Container(
-                    width: double.infinity,
-                    constraints:
-                        const BoxConstraints(maxWidth: 390, maxHeight: 550),
-                    decoration: BoxDecoration(
-                      color: panelColor,
-                      borderRadius: BorderRadius.circular(22),
-                      border: Border.all(color: lineColor),
-                    ),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 16, vertical: 14),
-                          decoration: const BoxDecoration(
-                            gradient: LinearGradient(colors: [
-                              Color(0xFF142e2d),
-                              Color(0xFF087e76),
-                            ]),
-                            borderRadius:
-                                BorderRadius.vertical(top: Radius.circular(22)),
-                          ),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Row(
-                                children: [
-                                  const Icon(Icons.cloud_download_rounded,
-                                      color: Color(0xFFefbb52), size: 20),
-                                  const SizedBox(width: 8),
-                                  Text(
-                                    tr('خرائط بدون نت (جميع الـ 18 محافظة)',
-                                        'Offline Maps (All 18 Provinces)'),
-                                    style: const TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 13.5,
-                                      fontWeight: FontWeight.w800,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              GestureDetector(
-                                onTap: () => setState(
-                                    () => showOfflineMapsModal = false),
-                                child: const Icon(Icons.close_rounded,
-                                    color: Colors.white, size: 19),
-                              ),
-                            ],
-                          ),
-                        ),
-                        Padding(
-                          padding: const EdgeInsets.fromLTRB(14, 10, 14, 4),
-                          child: Text(
-                            tr('اختر أي محافظة من محافظات العراق الـ 18 لتحميل خريطتها والعمل بدون إنترنت:',
-                                'Select any of the 18 Iraqi governorates to download for offline use:'),
-                            style: TextStyle(fontSize: 11.5, color: subColor),
-                          ),
-                        ),
-                        Flexible(
-                          child: ListView.builder(
-                            shrinkWrap: true,
-                            padding: const EdgeInsets.all(12),
-                            itemCount: kIraqProvinces.length,
-                            itemBuilder: (context, idx) {
-                              final prov = kIraqProvinces[idx];
-                              final bool isSaved =
-                                  downloadedProvinces.contains(prov.id);
-                              final bool isDownloading =
-                                  downloadingProvinceId == prov.id;
-
-                              return Container(
-                                margin: const EdgeInsets.only(bottom: 8),
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 12, vertical: 10),
-                                decoration: BoxDecoration(
-                                  color: landColor,
-                                  borderRadius: BorderRadius.circular(14),
-                                  border: Border.all(
-                                      color: isSaved ? accentColor : lineColor),
-                                ),
-                                child: Column(
-                                  children: [
-                                    Row(
-                                      children: [
-                                        Icon(
-                                          isSaved
-                                              ? Icons.offline_pin_rounded
-                                              : Icons.map_rounded,
-                                          color: isSaved
-                                              ? accentColor
-                                              : const Color(0xFFefbb52),
-                                          size: 22,
-                                        ),
-                                        const SizedBox(width: 10),
-                                        Expanded(
-                                          child: Column(
-                                            crossAxisAlignment:
-                                                CrossAxisAlignment.start,
-                                            children: [
-                                              Text(
-                                                isEnglish
-                                                    ? prov.nameEn
-                                                    : prov.nameAr,
-                                                style: TextStyle(
-                                                  fontSize: 12.5,
-                                                  fontWeight: FontWeight.w800,
-                                                  color: textColor,
-                                                ),
-                                              ),
-                                              Text(
-                                                isSaved
-                                                    ? tr(
-                                                        'محملة وجاهزة بدون نت (${prov.sizeMb})',
-                                                        'Downloaded (${prov.sizeMb})')
-                                                    : '${tr('الحجم التقريبي:', 'Size:')} ${prov.sizeMb}',
-                                                style: TextStyle(
-                                                  fontSize: 10.5,
-                                                  color: isSaved
-                                                      ? accentColor
-                                                      : subColor,
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                        ),
-                                        if (isDownloading)
-                                          SizedBox(
-                                            width: 50,
-                                            child: Text(
-                                              '${(downloadProgress * 100).round()}%',
-                                              textAlign: TextAlign.center,
-                                              style: TextStyle(
-                                                fontSize: 12,
-                                                fontWeight: FontWeight.w900,
-                                                color: accentColor,
-                                              ),
-                                            ),
-                                          )
-                                        else if (isSaved)
-                                          Row(
-                                            children: [
-                                              GlassTapButton(
-                                                padding:
-                                                    const EdgeInsets.symmetric(
-                                                        horizontal: 8,
-                                                        vertical: 5),
-                                                backgroundColor: panelColor,
-                                                borderColor: accentColor,
-                                                borderRadius:
-                                                    BorderRadius.circular(8),
-                                                onTap: () {
-                                                  setState(() =>
-                                                      showOfflineMapsModal =
-                                                          false);
-                                                  _flyToMyLocation(prov.center,
-                                                      targetZoom: 13.0);
-                                                },
-                                                child: Text(
-                                                  tr('استعراض', 'View'),
-                                                  style: TextStyle(
-                                                    fontSize: 10.5,
-                                                    fontWeight: FontWeight.bold,
-                                                    color: accentColor,
-                                                  ),
-                                                ),
-                                              ),
-                                              const SizedBox(width: 6),
-                                              GestureDetector(
-                                                onTap: () =>
-                                                    _deleteProvinceOfflineMap(
-                                                        prov),
-                                                child: const Icon(
-                                                    Icons
-                                                        .delete_outline_rounded,
-                                                    color: Color(0xFFE5484D),
-                                                    size: 20),
-                                              ),
-                                            ],
-                                          )
-                                        else
-                                          GlassTapButton(
-                                            padding: const EdgeInsets.symmetric(
-                                                horizontal: 12, vertical: 6),
-                                            backgroundColor:
-                                                const Color(0xFF087e76),
-                                            borderColor: Colors.transparent,
-                                            borderRadius:
-                                                BorderRadius.circular(10),
-                                            onTap: () =>
-                                                _downloadProvinceOfflineMap(
-                                                    prov),
-                                            child: Row(
-                                              children: [
-                                                const Icon(
-                                                    Icons.download_rounded,
-                                                    color: Colors.white,
-                                                    size: 15),
-                                                const SizedBox(width: 4),
-                                                Text(
-                                                  tr('تحميل', 'Download'),
-                                                  style: const TextStyle(
-                                                    color: Colors.white,
-                                                    fontSize: 11,
-                                                    fontWeight: FontWeight.bold,
-                                                  ),
-                                                ),
-                                              ],
-                                            ),
-                                          ),
-                                      ],
-                                    ),
-                                    if (isDownloading) ...[
-                                      const SizedBox(height: 8),
-                                      ClipRRect(
-                                        borderRadius: BorderRadius.circular(6),
-                                        child: LinearProgressIndicator(
-                                          value: downloadProgress,
-                                          minHeight: 5,
-                                          backgroundColor: lineColor,
-                                          valueColor:
-                                              AlwaysStoppedAnimation<Color>(
-                                                  accentColor),
-                                        ),
-                                      ),
-                                    ],
-                                  ],
-                                ),
-                              );
-                            },
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          if (showExploreModal)
-            GestureDetector(
-              onTap: () => setState(() => showExploreModal = false),
-              child: Container(
-                color: Colors.black.withOpacity(0.55),
-                alignment: Alignment.bottomCenter,
-                child: GestureDetector(
-                  onTap: () {},
-                  child: Container(
-                    constraints: BoxConstraints(
-                      maxHeight: MediaQuery.of(context).size.height * 0.72,
-                      maxWidth: 430,
-                    ),
-                    padding: const EdgeInsets.fromLTRB(16, 12, 16, 18),
-                    decoration: BoxDecoration(
-                      color: panelColor,
-                      borderRadius:
-                          const BorderRadius.vertical(top: Radius.circular(24)),
-                      border: Border.all(color: lineColor),
-                    ),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Container(
-                          width: 40,
-                          height: 4,
-                          margin: const EdgeInsets.only(bottom: 10),
-                          decoration: BoxDecoration(
-                            color: subColor.withOpacity(0.35),
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                        ),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Text(
-                              tr('اكتشف ما حولك (الأقرب إليك)',
-                                  'Explore Nearby (Closest)'),
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w900,
-                                color: textColor,
-                              ),
-                            ),
-                            Row(
-                              children: [
-                                if (nearbyCategoryPlaces.isNotEmpty)
-                                  GlassTapButton(
-                                    padding: const EdgeInsets.symmetric(
-                                        horizontal: 10, vertical: 6),
-                                    backgroundColor: landColor,
-                                    borderColor: accentColor,
-                                    borderRadius: BorderRadius.circular(10),
-                                    onTap: _showCategoryResultsOnMap,
-                                    child: Text(
-                                      tr('عرض على الخريطة', 'Show on Map'),
-                                      style: TextStyle(
-                                        fontSize: 11,
-                                        fontWeight: FontWeight.w800,
-                                        color: accentColor,
-                                      ),
-                                    ),
-                                  ),
-                                const SizedBox(width: 6),
-                                GlassTapButton(
-                                  width: 32,
-                                  height: 32,
-                                  backgroundColor: landColor,
-                                  borderColor: lineColor,
-                                  borderRadius: BorderRadius.circular(9),
-                                  onTap: () =>
-                                      setState(() => showExploreModal = false),
-                                  child: Icon(Icons.close_rounded,
-                                      color: textColor, size: 17),
-                                ),
-                              ],
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 10),
-                        SizedBox(
-                          height: 36,
-                          child: ListView.builder(
-                            scrollDirection: Axis.horizontal,
-                            itemCount: kExploreCategories.length,
-                            itemBuilder: (context, i) {
-                              final cat = kExploreCategories[i];
-                              final bool active = cat.id == selectedCategoryId;
-                              return Padding(
-                                padding: const EdgeInsets.only(left: 6),
-                                child: GlassTapButton(
-                                  padding: const EdgeInsets.symmetric(
-                                      horizontal: 12, vertical: 6),
-                                  backgroundColor: active
-                                      ? accentColor.withOpacity(0.18)
-                                      : landColor,
-                                  borderColor: active ? accentColor : lineColor,
-                                  borderRadius: BorderRadius.circular(18),
-                                  onTap: () => _openAndFetchCategory(cat),
-                                  child: Row(
-                                    children: [
-                                      Icon(cat.icon,
-                                          size: 15, color: cat.color),
-                                      const SizedBox(width: 5),
-                                      Text(
-                                        isEnglish ? cat.nameEn : cat.nameAr,
-                                        style: TextStyle(
-                                          fontSize: 11.5,
-                                          fontWeight: FontWeight.w800,
-                                          color: textColor,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              );
-                            },
-                          ),
-                        ),
-                        const SizedBox(height: 10),
-                        Flexible(
-                          child: isLoadingCategory
-                              ? Padding(
-                                  padding: const EdgeInsets.all(32),
-                                  child: CircularProgressIndicator(
-                                      color: accentColor),
-                                )
-                              : nearbyCategoryPlaces.isEmpty
-                                  ? Padding(
-                                      padding: const EdgeInsets.all(26),
-                                      child: Column(
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: [
-                                          Icon(Icons.location_off_rounded,
-                                              size: 40, color: subColor),
-                                          const SizedBox(height: 8),
-                                          Text(
-                                            tr('لا توجد نتائج قريبة في هذه الفئة',
-                                                'No nearby places found'),
-                                            style: TextStyle(
-                                                fontSize: 14,
-                                                fontWeight: FontWeight.w800,
-                                                color: textColor),
-                                          ),
-                                        ],
-                                      ),
-                                    )
-                                  : ListView.separated(
-                                      shrinkWrap: true,
-                                      itemCount: nearbyCategoryPlaces.length,
-                                      separatorBuilder: (_, __) =>
-                                          Divider(color: lineColor, height: 1),
-                                      itemBuilder: (context, idx) {
-                                        final item = nearbyCategoryPlaces[idx];
-                                        final cat =
-                                            kExploreCategories.firstWhere(
-                                                (c) =>
-                                                    c.id == selectedCategoryId,
-                                                orElse: () =>
-                                                    kExploreCategories.first);
-                                        final double dKm =
-                                            item['distKm'] as double;
-                                        return ListTile(
-                                          contentPadding:
-                                              const EdgeInsets.symmetric(
-                                                  horizontal: 6, vertical: 2),
-                                          onTap: () {
-                                            setState(() {
-                                              dest = LatLng(
-                                                  item['lat'] as double,
-                                                  item['lng'] as double);
-                                              destName =
-                                                  item['title'].toString();
-                                              destController.text = destName;
-                                              showExploreModal = false;
-                                            });
-                                            _planRoute();
-                                          },
-                                          leading: Container(
-                                            width: 38,
-                                            height: 38,
-                                            decoration: BoxDecoration(
-                                              color: cat.color,
-                                              shape: BoxShape.circle,
-                                            ),
-                                            child: Icon(cat.icon,
-                                                color: Colors.white, size: 19),
-                                          ),
-                                          title: Text(
-                                            item['title'].toString(),
-                                            style: TextStyle(
-                                              fontSize: 13.5,
-                                              fontWeight: FontWeight.w800,
-                                              color: textColor,
-                                            ),
-                                          ),
-                                          subtitle: Text(
-                                            item['subtitle'].toString(),
-                                            maxLines: 1,
-                                            overflow: TextOverflow.ellipsis,
-                                            style: TextStyle(
-                                                fontSize: 11, color: subColor),
-                                          ),
-                                          trailing: Container(
-                                            padding: const EdgeInsets.symmetric(
-                                                horizontal: 8, vertical: 4),
-                                            decoration: BoxDecoration(
-                                              color: landColor,
-                                              borderRadius:
-                                                  BorderRadius.circular(8),
-                                              border:
-                                                  Border.all(color: lineColor),
-                                            ),
-                                            child: Text(
-                                              '${dKm.toStringAsFixed(1)} ${tr('كم', 'km')}',
-                                              style: TextStyle(
-                                                fontSize: 11.5,
-                                                fontWeight: FontWeight.w800,
-                                                color: accentColor,
-                                              ),
-                                            ),
-                                          ),
-                                        );
-                                      },
-                                    ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-            ),
+          if (showOfflineMapsModal) _offlinePanel(),
+          if (showExploreModal) _explorePanel(),
           if (showPlanSheet)
             Positioned(
               left: 16,
@@ -5009,9 +5651,10 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                       child: Container(
                         padding: const EdgeInsets.all(14),
                         decoration: BoxDecoration(
-                            color: glassColor,
-                            borderRadius: BorderRadius.circular(22),
-                            border: Border.all(color: lineColor)),
+                          color: glassColor,
+                          borderRadius: BorderRadius.circular(22),
+                          border: Border.all(color: lineColor),
+                        ),
                         child: Column(
                           mainAxisSize: MainAxisSize.min,
                           children: [
@@ -5019,24 +5662,37 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
                                 Expanded(
-                                    child: Row(children: [
-                                  SvgPicture.string(kDestPinSvg,
-                                      width: 18, height: 22),
-                                  const SizedBox(width: 8),
-                                  Expanded(
-                                      child: Text(destName,
+                                  child: Row(
+                                    children: [
+                                      SvgPicture.string(
+                                        kDestPinSvg,
+                                        width: 18,
+                                        height: 22,
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Expanded(
+                                        child: Text(
+                                          destName,
                                           style: TextStyle(
-                                              fontSize: 13.5,
-                                              fontWeight: FontWeight.w800,
-                                              color: textColor))),
-                                ])),
+                                            fontSize: 13.5,
+                                            fontWeight: FontWeight.w800,
+                                            color: textColor,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
                                 if (dest != null)
                                   Padding(
                                     padding: const EdgeInsets.symmetric(
-                                        horizontal: 6),
+                                      horizontal: 6,
+                                    ),
                                     child: GlassTapButton(
                                       padding: const EdgeInsets.symmetric(
-                                          horizontal: 9, vertical: 6),
+                                        horizontal: 9,
+                                        vertical: 6,
+                                      ),
                                       backgroundColor: landColor,
                                       borderColor: lineColor,
                                       borderRadius: BorderRadius.circular(10),
@@ -5044,14 +5700,20 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                           _shareCustomSpot(dest!, destName),
                                       child: Row(
                                         children: [
-                                          Icon(Icons.share_rounded,
-                                              size: 14, color: accentColor),
+                                          DliniiAppIcon(
+                                            Icons.share_rounded,
+                                            size: 14,
+                                            color: accentColor,
+                                          ),
                                           const SizedBox(width: 4),
-                                          Text(tr('دلّي صديق', 'Guide Friend'),
-                                              style: TextStyle(
-                                                  fontSize: 10.5,
-                                                  fontWeight: FontWeight.w800,
-                                                  color: accentColor)),
+                                          Text(
+                                            tr('دلّي صديق', 'Guide Friend'),
+                                            style: TextStyle(
+                                              fontSize: 10.5,
+                                              fontWeight: FontWeight.w800,
+                                              color: accentColor,
+                                            ),
+                                          ),
                                         ],
                                       ),
                                     ),
@@ -5063,8 +5725,11 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                   borderColor: lineColor,
                                   borderRadius: BorderRadius.circular(9),
                                   onTap: () => _endNav(arrived: false),
-                                  child: Icon(Icons.close_rounded,
-                                      color: textColor, size: 17),
+                                  child: DliniiAppIcon(
+                                    Icons.close_rounded,
+                                    color: textColor,
+                                    size: 17,
+                                  ),
                                 ),
                               ],
                             ),
@@ -5078,8 +5743,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                   final r = routes[i];
                                   final bool isSelected =
                                       i == selectedRouteIndex;
-                                  final int mins =
-                                      ((r['duration'] as num) / 60).round();
+                                  final int mins = ((r['duration'] as num) / 60)
+                                      .round();
                                   final double kms =
                                       (r['distance'] as num) / 1000;
                                   return GestureDetector(
@@ -5091,10 +5756,11 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                       padding: const EdgeInsets.all(8),
                                       decoration: BoxDecoration(
                                         border: Border.all(
-                                            color: isSelected
-                                                ? accentColor
-                                                : lineColor,
-                                            width: 1.8),
+                                          color: isSelected
+                                              ? accentColor
+                                              : lineColor,
+                                          width: 1.8,
+                                        ),
                                         color: isSelected
                                             ? accentColor.withOpacity(0.12)
                                             : landColor.withOpacity(0.6),
@@ -5106,16 +5772,21 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                         mainAxisAlignment:
                                             MainAxisAlignment.center,
                                         children: [
-                                          Text('$mins ${tr('دقيقة', 'min')}',
-                                              style: TextStyle(
-                                                  fontSize: 14,
-                                                  fontWeight: FontWeight.w800,
-                                                  color: textColor)),
                                           Text(
-                                              '${kms.toStringAsFixed(1)} ${tr('كم', 'km')}${r['dlinii_source'] == 'fallback' ? tr(' · تقريبي', ' · Approx') : (r['dlinii_source'] == 'cache' ? tr(' · محفوظ', ' · Saved') : (i == 0 ? tr(' · الأسرع', ' · Fastest') : ''))}',
-                                              style: TextStyle(
-                                                  fontSize: 10.5,
-                                                  color: subColor)),
+                                            '$mins ${tr('دقيقة', 'min')}',
+                                            style: TextStyle(
+                                              fontSize: 14,
+                                              fontWeight: FontWeight.w800,
+                                              color: textColor,
+                                            ),
+                                          ),
+                                          Text(
+                                            '${kms.toStringAsFixed(1)} ${tr('كم', 'km')}${r['dlinii_source'] == 'fallback' ? tr(' · تقريبي', ' · Approx') : (r['dlinii_source'] == 'cache' ? tr(' · محفوظ', ' · Saved') : (i == 0 ? tr(' · الأسرع', ' · Fastest') : ''))}',
+                                            style: TextStyle(
+                                              fontSize: 10.5,
+                                              color: subColor,
+                                            ),
+                                          ),
                                         ],
                                       ),
                                     ),
@@ -5134,14 +5805,20 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                               child: Row(
                                 mainAxisAlignment: MainAxisAlignment.center,
                                 children: [
-                                  const Icon(Icons.navigation_rounded,
-                                      size: 18, color: Colors.white),
+                                  const DliniiAppIcon(
+                                    Icons.navigation_rounded,
+                                    size: 18,
+                                    color: Colors.white,
+                                  ),
                                   const SizedBox(width: 8),
-                                  Text(tr('انطلاق الرحلة', 'Start Journey'),
-                                      style: const TextStyle(
-                                          fontSize: 14,
-                                          fontWeight: FontWeight.bold,
-                                          color: Colors.white)),
+                                  Text(
+                                    tr('انطلاق الرحلة', 'Start Journey'),
+                                    style: const TextStyle(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.white,
+                                    ),
+                                  ),
                                 ],
                               ),
                             ),
@@ -5156,15 +5833,20 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                               child: Row(
                                 mainAxisAlignment: MainAxisAlignment.center,
                                 children: [
-                                  Icon(Icons.play_circle_fill_rounded,
-                                      size: 16, color: accentColor),
+                                  DliniiAppIcon(
+                                    Icons.play_circle_fill_rounded,
+                                    size: 16,
+                                    color: accentColor,
+                                  ),
                                   const SizedBox(width: 6),
                                   Text(
-                                      tr('محاكاة الرحلة', 'Journey Simulation'),
-                                      style: TextStyle(
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.bold,
-                                          color: textColor)),
+                                    tr('محاكاة الرحلة', 'Journey Simulation'),
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.bold,
+                                      color: textColor,
+                                    ),
+                                  ),
                                 ],
                               ),
                             ),
@@ -5190,43 +5872,57 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                       filter: ui.ImageFilter.blur(sigmaX: 14, sigmaY: 14),
                       child: Container(
                         padding: const EdgeInsets.symmetric(
-                            horizontal: 14, vertical: 12),
+                          horizontal: 14,
+                          vertical: 12,
+                        ),
                         decoration: BoxDecoration(
                           color: const Color(0xFF102826).withOpacity(0.92),
                           borderRadius: BorderRadius.circular(18),
                           border: Border.all(
-                              color: const Color(0xFF7ce0be).withOpacity(0.3)),
+                            color: const Color(0xFF7ce0be).withOpacity(0.3),
+                          ),
                         ),
                         child: Row(
                           children: [
                             Container(
-                                width: 42,
-                                height: 42,
-                                decoration: BoxDecoration(
-                                    color: const Color(0xFF9cdbc0)
-                                        .withOpacity(0.15),
-                                    borderRadius: BorderRadius.circular(11)),
-                                alignment: Alignment.center,
-                                child: Text(hudArrow,
-                                    style: const TextStyle(
-                                        fontSize: 26,
-                                        color: Color(0xFF9cdbc0),
-                                        height: 1.0))),
+                              width: 42,
+                              height: 42,
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF9cdbc0)
+                                    .withOpacity(0.15),
+                                borderRadius: BorderRadius.circular(11),
+                              ),
+                              alignment: Alignment.center,
+                              child: Text(
+                                hudArrow,
+                                style: const TextStyle(
+                                  fontSize: 26,
+                                  color: Color(0xFF9cdbc0),
+                                  height: 1.0,
+                                ),
+                              ),
+                            ),
                             const SizedBox(width: 12),
                             Expanded(
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  Text(hudInstruction,
-                                      style: const TextStyle(
-                                          fontSize: 14.5,
-                                          fontWeight: FontWeight.bold,
-                                          color: Colors.white)),
+                                  Text(
+                                    hudInstruction,
+                                    style: const TextStyle(
+                                      fontSize: 14.5,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.white,
+                                    ),
+                                  ),
                                   const SizedBox(height: 2),
-                                  Text(hudStreet,
-                                      style: const TextStyle(
-                                          fontSize: 11.5,
-                                          color: Color(0xFF9cdbc0))),
+                                  Text(
+                                    hudStreet,
+                                    style: const TextStyle(
+                                      fontSize: 11.5,
+                                      color: Color(0xFF9cdbc0),
+                                    ),
+                                  ),
                                 ],
                               ),
                             ),
@@ -5245,28 +5941,37 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                 width: 54,
                 height: 54,
                 decoration: BoxDecoration(
-                    color: panelColor,
-                    shape: BoxShape.circle,
-                    border: Border.all(color: accentColor, width: 2.2),
-                    boxShadow: [
-                      BoxShadow(
-                          color: Colors.black.withOpacity(0.2), blurRadius: 10)
-                    ]),
+                  color: panelColor,
+                  shape: BoxShape.circle,
+                  border: Border.all(color: accentColor, width: 2.2),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.2),
+                      blurRadius: 10,
+                    ),
+                  ],
+                ),
                 alignment: Alignment.center,
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Text('$currentSpeedKmh',
-                        style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w800,
-                            height: 1.0,
-                            color: textColor)),
-                    Text(tr('كم/س', 'km/h'),
-                        style: TextStyle(
-                            fontSize: 8.5,
-                            color: subColor,
-                            fontWeight: FontWeight.bold)),
+                    Text(
+                      '$currentSpeedKmh',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w800,
+                        height: 1.0,
+                        color: textColor,
+                      ),
+                    ),
+                    Text(
+                      tr('كم/س', 'km/h'),
+                      style: TextStyle(
+                        fontSize: 8.5,
+                        color: subColor,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -5285,42 +5990,70 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                       child: Container(
                         padding: const EdgeInsets.all(14),
                         decoration: BoxDecoration(
-                            color: glassColor,
-                            borderRadius: BorderRadius.circular(20),
-                            border: Border.all(color: lineColor)),
+                          color: glassColor,
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(color: lineColor),
+                        ),
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            Column(children: [
-                              Text(navEta,
+                            Column(
+                              children: [
+                                Text(
+                                  navEta,
                                   style: TextStyle(
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.w800,
-                                      color: textColor)),
-                              Text(tr('الوصول', 'ETA'),
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w800,
+                                    color: textColor,
+                                  ),
+                                ),
+                                Text(
+                                  tr('الوصول', 'ETA'),
                                   style: TextStyle(
-                                      fontSize: 10.5, color: subColor))
-                            ]),
-                            Column(children: [
-                              Text(navRemMins,
+                                    fontSize: 10.5,
+                                    color: subColor,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            Column(
+                              children: [
+                                Text(
+                                  navRemMins,
                                   style: TextStyle(
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.w800,
-                                      color: accentColor)),
-                              Text(tr('دقيقة', 'min'),
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w800,
+                                    color: accentColor,
+                                  ),
+                                ),
+                                Text(
+                                  tr('دقيقة', 'min'),
                                   style: TextStyle(
-                                      fontSize: 10.5, color: subColor))
-                            ]),
-                            Column(children: [
-                              Text(navRemKm,
+                                    fontSize: 10.5,
+                                    color: subColor,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            Column(
+                              children: [
+                                Text(
+                                  navRemKm,
                                   style: TextStyle(
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.w800,
-                                      color: textColor)),
-                              Text(tr('كم', 'km'),
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w800,
+                                    color: textColor,
+                                  ),
+                                ),
+                                Text(
+                                  tr('كم', 'km'),
                                   style: TextStyle(
-                                      fontSize: 10.5, color: subColor))
-                            ]),
+                                    fontSize: 10.5,
+                                    color: subColor,
+                                  ),
+                                ),
+                              ],
+                            ),
                             GlassTapButton(
                               width: 38,
                               height: 38,
@@ -5328,27 +6061,31 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                               borderColor: lineColor,
                               borderRadius: BorderRadius.circular(11),
                               onTap: _toggleVoiceState,
-                              child: Icon(
-                                  voiceEnabled
-                                      ? Icons.volume_up_rounded
-                                      : Icons.volume_off_rounded,
-                                  color: voiceEnabled
-                                      ? accentColor
-                                      : const Color(0xFFE5484D),
-                                  size: 19),
+                              child: DliniiControlIcon(
+                                voiceEnabled ? 'sound' : 'mute',
+                                size: 24,
+                                color: voiceEnabled
+                                    ? accentColor
+                                    : const Color(0xFFFF8589),
+                              ),
                             ),
                             GlassTapButton(
                               padding: const EdgeInsets.symmetric(
-                                  horizontal: 14, vertical: 9),
+                                horizontal: 14,
+                                vertical: 9,
+                              ),
                               backgroundColor: const Color(0xFFE5484D),
                               borderColor: Colors.transparent,
                               borderRadius: BorderRadius.circular(11),
                               onTap: () => _endNav(arrived: false),
-                              child: Text(tr('إنهاء', 'End'),
-                                  style: const TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 12.5,
-                                      fontWeight: FontWeight.bold)),
+                              child: Text(
+                                tr('إنهاء', 'End'),
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 12.5,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
                             ),
                           ],
                         ),
@@ -5361,118 +6098,167 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           ],
           if (showRepSheet)
             Positioned(
-              left: 16,
-              right: 16,
-              bottom: 16,
+              left: 8,
+              right: 8,
+              bottom: 8,
               child: Center(
                 child: ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 410),
-                  child: Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                        color: panelColor,
-                        borderRadius: BorderRadius.circular(22),
-                        border: Border.all(color: lineColor),
-                        boxShadow: [
-                          BoxShadow(
+                  constraints: const BoxConstraints(maxWidth: 520),
+                  child: ConstrainedBox(
+                    constraints: BoxConstraints(
+                      maxHeight: MediaQuery.sizeOf(context).height * .85,
+                    ),
+                    child: SingleChildScrollView(
+                      child: Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: panelColor,
+                          borderRadius: BorderRadius.circular(30),
+                          border: Border.all(color: lineColor),
+                          boxShadow: [
+                            BoxShadow(
                               color: Colors.black.withOpacity(0.22),
-                              blurRadius: 22)
-                        ]),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Row(children: [
-                              SvgPicture.string(kReportShieldSvg,
-                                  width: 22, height: 22),
-                              const SizedBox(width: 8),
-                              Text(tr('إرسال تنبيه طريق', 'Road Alert'),
-                                  style: TextStyle(
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.w800,
-                                      color: textColor)),
-                            ]),
-                            GlassTapButton(
-                              width: 32,
-                              height: 32,
-                              backgroundColor: landColor,
-                              borderColor: lineColor,
-                              borderRadius: BorderRadius.circular(9),
-                              onTap: () => setState(() {
-                                showRepSheet = false;
-                                pickMode = null;
-                              }),
-                              child: Icon(Icons.close_rounded,
-                                  color: textColor, size: 17),
+                              blurRadius: 22,
                             ),
                           ],
                         ),
-                        const SizedBox(height: 5),
-                        Text(
-                            reportPoint != null
-                                ? '${tr('الموقع:', 'Spot:')} ${reportPoint!.latitude.toStringAsFixed(4)} ، ${reportPoint!.longitude.toStringAsFixed(4)}'
-                                : tr('موقع البلاغ: موقعك الحالي عبر GPS',
-                                    'Report location: Current GPS'),
-                            style: TextStyle(fontSize: 11.5, color: subColor)),
-                        const SizedBox(height: 9),
-                        GlassTapButton(
-                          width: double.infinity,
-                          padding: const EdgeInsets.symmetric(vertical: 9),
-                          backgroundColor: landColor,
-                          borderColor: accentColor,
-                          borderRadius: BorderRadius.circular(11),
-                          onTap: () {
-                            setState(() {
-                              showRepSheet = false;
-                              pickMode = 'report';
-                            });
-                            _toast(tr('اضغط على مكان البلاغ بالخريطة',
-                                'Tap report spot on map'));
-                          },
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              SvgPicture.string(kGpsTargetSvg,
-                                  width: 17, height: 17),
-                              const SizedBox(width: 7),
-                              Text(
-                                  tr('تحديد موقع البلاغ على الخريطة',
-                                      'Pick report spot on map'),
-                                  style: TextStyle(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Row(
+                                  children: [
+                                    const DliniiReportIcon('hazard', size: 29),
+                                    const SizedBox(width: 8),
+                                    Text(
+                                      tr(
+                                        'خلّي الطريق أوضح',
+                                        'Make the road clearer',
+                                      ),
+                                      style: TextStyle(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.w800,
+                                        color: textColor,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                GlassTapButton(
+                                  width: 32,
+                                  height: 32,
+                                  backgroundColor: landColor,
+                                  borderColor: lineColor,
+                                  borderRadius: BorderRadius.circular(9),
+                                  onTap: () => setState(() {
+                                    showRepSheet = false;
+                                    pickMode = null;
+                                  }),
+                                  child: DliniiAppIcon(
+                                    Icons.close_rounded,
+                                    color: textColor,
+                                    size: 17,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 5),
+                            Text(
+                              reportPoint != null
+                                  ? '${tr('الموقع:', 'Spot:')} ${reportPoint!.latitude.toStringAsFixed(4)} ، ${reportPoint!.longitude.toStringAsFixed(4)}'
+                                  : tr(
+                                      'موقع البلاغ: موقعك الحالي عبر GPS',
+                                      'Report location: Current GPS',
+                                    ),
+                              style: TextStyle(fontSize: 11.5, color: subColor),
+                            ),
+                            const SizedBox(height: 9),
+                            GlassTapButton(
+                              width: double.infinity,
+                              padding: const EdgeInsets.symmetric(vertical: 9),
+                              backgroundColor: landColor,
+                              borderColor: accentColor,
+                              borderRadius: BorderRadius.circular(11),
+                              onTap: () {
+                                setState(() {
+                                  showRepSheet = false;
+                                  pickMode = 'report';
+                                });
+                                _toast(
+                                  tr(
+                                    'اضغط على مكان البلاغ بالخريطة',
+                                    'Tap report spot on map',
+                                  ),
+                                );
+                              },
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  SvgPicture.string(
+                                    kGpsTargetSvg,
+                                    width: 17,
+                                    height: 17,
+                                  ),
+                                  const SizedBox(width: 7),
+                                  Text(
+                                    tr(
+                                      'تحديد موقع البلاغ على الخريطة',
+                                      'Pick report spot on map',
+                                    ),
+                                    style: TextStyle(
                                       fontSize: 12,
                                       fontWeight: FontWeight.w800,
-                                      color: accentColor)),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(height: 10),
-                        GridView.count(
-                          crossAxisCount: 3,
-                          shrinkWrap: true,
-                          mainAxisSpacing: 8,
-                          crossAxisSpacing: 8,
-                          childAspectRatio: 1.12,
-                          children: [
-                            _buildRepGridBtn('bump', tr('مطب', 'Bump')),
-                            _buildRepGridBtn('pothole', tr('حفرة', 'Pothole')),
-                            _buildRepGridBtn('crash', tr('حادث', 'Crash')),
-                            _buildRepGridBtn(
-                                'traffic', tr('ازدحام', 'Traffic')),
-                            _buildRepGridBtn(
-                                'police', tr('نقطة مرور', 'Police')),
-                            _buildRepGridBtn('hazard', tr('خطر آخر', 'Hazard')),
-                            _buildRepGridBtn(
-                                'roadworks', tr('حفريات 🚜', 'Roadworks')),
-                            _buildRepGridBtn(
-                                'closed', tr('طريق مغلق ⛔', 'Road closed')),
-                            _buildRepGridBtn(
-                                'camera', tr('كاميرا 📸', 'Camera')),
+                                      color: accentColor,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(height: 10),
+                            GridView.count(
+                              crossAxisCount: 2,
+                              shrinkWrap: true,
+                              mainAxisSpacing: 8,
+                              crossAxisSpacing: 8,
+                              childAspectRatio: 1.55,
+                              children: [
+                                _buildRepGridBtn('bump', tr('مطب', 'Bump')),
+                                _buildRepGridBtn(
+                                  'pothole',
+                                  tr('حفرة', 'Pothole'),
+                                ),
+                                _buildRepGridBtn('crash', tr('حادث', 'Crash')),
+                                _buildRepGridBtn(
+                                  'traffic',
+                                  tr('ازدحام', 'Traffic'),
+                                ),
+                                _buildRepGridBtn(
+                                  'police',
+                                  tr('نقطة مرور', 'Police'),
+                                ),
+                                _buildRepGridBtn(
+                                  'hazard',
+                                  tr('خطر آخر', 'Hazard'),
+                                ),
+                                _buildRepGridBtn(
+                                  'roadworks',
+                                  tr('حفريات', 'Roadworks'),
+                                ),
+                                _buildRepGridBtn(
+                                  'closed',
+                                  tr('طريق مغلق', 'Road closed'),
+                                ),
+                                _buildRepGridBtn(
+                                  'camera',
+                                  tr('كاميرا سرعة', 'Camera'),
+                                ),
+                              ],
+                            ),
                           ],
                         ),
-                      ],
+                      ),
                     ),
                   ),
                 ),
@@ -5489,45 +6275,64 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                   onTap: () {},
                   child: Container(
                     width: double.infinity,
-                    constraints:
-                        const BoxConstraints(maxWidth: 385, maxHeight: 530),
+                    constraints: const BoxConstraints(
+                      maxWidth: 385,
+                      maxHeight: 530,
+                    ),
                     decoration: BoxDecoration(
-                        color: panelColor,
-                        borderRadius: BorderRadius.circular(22),
-                        border: Border.all(color: lineColor)),
+                      color: panelColor,
+                      borderRadius: BorderRadius.circular(22),
+                      border: Border.all(color: lineColor),
+                    ),
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         Container(
                           padding: const EdgeInsets.symmetric(
-                              horizontal: 16, vertical: 14),
+                            horizontal: 16,
+                            vertical: 14,
+                          ),
                           decoration: const BoxDecoration(
-                              gradient: LinearGradient(colors: [
-                                Color(0xFF142e2d),
-                                Color(0xFF087e76)
-                              ]),
-                              borderRadius: BorderRadius.vertical(
-                                  top: Radius.circular(22))),
+                            gradient: LinearGradient(
+                              colors: [Color(0xFF142e2d), Color(0xFF087e76)],
+                            ),
+                            borderRadius: BorderRadius.vertical(
+                              top: Radius.circular(22),
+                            ),
+                          ),
                           child: Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
-                              Row(children: [
-                                const Icon(Icons.record_voice_over_rounded,
-                                    color: Color(0xFFefbb52), size: 20),
-                                const SizedBox(width: 8),
-                                Text(
-                                    tr('المساعد الصوتي (عربي / أجنبي)',
-                                        'Voice Assistant (AR / EN)'),
+                              Row(
+                                children: [
+                                  const DliniiAppIcon(
+                                    Icons.record_voice_over_rounded,
+                                    color: Color(0xFFefbb52),
+                                    size: 20,
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    tr(
+                                      'المساعد الصوتي (عربي / أجنبي)',
+                                      'Voice Assistant (AR / EN)',
+                                    ),
                                     style: const TextStyle(
-                                        color: Colors.white,
-                                        fontSize: 14.5,
-                                        fontWeight: FontWeight.w800)),
-                              ]),
+                                      color: Colors.white,
+                                      fontSize: 14.5,
+                                      fontWeight: FontWeight.w800,
+                                    ),
+                                  ),
+                                ],
+                              ),
                               GestureDetector(
-                                  onTap: () =>
-                                      setState(() => showVoiceModal = false),
-                                  child: const Icon(Icons.close_rounded,
-                                      color: Colors.white, size: 19)),
+                                onTap: () =>
+                                    setState(() => showVoiceModal = false),
+                                child: const DliniiAppIcon(
+                                  Icons.close_rounded,
+                                  color: Colors.white,
+                                  size: 19,
+                                ),
+                              ),
                             ],
                           ),
                         ),
@@ -5539,9 +6344,11 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                             itemBuilder: (context, idx) {
                               final vp = kVoiceProfiles[idx];
                               final bool isSelected = idx == selectedVoiceIndex;
-                              final bool isPinned =
-                                  _pinnedSlot.containsKey(vp.id);
-                              final int slot = _pinnedSlot[vp.id] ??
+                              final bool isPinned = _pinnedSlot.containsKey(
+                                vp.id,
+                              );
+                              final int slot =
+                                  _pinnedSlot[vp.id] ??
                                   (_voiceSlot[vp.id] ?? 0);
                               final String slotName = slot == 0
                                   ? tr('الصوت 1: فتاة', 'Voice 1: Female')
@@ -5554,8 +6361,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                   backgroundColor: isSelected
                                       ? accentColor.withOpacity(0.15)
                                       : landColor,
-                                  borderColor:
-                                      isSelected ? accentColor : lineColor,
+                                  borderColor: isSelected
+                                      ? accentColor
+                                      : lineColor,
                                   borderRadius: BorderRadius.circular(14),
                                   onTap: () {
                                     _onTapVoiceCardOnly(idx);
@@ -5566,21 +6374,24 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                         width: 40,
                                         height: 40,
                                         decoration: BoxDecoration(
-                                            color: isSelected
-                                                ? accentColor
-                                                : panelColor,
-                                            shape: BoxShape.circle,
-                                            border:
-                                                Border.all(color: accentColor)),
+                                          color: isSelected
+                                              ? accentColor
+                                              : panelColor,
+                                          shape: BoxShape.circle,
+                                          border: Border.all(
+                                            color: accentColor,
+                                          ),
+                                        ),
                                         alignment: Alignment.center,
-                                        child: Icon(
-                                            slot == 0
-                                                ? Icons.face_3_rounded
-                                                : Icons.face_6_rounded,
-                                            color: isSelected
-                                                ? Colors.white
-                                                : accentColor,
-                                            size: 20),
+                                        child: DliniiAppIcon(
+                                          slot == 0
+                                              ? Icons.face_3_rounded
+                                              : Icons.face_6_rounded,
+                                          color: isSelected
+                                              ? Colors.white
+                                              : accentColor,
+                                          size: 20,
+                                        ),
                                       ),
                                       const SizedBox(width: 10),
                                       Expanded(
@@ -5592,37 +6403,45 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                               children: [
                                                 Expanded(
                                                   child: Text(
-                                                      isEnglish
-                                                          ? vp.nameEn
-                                                          : vp.nameAr,
-                                                      style: TextStyle(
-                                                          fontSize: 13,
-                                                          fontWeight:
-                                                              FontWeight.w800,
-                                                          color: textColor)),
+                                                    isEnglish
+                                                        ? vp.nameEn
+                                                        : vp.nameAr,
+                                                    style: TextStyle(
+                                                      fontSize: 13,
+                                                      fontWeight:
+                                                          FontWeight.w800,
+                                                      color: textColor,
+                                                    ),
+                                                  ),
                                                 ),
                                                 if (isPinned)
                                                   Container(
-                                                    padding: const EdgeInsets
-                                                        .symmetric(
-                                                        horizontal: 6,
-                                                        vertical: 2),
+                                                    padding:
+                                                        const EdgeInsets.symmetric(
+                                                          horizontal: 6,
+                                                          vertical: 2,
+                                                        ),
                                                     decoration: BoxDecoration(
                                                       color: const Color(
-                                                          0xFFefbb52),
+                                                        0xFFefbb52,
+                                                      ),
                                                       borderRadius:
                                                           BorderRadius.circular(
-                                                              6),
+                                                            6,
+                                                          ),
                                                     ),
                                                     child: Text(
-                                                      tr('مثبّت 📌',
-                                                          'Pinned 📌'),
+                                                      tr(
+                                                        'مثبّت 📌',
+                                                        'Pinned 📌',
+                                                      ),
                                                       style: const TextStyle(
                                                         fontSize: 9.5,
                                                         fontWeight:
                                                             FontWeight.w900,
-                                                        color:
-                                                            Color(0xFF142e2d),
+                                                        color: Color(
+                                                          0xFF142e2d,
+                                                        ),
                                                       ),
                                                     ),
                                                   ),
@@ -5630,16 +6449,21 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                             ),
                                             const SizedBox(height: 3),
                                             Text(
-                                                '${isEnglish ? vp.descEn : vp.descAr} ($slotName)',
-                                                style: TextStyle(
-                                                    fontSize: 10.5,
-                                                    color: subColor)),
+                                              '${isEnglish ? vp.descEn : vp.descAr} ($slotName)',
+                                              style: TextStyle(
+                                                fontSize: 10.5,
+                                                color: subColor,
+                                              ),
+                                            ),
                                           ],
                                         ),
                                       ),
                                       if (isSelected)
-                                        Icon(Icons.check_circle_rounded,
-                                            color: accentColor, size: 20),
+                                        DliniiAppIcon(
+                                          Icons.check_circle_rounded,
+                                          color: accentColor,
+                                          size: 20,
+                                        ),
                                     ],
                                   ),
                                 ),
@@ -5649,15 +6473,18 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                         ),
                         Padding(
                           padding: const EdgeInsets.symmetric(
-                              horizontal: 14, vertical: 6),
+                            horizontal: 14,
+                            vertical: 6,
+                          ),
                           child: Row(
                             children: [
                               Text(
                                 tr('سرعة التحدث:', 'Speech Speed:'),
                                 style: TextStyle(
-                                    fontSize: 11.5,
-                                    fontWeight: FontWeight.w800,
-                                    color: subColor),
+                                  fontSize: 11.5,
+                                  fontWeight: FontWeight.w800,
+                                  color: subColor,
+                                ),
                               ),
                               const SizedBox(width: 8),
                               Expanded(
@@ -5680,8 +6507,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                             children: [
                               GlassTapButton(
                                 width: double.infinity,
-                                padding:
-                                    const EdgeInsets.symmetric(vertical: 11),
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 11,
+                                ),
                                 backgroundColor: const Color(0xFF087e76),
                                 borderColor: Colors.transparent,
                                 borderRadius: BorderRadius.circular(12),
@@ -5689,16 +6517,22 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                 child: Row(
                                   mainAxisAlignment: MainAxisAlignment.center,
                                   children: [
-                                    const Icon(Icons.swap_horiz_rounded,
-                                        color: Colors.white, size: 19),
+                                    const DliniiAppIcon(
+                                      Icons.swap_horiz_rounded,
+                                      color: Colors.white,
+                                      size: 19,
+                                    ),
                                     const SizedBox(width: 6),
                                     Text(
-                                      tr('تبديل الصوت (صوت فتاة ⇄ صوت رجل)',
-                                          'Switch Voice (Female ⇄ Male)'),
+                                      tr(
+                                        'تبديل الصوت (صوت فتاة ⇄ صوت رجل)',
+                                        'Switch Voice (Female ⇄ Male)',
+                                      ),
                                       style: const TextStyle(
-                                          color: Colors.white,
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.bold),
+                                        color: Colors.white,
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.bold,
+                                      ),
                                     ),
                                   ],
                                 ),
@@ -5706,22 +6540,25 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                               const SizedBox(height: 8),
                               GlassTapButton(
                                 width: double.infinity,
-                                padding:
-                                    const EdgeInsets.symmetric(vertical: 11),
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 11,
+                                ),
                                 backgroundColor:
                                     _pinnedSlot.containsKey(currentVoice.id)
-                                        ? const Color(0xFFefbb52)
-                                        : landColor,
+                                    ? const Color(0xFFefbb52)
+                                    : landColor,
                                 borderColor: const Color(0xFFefbb52),
                                 borderRadius: BorderRadius.circular(12),
                                 onTap: _togglePinCurrentVoice,
                                 child: Row(
                                   mainAxisAlignment: MainAxisAlignment.center,
                                   children: [
-                                    Icon(
+                                    DliniiAppIcon(
                                       Icons.push_pin_rounded,
-                                      color: _pinnedSlot
-                                              .containsKey(currentVoice.id)
+                                      color:
+                                          _pinnedSlot.containsKey(
+                                            currentVoice.id,
+                                          )
                                           ? const Color(0xFF142e2d)
                                           : const Color(0xFFefbb52),
                                       size: 17,
@@ -5731,13 +6568,17 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                       _pinnedSlot.containsKey(currentVoice.id)
                                           ? tr(
                                               'هذا الصوت مثبّت حالياً (اضغط لإلغاء التثبيت)',
-                                              'Voice Pinned (Tap to Unpin)')
+                                              'Voice Pinned (Tap to Unpin)',
+                                            )
                                           : tr(
                                               'تثبيت هذا الصوت كافتراضي دائماً 📌',
-                                              'Pin This Voice Permanently 📌'),
+                                              'Pin This Voice Permanently 📌',
+                                            ),
                                       style: TextStyle(
-                                        color: _pinnedSlot
-                                                .containsKey(currentVoice.id)
+                                        color:
+                                            _pinnedSlot.containsKey(
+                                              currentVoice.id,
+                                            )
                                             ? const Color(0xFF142e2d)
                                             : textColor,
                                         fontSize: 12,
@@ -5767,47 +6608,65 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                   onTap: () {},
                   child: Container(
                     width: double.infinity,
-                    constraints:
-                        const BoxConstraints(maxWidth: 395, maxHeight: 540),
+                    constraints: const BoxConstraints(
+                      maxWidth: 395,
+                      maxHeight: 540,
+                    ),
                     decoration: BoxDecoration(
-                        color: panelColor,
-                        borderRadius: BorderRadius.circular(22),
-                        border: Border.all(color: lineColor)),
+                      color: panelColor,
+                      borderRadius: BorderRadius.circular(22),
+                      border: Border.all(color: lineColor),
+                    ),
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         Container(
                           padding: const EdgeInsets.symmetric(
-                              horizontal: 16, vertical: 14),
+                            horizontal: 16,
+                            vertical: 14,
+                          ),
                           decoration: const BoxDecoration(
-                              gradient: LinearGradient(colors: [
-                                Color(0xFF142e2d),
-                                Color(0xFF087e76)
-                              ]),
-                              borderRadius: BorderRadius.vertical(
-                                  top: Radius.circular(22))),
+                            gradient: LinearGradient(
+                              colors: [Color(0xFF142e2d), Color(0xFF087e76)],
+                            ),
+                            borderRadius: BorderRadius.vertical(
+                              top: Radius.circular(22),
+                            ),
+                          ),
                           child: Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
                               Expanded(
-                                child: Row(children: [
-                                  Icon(modalHeaderIcon,
-                                      color: const Color(0xFFefbb52), size: 20),
-                                  const SizedBox(width: 8),
-                                  Expanded(
-                                    child: Text(modalTitle,
+                                child: Row(
+                                  children: [
+                                    DliniiAppIcon(
+                                      modalHeaderIcon,
+                                      color: const Color(0xFFefbb52),
+                                      size: 20,
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Expanded(
+                                      child: Text(
+                                        modalTitle,
                                         style: const TextStyle(
-                                            color: Colors.white,
-                                            fontSize: 14,
-                                            fontWeight: FontWeight.w800)),
-                                  ),
-                                ]),
+                                          color: Colors.white,
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.w800,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
                               ),
                               GestureDetector(
-                                  onTap: () =>
-                                      setState(() => showModalBox = false),
-                                  child: const Icon(Icons.close_rounded,
-                                      color: Colors.white, size: 19)),
+                                onTap: () =>
+                                    setState(() => showModalBox = false),
+                                child: const DliniiAppIcon(
+                                  Icons.close_rounded,
+                                  color: Colors.white,
+                                  size: 19,
+                                ),
+                              ),
                             ],
                           ),
                         ),
@@ -5816,32 +6675,40 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                             shrinkWrap: true,
                             padding: const EdgeInsets.all(14),
                             children: modalSections
-                                .map((sec) => Container(
-                                      margin: const EdgeInsets.only(bottom: 10),
-                                      padding: const EdgeInsets.all(12),
-                                      decoration: BoxDecoration(
-                                          color: landColor,
-                                          border: Border.all(color: lineColor),
-                                          borderRadius:
-                                              BorderRadius.circular(14)),
-                                      child: Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        children: [
-                                          Text(sec['title'] ?? '',
-                                              style: TextStyle(
-                                                  fontSize: 13,
-                                                  fontWeight: FontWeight.w800,
-                                                  color: accentColor)),
-                                          const SizedBox(height: 6),
-                                          Text(sec['body'] ?? '',
-                                              style: TextStyle(
-                                                  fontSize: 12,
-                                                  color: subColor,
-                                                  height: 1.6)),
-                                        ],
-                                      ),
-                                    ))
+                                .map(
+                                  (sec) => Container(
+                                    margin: const EdgeInsets.only(bottom: 10),
+                                    padding: const EdgeInsets.all(12),
+                                    decoration: BoxDecoration(
+                                      color: landColor,
+                                      border: Border.all(color: lineColor),
+                                      borderRadius: BorderRadius.circular(14),
+                                    ),
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          sec['title'] ?? '',
+                                          style: TextStyle(
+                                            fontSize: 13,
+                                            fontWeight: FontWeight.w800,
+                                            color: accentColor,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 6),
+                                        Text(
+                                          sec['body'] ?? '',
+                                          style: TextStyle(
+                                            fontSize: 12,
+                                            color: subColor,
+                                            height: 1.6,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                )
                                 .toList(),
                           ),
                         ),
@@ -5860,26 +6727,36 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                 constraints: const BoxConstraints(maxWidth: 340),
                 padding: const EdgeInsets.all(18),
                 decoration: BoxDecoration(
-                    color: panelColor,
-                    borderRadius: BorderRadius.circular(22),
-                    border: Border.all(color: lineColor)),
+                  color: panelColor,
+                  borderRadius: BorderRadius.circular(22),
+                  border: Border.all(color: lineColor),
+                ),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Icon(Icons.stars_rounded,
-                        color: Color(0xFFefbb52), size: 44),
+                    const DliniiAppIcon(
+                      Icons.stars_rounded,
+                      color: Color(0xFFefbb52),
+                      size: 44,
+                    ),
                     const SizedBox(height: 8),
-                    Text(tr('تقييم تطبيق دلّيني', 'Rate Dlinii App'),
-                        style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.w800,
-                            color: textColor)),
+                    Text(
+                      tr('تقييم تطبيق دلّيني', 'Rate Dlinii App'),
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w800,
+                        color: textColor,
+                      ),
+                    ),
                     const SizedBox(height: 5),
                     Text(
-                        tr('شلون كانت تجربتك ويا تطبيق دلّيني؟ اضغط على النجوم لتقييمنا على المتجر:',
-                            'How was your experience with Dlinii? Tap stars to rate us:'),
-                        style: TextStyle(fontSize: 12, color: subColor),
-                        textAlign: TextAlign.center),
+                      tr(
+                        'شلون كانت تجربتك ويا تطبيق دلّيني؟ اضغط على النجوم لتقييمنا على المتجر:',
+                        'How was your experience with Dlinii? Tap stars to rate us:',
+                      ),
+                      style: TextStyle(fontSize: 12, color: subColor),
+                      textAlign: TextAlign.center,
+                    ),
                     const SizedBox(height: 12),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
@@ -5889,29 +6766,34 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                         return GestureDetector(
                           onTap: () {
                             setState(() => selectedStars = val);
-                            Future.delayed(const Duration(milliseconds: 200),
-                                () {
-                              launchUrl(Uri.parse(playStoreUrl));
-                              if (mounted) {
-                                setState(() => showRateModal = false);
-                              }
-                            });
+                            Future.delayed(
+                              const Duration(milliseconds: 200),
+                              () {
+                                launchUrl(Uri.parse(playStoreUrl));
+                                if (mounted) {
+                                  setState(() => showRateModal = false);
+                                }
+                              },
+                            );
                           },
                           child: Container(
                             width: 40,
                             height: 40,
                             margin: const EdgeInsets.symmetric(horizontal: 4),
                             decoration: BoxDecoration(
-                                color: isActive
-                                    ? const Color(0xFFefbb52).withOpacity(0.18)
-                                    : landColor,
-                                borderRadius: BorderRadius.circular(11)),
+                              color: isActive
+                                  ? const Color(0xFFefbb52).withOpacity(0.18)
+                                  : landColor,
+                              borderRadius: BorderRadius.circular(11),
+                            ),
                             alignment: Alignment.center,
-                            child: Icon(Icons.star_rounded,
-                                size: 26,
-                                color: isActive
-                                    ? const Color(0xFFefbb52)
-                                    : const Color(0xFFcbd5e1)),
+                            child: DliniiAppIcon(
+                              Icons.star_rounded,
+                              size: 26,
+                              color: isActive
+                                  ? const Color(0xFFefbb52)
+                                  : const Color(0xFFcbd5e1),
+                            ),
                           ),
                         );
                       }),
@@ -5929,11 +6811,14 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                               launchUrl(Uri.parse(playStoreUrl));
                               setState(() => showRateModal = false);
                             },
-                            child: Text(tr('تقييم بالمتجر', 'Rate on Store'),
-                                style: const TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 12.5,
-                                    fontWeight: FontWeight.bold)),
+                            child: Text(
+                              tr('تقييم بالمتجر', 'Rate on Store'),
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 12.5,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
                           ),
                         ),
                         const SizedBox(width: 8),
@@ -5944,11 +6829,14 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                             borderColor: lineColor,
                             borderRadius: BorderRadius.circular(11),
                             onTap: () => setState(() => showRateModal = false),
-                            child: Text(tr('إغلاق', 'Close'),
-                                style: TextStyle(
-                                    color: subColor,
-                                    fontSize: 12.5,
-                                    fontWeight: FontWeight.bold)),
+                            child: Text(
+                              tr('إغلاق', 'Close'),
+                              style: TextStyle(
+                                color: subColor,
+                                fontSize: 12.5,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
                           ),
                         ),
                       ],
@@ -5957,317 +6845,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                 ),
               ),
             ),
-          if (showNotifPermissionModal)
-            Container(
-              color: Colors.black.withOpacity(0.65),
-              alignment: Alignment.center,
-              padding: const EdgeInsets.symmetric(horizontal: 28),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(24),
-                child: BackdropFilter(
-                  filter: ui.ImageFilter.blur(sigmaX: 18, sigmaY: 18),
-                  child: Container(
-                    constraints: const BoxConstraints(maxWidth: 350),
-                    padding: const EdgeInsets.all(22),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF14171C).withOpacity(0.96),
-                      borderRadius: BorderRadius.circular(24),
-                      border: Border.all(
-                          color: const Color(0xFF7ce0be).withOpacity(0.32)),
-                    ),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Container(
-                          width: 48,
-                          height: 48,
-                          margin: const EdgeInsets.only(bottom: 12),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF087e76).withOpacity(0.22),
-                            shape: BoxShape.circle,
-                          ),
-                          child: const Icon(Icons.notifications_active_rounded,
-                              color: Color(0xFFefbb52), size: 26),
-                        ),
-                        Text(
-                          tr('تفعيل الإشعارات والموقع الجغرافي',
-                              'Enable Notifications & Location'),
-                          textAlign: TextAlign.center,
-                          style: const TextStyle(
-                            fontSize: 16.5,
-                            fontWeight: FontWeight.w900,
-                            color: Colors.white,
-                          ),
-                        ),
-                        const SizedBox(height: 10),
-                        Text(
-                          tr('يود "دلّيني" إرسال تنبيهات الحوادث والمطبات إليك وتحديد موقعك على الخريطة بدقة.',
-                              'Dlinii needs notification & GPS permissions for road alerts and live navigation.'),
-                          textAlign: TextAlign.center,
-                          style: const TextStyle(
-                            fontSize: 12.5,
-                            color: Color(0xFF9cdbc0),
-                            height: 1.45,
-                          ),
-                        ),
-                        const SizedBox(height: 18),
-                        Row(
-                          children: [
-                            Expanded(
-                              child: GlassTapButton(
-                                padding:
-                                    const EdgeInsets.symmetric(vertical: 11),
-                                backgroundColor: const Color(0xFF262B33),
-                                borderColor: Colors.transparent,
-                                borderRadius: BorderRadius.circular(14),
-                                onTap: () {
-                                  setState(
-                                      () => showNotifPermissionModal = false);
-                                  _initLocationTracking(userInitiated: true);
-                                },
-                                child: Text(
-                                  tr('لاحقاً', 'Later'),
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                    fontWeight: FontWeight.w700,
-                                  ),
-                                ),
-                              ),
-                            ),
-                            const SizedBox(width: 10),
-                            Expanded(
-                              child: GlassTapButton(
-                                padding:
-                                    const EdgeInsets.symmetric(vertical: 11),
-                                backgroundColor: const Color(0xFF087e76),
-                                borderColor: const Color(0xFF7ce0be),
-                                borderRadius: BorderRadius.circular(14),
-                                onTap: () {
-                                  setState(
-                                      () => showNotifPermissionModal = false);
-                                  _toast(tr(
-                                      'تم تفعيل الإشعارات، يرجى السماح بالموقع 🔔',
-                                      'Alerts enabled, please allow GPS 🔔'));
-                                  _initLocationTracking(userInitiated: true);
-                                },
-                                child: Text(
-                                  tr('السماح وتفعيل الموقع',
-                                      'Allow & Enable GPS'),
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w900,
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          if (showSplash)
-            Positioned.fill(
-              child: GestureDetector(
-                onTap: () => setState(() => showSplash = false),
-                child: Container(
-                  decoration: const BoxDecoration(
-                    gradient: RadialGradient(
-                      center: Alignment(0.0, -0.06),
-                      radius: 1.05,
-                      colors: [
-                        Color(0xFF1d4642),
-                        Color(0xFF132d2b),
-                        Color(0xFF0b1c1b)
-                      ],
-                      stops: [0.0, 0.58, 1.0],
-                    ),
-                  ),
-                  child: SafeArea(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const Spacer(flex: 2),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Container(
-                                width: 72,
-                                height: 72,
-                                decoration: BoxDecoration(
-                                    borderRadius: BorderRadius.circular(22),
-                                    boxShadow: [
-                                      BoxShadow(
-                                          color: Colors.black.withOpacity(0.35),
-                                          blurRadius: 18,
-                                          offset: const Offset(0, 6))
-                                    ]),
-                                child: ClipRRect(
-                                    borderRadius: BorderRadius.circular(22),
-                                    child: Image.asset(
-                                        'assets/images/dlinii_icon.png',
-                                        fit: BoxFit.cover))),
-                            const SizedBox(width: 16),
-                            Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  tr('دلّيني', 'Dlinii'),
-                                  style: const TextStyle(
-                                    fontSize: 44,
-                                    fontWeight: FontWeight.w900,
-                                    color: Colors.white,
-                                    height: 1.05,
-                                  ),
-                                ),
-                                const SizedBox(height: 6),
-                                Text(
-                                  tr('كل طريق… إله دليل',
-                                      'Every road has a guide'),
-                                  style: const TextStyle(
-                                    fontSize: 15,
-                                    fontWeight: FontWeight.w600,
-                                    color: Color(0xFF9cdbc0),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 30),
-                        SizedBox(
-                          width: 320,
-                          height: 165,
-                          child: AnimatedBuilder(
-                            animation: Listenable.merge(
-                                [splashCarController, splashRoadController]),
-                            builder: (context, _) {
-                              final dy = math.sin(
-                                      splashCarController.value * math.pi) *
-                                  4.5;
-                              final roadShift = splashRoadController.value * 48;
-                              return Stack(
-                                alignment: Alignment.center,
-                                children: [
-                                  Positioned(
-                                    bottom: 6,
-                                    left: 8,
-                                    right: 8,
-                                    child: Container(
-                                      height: 44,
-                                      decoration: BoxDecoration(
-                                        gradient: const LinearGradient(
-                                          begin: Alignment.topCenter,
-                                          end: Alignment.bottomCenter,
-                                          colors: [
-                                            Color(0xFF153532),
-                                            Color(0xFF0c201e),
-                                          ],
-                                        ),
-                                        borderRadius: BorderRadius.circular(24),
-                                        border: Border.all(
-                                          color: const Color(0xFF7ce0be)
-                                              .withOpacity(0.28),
-                                          width: 1.5,
-                                        ),
-                                        boxShadow: [
-                                          BoxShadow(
-                                            color:
-                                                Colors.black.withOpacity(0.45),
-                                            blurRadius: 16,
-                                            offset: const Offset(0, 6),
-                                          ),
-                                        ],
-                                      ),
-                                      child: ClipRRect(
-                                        borderRadius: BorderRadius.circular(24),
-                                        child: Stack(
-                                          alignment: Alignment.center,
-                                          children: [
-                                            for (int i = -1; i < 8; i++)
-                                              Positioned(
-                                                left: (i * 48.0) - roadShift,
-                                                child: Container(
-                                                  width: 26,
-                                                  height: 4,
-                                                  decoration: BoxDecoration(
-                                                    color:
-                                                        const Color(0xFFefbb52)
-                                                            .withOpacity(0.85),
-                                                    borderRadius:
-                                                        BorderRadius.circular(
-                                                            3),
-                                                  ),
-                                                ),
-                                              ),
-                                          ],
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                  Positioned(
-                                    top: 4 - dy * 0.5,
-                                    right: 34,
-                                    child: SvgPicture.string(
-                                      kScenePinSvg,
-                                      width: 28,
-                                      height: 34,
-                                    ),
-                                  ),
-                                  Positioned(
-                                    bottom: 22 - dy,
-                                    child: SizedBox(
-                                      width: 245,
-                                      height: 108,
-                                      child: SvgPicture.string(kCarSvg),
-                                    ),
-                                  ),
-                                ],
-                              );
-                            },
-                          ),
-                        ),
-                        const SizedBox(height: 24),
-                        SizedBox(
-                          width: 190,
-                          child: AnimatedBuilder(
-                            animation: splashPulseController,
-                            builder: (context, _) {
-                              return ClipRRect(
-                                borderRadius: BorderRadius.circular(10),
-                                child: LinearProgressIndicator(
-                                  value: splashPulseController.value,
-                                  minHeight: 5,
-                                  backgroundColor:
-                                      Colors.white.withValues(alpha: 0.12),
-                                  valueColor:
-                                      const AlwaysStoppedAnimation<Color>(
-                                          Color(0xFFefbb52)),
-                                ),
-                              );
-                            },
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-                        Text(
-                          tr('رفيقك على طريقك...',
-                              'Your companion on the road...'),
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: const Color(0xFF9cdbc0).withOpacity(0.85),
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                        const Spacer(flex: 2),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-            ),
+          if (showNotifPermissionModal) _permissionPanel(),
           if (isToastVisible)
             Positioned(
               top: MediaQuery.of(context).size.height * 0.45,
@@ -6277,18 +6855,25 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                 child: Center(
                   child: Container(
                     padding: const EdgeInsets.symmetric(
-                        horizontal: 16, vertical: 11),
+                      horizontal: 16,
+                      vertical: 11,
+                    ),
                     decoration: BoxDecoration(
-                        color: const Color(0xFF142e2d).withOpacity(0.95),
-                        borderRadius: BorderRadius.circular(14),
-                        border: Border.all(
-                            color: const Color(0xFF7ce0be).withOpacity(0.3))),
-                    child: Text(toastMessage,
-                        style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 12.5,
-                            fontWeight: FontWeight.w600),
-                        textAlign: TextAlign.center),
+                      color: const Color(0xFF142e2d).withOpacity(0.95),
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(
+                        color: const Color(0xFF7ce0be).withOpacity(0.3),
+                      ),
+                    ),
+                    child: Text(
+                      toastMessage,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 12.5,
+                        fontWeight: FontWeight.w600,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
                   ),
                 ),
               ),
@@ -6319,27 +6904,107 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     );
   }
 
-  Widget _buildRepGridBtn(String type, String label) {
-    return GlassTapButton(
-      onTap: () => _submitCloudReport(type, label),
-      backgroundColor: landColor,
-      borderColor: lineColor,
-      borderRadius: BorderRadius.circular(14),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          _buildReportSvg(type, size: 30),
-          const SizedBox(height: 5),
-          Text(
+  Widget _placeAction(
+    String label,
+    IconData icon,
+    VoidCallback onTap, {
+    bool primary = false,
+  }) => GlassTapButton(
+    height: 44,
+    onTap: onTap,
+    backgroundColor: primary
+        ? (isDark ? const Color(0xFF28B9AD) : const Color(0xFF118F8C))
+        : (isDark ? const Color(0xFF203136) : const Color(0xFFEAF4F2)),
+    borderColor: primary
+        ? Colors.transparent
+        : accentColor.withValues(alpha: .18),
+    borderRadius: DliniiBrand.cardShape,
+    padding: const EdgeInsets.symmetric(horizontal: 10),
+    child: Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        DliniiAppIcon(
+          icon,
+          size: 19,
+          color: primary ? Colors.white : accentColor,
+        ),
+        const SizedBox(width: 7),
+        Flexible(
+          child: Text(
             label,
+            overflow: TextOverflow.ellipsis,
             style: TextStyle(
-              fontSize: 11.5,
+              color: primary ? Colors.white : accentColor,
+              fontSize: 12,
               fontWeight: FontWeight.w800,
-              color: textColor,
             ),
           ),
-        ],
+        ),
+      ],
+    ),
+  );
+
+  Widget _compactSearchAction(
+    String kind,
+    String label,
+    VoidCallback onTap, {
+    bool active = false,
+  }) => Semantics(
+    button: true,
+    label: label,
+    child: Tooltip(
+      message: label,
+      child: GestureDetector(
+        onTap: onTap,
+        behavior: HitTestBehavior.opaque,
+        child: SizedBox(
+          width: 38,
+          height: 42,
+          child: Center(
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 160),
+              width: 30,
+              height: 30,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                color: active
+                    ? const Color(0xFFF16E82)
+                    : accentColor.withValues(alpha: isDark ? .13 : .09),
+                borderRadius: BorderRadius.circular(11),
+                border: Border.all(
+                  color: active
+                      ? const Color(0xFFFFAFBC)
+                      : accentColor.withValues(alpha: .18),
+                ),
+              ),
+              child: DliniiControlIcon(
+                kind,
+                size: 16,
+                color: active ? Colors.white : accentColor,
+              ),
+            ),
+          ),
+        ),
       ),
-    );
+    ),
+  );
+
+  Future<void> _pasteLocation() async {
+    final clipboard = await Clipboard.getData(Clipboard.kTextPlain);
+    if (!mounted) return;
+    final text = clipboard?.text?.trim() ?? '';
+    if (text.isEmpty) {
+      _toast(tr('انسخ رابط موقع أولاً', 'Copy a location link first'));
+      return;
+    }
+    if (!_parseAndOpenSharedText(text))
+      await _resolveMapLink(Uri.tryParse(text) ?? Uri());
   }
+
+  Widget _buildRepGridBtn(String type, String label) => DliniiReportTile(
+    type: type,
+    label: label,
+    dark: isDark,
+    onTap: () => _submitCloudReport(type, label),
+  );
 }

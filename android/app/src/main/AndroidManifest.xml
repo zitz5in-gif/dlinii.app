@@ -20,7 +20,7 @@
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity
-            android:name=".MainActivity"
+            android:name="com.dlinii.app.MainActivity"
             android:exported="true"
             android:launchMode="singleTop"
             android:taskAffinity=""
@@ -67,14 +67,20 @@
                 <data android:scheme="https" android:host="maps.app.goo.gl" />
                 <data android:scheme="https" android:host="goo.gl" android:pathPrefix="/maps" />
             </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.SEND" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="text/plain" />
+            </intent-filter>
         </activity>
-        <!-- Android Auto driving HUD -->
+        <meta-data android:name="com.google.android.gms.car.application" android:resource="@xml/automotive_app_desc" />
+        <!-- Android Auto companion HUD; full navigation still requires device validation. -->
         <service
-            android:name=".DliniiCarService"
-            android:exported="true"
-            android:permission="androidx.car.app.CarAppService.BIND">
+            android:name="com.dlinii.app.DliniiCarService"
+            android:exported="true">
             <intent-filter>
                 <action android:name="androidx.car.app.CarAppService" />
+                <category android:name="androidx.car.app.category.NAVIGATION" />
             </intent-filter>
         </service>
         <meta-data

@@ -1,6 +1,7 @@
 package com.dlinii.app
 
 import android.content.Intent
+import android.net.Uri
 import android.os.Bundle
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
@@ -13,16 +14,28 @@ class MainActivity : FlutterActivity() {
     private var deepLinkChannel: MethodChannel? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        normalizeSharedLocation(intent)
         super.onCreate(savedInstanceState)
         handleIntent(intent)
     }
 
     override fun onNewIntent(intent: Intent) {
+        normalizeSharedLocation(intent)
         super.onNewIntent(intent)
         setIntent(intent)
         handleIntent(intent)
     }
 
+    private fun normalizeSharedLocation(intent: Intent?) {
+        if (intent?.action == Intent.ACTION_SEND && intent.type == "text/plain") {
+            val shared = intent.getStringExtra(Intent.EXTRA_TEXT)?.trim()
+            if (!shared.isNullOrEmpty()) {
+                val link = Regex("""(?:https?://|geo:|dlinii://)[^\s]+""").find(shared)?.value ?: shared
+                intent.data = Uri.parse(link)
+                intent.action = Intent.ACTION_VIEW
+            }
+        }
+    }
     private fun handleIntent(intent: Intent?) {
         val data = intent?.data?.toString()
         if (!data.isNullOrEmpty()) {

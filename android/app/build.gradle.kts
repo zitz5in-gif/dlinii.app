@@ -48,3 +48,7 @@ kotlin {
 flutter {
     source = "../.."
 }
+
+dependencies {
+    implementation("androidx.car.app:app:1.4.0")
+}

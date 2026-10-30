@@ -1,0 +1,78 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+match /public_places/{placeId} {
+  function signedIn() { return request.auth != null; }
+  function owner() { return signedIn() && resource.data.ownerUid == request.auth.uid; }
+  function optionalText(d, key, length) {
+    return !(key in d) || (d[key] is string && d[key].size() <= length);
+  }
+  function valid(d) {
+    return d.keys().hasOnly(['ownerUid','name','category','lat','lng','address',
+      'phone','website','about','hours','hoursMode','aliases','createdAt','updatedAt'])
+      && d.keys().hasAll(['ownerUid','name','category','lat','lng','createdAt','updatedAt'])
+      && d.ownerUid is string && d.name is string && d.name.size() > 0 && d.name.size() <= 160
+      && d.category is string && d.category.size() > 0 && d.category.size() <= 64
+      && d.lat is number && d.lat >= -90 && d.lat <= 90
+      && d.lng is number && d.lng >= -180 && d.lng <= 180
+      && optionalText(d,'address',500) && optionalText(d,'phone',40)
+      && optionalText(d,'website',500) && optionalText(d,'about',3000)
+      && optionalText(d,'hours',500) && optionalText(d,'hoursMode',30)
+      && optionalText(d,'aliases',500)
+      && d.updatedAt == request.time;
+  }
+  allow read: if true;
+  allow create: if signedIn() && valid(request.resource.data)
+    && request.resource.data.ownerUid == request.auth.uid
+    && request.resource.data.createdAt == request.time;
+  allow update: if owner() && valid(request.resource.data)
+    && request.resource.data.ownerUid == resource.data.ownerUid
+    && request.resource.data.createdAt == resource.data.createdAt;
+  allow delete: if owner();
+}
+
+    match /reports/{reportId} {
+      function signedIn() { return request.auth != null; }
+      function validReport(d) {
+        return d.keys().hasOnly(['ownerUid','type','label','lat','lng','confirmations','endVotes','createdAt'])
+          && d.keys().hasAll(['ownerUid','type','label','lat','lng','confirmations','endVotes','createdAt'])
+          && d.ownerUid == request.auth.uid
+          && d.type is string && d.type.size() > 0 && d.type.size() <= 64
+          && d.label is string && d.label.size() > 0 && d.label.size() <= 160
+          && d.lat is number && d.lat >= -90 && d.lat <= 90
+          && d.lng is number && d.lng >= -180 && d.lng <= 180
+          && d.confirmations == 1 && d.endVotes == 0
+          && d.createdAt == request.time;
+      }
+      function newVote(field) {
+        let votePath = /databases/$(database)/documents/reports/$(reportId)/votes/$(request.auth.uid);
+        return !exists(votePath)
+          && getAfter(votePath).data.kind == field
+          && getAfter(votePath).data.createdAt == request.time
+          && resource.data.endVotes < 3
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly([field])
+          && request.resource.data[field] == resource.data[field] + 1;
+      }
+      allow read: if true;
+      allow create: if signedIn() && validReport(request.resource.data);
+      allow update: if signedIn() && (newVote('confirmations') || newVote('endVotes'));
+      allow delete: if signedIn() && resource.data.ownerUid == request.auth.uid;
+      match /votes/{uid} {
+        function validVote() {
+          let d = request.resource.data;
+          let reportPath = /databases/$(database)/documents/reports/$(reportId);
+          return d.keys().hasOnly(['kind','createdAt'])
+            && d.keys().hasAll(['kind','createdAt'])
+            && d.kind in ['confirmations','endVotes']
+            && d.createdAt == request.time
+            && get(reportPath).data.endVotes < 3
+            && getAfter(reportPath).data[d.kind] == get(reportPath).data[d.kind] + 1;
+        }
+        allow get: if request.auth != null && request.auth.uid == uid;
+        allow create: if request.auth != null && request.auth.uid == uid && validVote();
+        allow update, delete, list: if false;
+      }
+    }
+    // Everything else is denied by default. No recursive allow-all.
+  }
+}

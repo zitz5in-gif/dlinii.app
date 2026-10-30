@@ -11,10 +11,12 @@ dependencies:
   flutter:
     sdk: flutter
   firebase_core: ^3.6.0
+  firebase_auth: ^5.7.0
   cloud_firestore: ^5.4.1
   geolocator: ^13.0.1
   flutter_map: ^8.2.0
-  flutter_map_vector_tiles: ^2.10.1
+  flutter_map_vector_tiles:
+    path: third_party/flutter_map_vector_tiles
   latlong2: ^0.9.1
   url_launcher: ^6.3.1
   share_plus: ^10.0.2

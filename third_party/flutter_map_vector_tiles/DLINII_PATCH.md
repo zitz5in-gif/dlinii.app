@@ -1,0 +1,1 @@
+Local patch of flutter_map_vector_tiles 2.10.1: honor text-font family/fallback and Arabic paragraph direction. Original LICENSE retained. No other rendering behavior changed.
